@@ -8,6 +8,7 @@
  */
 
 import { getGovernanceManager } from '../../governance/governance_manager.js';
+import { getGameLogger } from '../../governance/game_logger.js';
 
 export const governanceActionsList = [
     // ==================== ELECTIONS ====================
@@ -248,6 +249,15 @@ export const governanceQueryList = [
                 return `${agent.name} is not a Constitutional faction member.`;
             }
             return `Treasury: ${gov.getTreasuryStatus()}`;
+        }
+    },
+    {
+        name: '!gameStatus',
+        description: 'View the current game score comparing Constitutional vs Anarchy factions.',
+        params: {},
+        perform: async function(agent) {
+            const logger = getGameLogger();
+            return logger.getSummary();
         }
     },
 ];

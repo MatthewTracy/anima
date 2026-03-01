@@ -1,6 +1,7 @@
 import OpenAIApi from 'openai';
 import { getKey, hasKey } from '../utils/keys.js';
 import { strictFormat } from '../utils/text.js';
+import { getBudgetGuard } from '../governance/budget_guard.js';
 
 export class OpenRouter {
     static prefix = 'openrouter';
@@ -45,6 +46,20 @@ export class OpenRouter {
             }
             console.log('Received.');
             res = completion.choices[0].message.content;
+
+            // Track budget usage
+            if (completion.usage) {
+                const budget = getBudgetGuard();
+                const check = budget.recordUsage(
+                    this.model_name,
+                    completion.usage.prompt_tokens || 0,
+                    completion.usage.completion_tokens || 0
+                );
+                if (!check.allowed) {
+                    console.error(`[BUDGET GUARD] ${check.message}`);
+                    process.exit(1);
+                }
+            }
         } catch (err) {
             console.error('Error while awaiting response:', err);
             // If the error indicates a context-length problem, we can slice the turns array, etc.
