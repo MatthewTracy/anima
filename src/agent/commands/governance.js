@@ -9,6 +9,7 @@
 
 import { getGovernanceManager } from '../../governance/governance_manager.js';
 import { getGameLogger } from '../../governance/game_logger.js';
+import { getNarrativeLogger } from '../../governance/narrative_logger.js';
 
 export const governanceActionsList = [
     // ==================== ELECTIONS ====================
@@ -23,6 +24,7 @@ export const governanceActionsList = [
             const result = gov.callElection(agent.name, office);
             if (result.success) {
                 agent.openChat(`[GOV] ${result.message}`);
+                getNarrativeLogger().logElectionCalled(agent.name, office);
             }
             return result.message;
         }
@@ -38,6 +40,7 @@ export const governanceActionsList = [
             const result = gov.nominateSelf(agent.name, office);
             if (result.success) {
                 agent.openChat(`[GOV] ${result.message}`);
+                getNarrativeLogger().logNomination(agent.name, office);
             }
             return result.message;
         }
@@ -54,6 +57,14 @@ export const governanceActionsList = [
             const result = gov.castVote(agent.name, electionId, candidateName);
             if (result.success) {
                 agent.openChat(`[GOV] ${result.message}`);
+                // If the election was completed by this vote, log the result
+                if (result.winner) {
+                    getNarrativeLogger().logElectionResult(
+                        gov.elections.find(e => e.id === electionId)?.office || 'unknown',
+                        result.winner,
+                        result.tally
+                    );
+                }
             }
             return result.message;
         }
@@ -71,6 +82,7 @@ export const governanceActionsList = [
             }
             agent.openChat(`[CAMPAIGN] ${agent.name}: ${speech}`);
             gov.logEvent('campaign_speech', { speaker: agent.name, speech });
+            getNarrativeLogger().logCampaignSpeech(agent.name, speech);
             return `Campaign speech delivered.`;
         }
     },
@@ -87,6 +99,7 @@ export const governanceActionsList = [
             const result = gov.proposeLaw(agent.name, lawText);
             if (result.success) {
                 agent.openChat(`[GOV] ${result.message}`);
+                getNarrativeLogger().logLawProposed(agent.name, result.law.id, lawText);
             }
             return result.message;
         }
@@ -103,6 +116,17 @@ export const governanceActionsList = [
             const result = gov.voteOnLaw(agent.name, lawId, vote);
             if (result.success) {
                 agent.openChat(`[GOV] ${result.message}`);
+                // Check if law was enacted or rejected by this vote
+                const law = gov.laws.find(l => l.id === lawId);
+                if (law && law.status === 'enacted') {
+                    const yes = Object.values(law.votes).filter(v => v === 'yes').length;
+                    const no = Object.values(law.votes).filter(v => v === 'no').length;
+                    getNarrativeLogger().logLawEnacted(lawId, law.text, yes, no);
+                } else if (law && law.status === 'rejected') {
+                    const yes = Object.values(law.votes).filter(v => v === 'yes').length;
+                    const no = Object.values(law.votes).filter(v => v === 'no').length;
+                    getNarrativeLogger().logLawRejected(lawId, law.text, yes, no);
+                }
             }
             return result.message;
         }
@@ -122,6 +146,7 @@ export const governanceActionsList = [
             const result = gov.fileLawsuit(agent.name, defendant, lawViolated, evidence);
             if (result.success) {
                 agent.openChat(`[COURT] ${result.message}`);
+                getNarrativeLogger().logLawsuitFiled(agent.name, defendant, lawViolated);
             }
             return result.message;
         }
@@ -139,6 +164,8 @@ export const governanceActionsList = [
             const result = gov.renderVerdict(agent.name, caseId, verdict, punishment);
             if (result.success) {
                 agent.openChat(`[COURT] ${result.message}`);
+                const caseObj = gov.cases.find(c => c.id === caseId);
+                getNarrativeLogger().logVerdict(agent.name, caseObj?.defendant, verdict, punishment);
             }
             return result.message;
         }
@@ -157,6 +184,7 @@ export const governanceActionsList = [
             const result = gov.recordTaxPayment(agent.name, itemName, amount);
             if (result.success) {
                 agent.openChat(`[TREASURY] ${result.message}`);
+                getNarrativeLogger().logTaxPaid(agent.name, itemName, amount);
             }
             return result.message;
         }
@@ -208,6 +236,12 @@ export const governanceActionsList = [
             const result = gov.initiateImpeachment(agent.name, officialName, reason);
             if (result.success) {
                 agent.openChat(`[GOV] ${result.message}`);
+                // Find which office the official holds
+                let office = 'unknown';
+                for (const [o, data] of Object.entries(gov.constitution.offices)) {
+                    if (data.holder === officialName) { office = o; break; }
+                }
+                getNarrativeLogger().logImpeachment(agent.name, officialName, office, reason);
             }
             return result.message;
         }
