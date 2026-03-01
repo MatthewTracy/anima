@@ -32,7 +32,7 @@ const settings = {
     "speak": false,
     "chat_ingame": true, // bot responses are shown in minecraft chat
     "language": "en",
-    "render_bot_view": false, // show bot's view in browser at localhost:3000, 3001...
+    "render_bot_view": true, // bot camera feeds at localhost:3000 (Madison), 3001 (Hamilton), ..., 3009 (Raven)
 
     "allow_insecure_coding": false, // keep this off for safety
     "allow_vision": false,
