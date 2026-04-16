@@ -5,6 +5,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import * as mindcraft from './mindcraft.js';
 import { readFileSync } from 'fs';
+import { getGovernanceManager } from '../governance/governance_manager.js';
+import { getNarrativeLogger } from '../governance/narrative_logger.js';
+import { getGameClock } from '../governance/game_clock.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Mindserver is:
@@ -216,6 +219,34 @@ export function createMindServer(host_public = false, port = 8080) {
             addListener(socket);
         });
     });
+
+    // Stream governance events and narrative entries to UI
+    try {
+        const gov = getGovernanceManager();
+        gov.onEvent((event) => {
+            io.emit('governance-event', event);
+        });
+
+        const narrative = getNarrativeLogger();
+        narrative.onEntry((entry) => {
+            io.emit('narrative-entry', entry);
+        });
+
+        // Periodically send governance state and game clock to UI
+        setInterval(() => {
+            try {
+                const govState = getGovernanceManager().getSerializableState();
+                io.emit('governance-state', govState);
+
+                const clock = getGameClock();
+                if (clock.isRunning) {
+                    io.emit('game-clock', clock.getStatus());
+                }
+            } catch (e) { /* ignore */ }
+        }, 5000);
+    } catch (e) {
+        console.warn('Could not set up governance streaming:', e.message);
+    }
 
     let host = host_public ? '0.0.0.0' : 'localhost';
     server.listen(port, host, () => {

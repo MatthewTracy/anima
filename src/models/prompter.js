@@ -9,6 +9,8 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { selectAPI, createModel } from './_model_map.js';
+import { getGovernanceManager } from '../governance/governance_manager.js';
+import { getGameClock } from '../governance/game_clock.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -183,6 +185,17 @@ export class Prompter {
                     goal_text += `You recently failed to complete the goal ${goal}.\n`
             }
             prompt = prompt.replaceAll('$LAST_GOALS', goal_text.trim());
+        }
+        if (prompt.includes('$GOVERNANCE')) {
+            try {
+                const gov = getGovernanceManager();
+                const govStatus = gov.getCompactStatus(this.agent.name);
+                const clock = getGameClock();
+                const clockStatus = clock.isRunning ? `Game time: ${clock.getElapsedMinutes().toFixed(0)} min elapsed, ${clock.getRemainingMinutes().toFixed(0)} min remaining.\n` : '';
+                prompt = prompt.replaceAll('$GOVERNANCE', clockStatus + govStatus);
+            } catch (e) {
+                prompt = prompt.replaceAll('$GOVERNANCE', '');
+            }
         }
         if (prompt.includes('$BLUEPRINTS')) {
             if (this.agent.npc.constructions) {

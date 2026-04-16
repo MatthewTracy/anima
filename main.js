@@ -3,6 +3,8 @@ import settings from './settings.js';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { readFileSync } from 'fs';
+import { startGameClock } from './src/governance/game_setup.js';
+import { getGovernanceManager } from './src/governance/governance_manager.js';
 
 function parseArguments() {
     return yargs(hideBin(process.argv))
@@ -64,6 +66,23 @@ if (process.env.LOG_ALL) {
 }
 
 Mindcraft.init(true, settings.mindserver_port, settings.auto_open_ui);
+
+// Initialize governance system and game clock
+getGovernanceManager(); // Starts the governance tick
+const gameClock = startGameClock();
+if (gameClock) {
+    gameClock.onTimeWarning((minutes, msg) => {
+        console.log(`[GAME] ${msg}`);
+    });
+    gameClock.onGameEnd((scores) => {
+        console.log('[GAME] GAME OVER!');
+        console.log('[GAME] Final scores:', JSON.stringify(scores, null, 2));
+        // Graceful shutdown after 10 seconds
+        setTimeout(() => {
+            Mindcraft.shutdown();
+        }, 10000);
+    });
+}
 
 for (let profile of settings.profiles) {
     const profile_json = JSON.parse(readFileSync(profile, 'utf8'));

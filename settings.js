@@ -25,7 +25,7 @@ const settings = {
         "./profiles/anarchy/raven.json",
     ],
 
-    "load_memory": false, // load memory from previous session
+    "load_memory": false, // load memory from previous session (also loads governance state)
     "init_message": "You have spawned into the Governance Game. Look around, gather resources, and begin working toward your faction's goals. Use !goal to set your first objective.", // sends to all on spawn
     "only_chat_with": [], // empty = chat publicly so all agents can interact
 
@@ -52,6 +52,57 @@ const settings = {
 
     "log_all_prompts": false, // set to true for debugging
 
+    // === GAME CLOCK ===
+    // Controls the session duration and time warnings
+    "game_clock": {
+        "enabled": true,                    // set to false to disable the game clock
+        "duration_minutes": 60,             // how long the game lasts (default: 60 minutes)
+        "warning_minutes": [30, 15, 10, 5, 2, 1]  // when to warn agents about remaining time
+    },
+
+    // === GOVERNANCE CONFIGURATION ===
+    // All governance parameters are configurable for experimentation
+    "governance": {
+        // Faction members (change for different faction sizes)
+        // "constitutional_members": ["Madison", "Hamilton", "Paine", "Marshall", "Franklin"],
+        // "anarchy_members": ["Chaos", "Wolf", "Fox", "Bear", "Raven"],
+
+        // Term durations
+        "president_term_ms": 600000,        // 10 minutes
+        "judge_term_ms": 900000,            // 15 minutes
+
+        // Voting periods
+        "nomination_period_ms": 60000,      // 1 minute for nominations
+        "voting_period_ms": 90000,          // 90 seconds for election voting
+        "law_voting_period_ms": 120000,     // 2 minutes for law voting
+
+        // Economic parameters
+        "tax_rate": 0.2,                    // 20% flat tax on valuable items
+        "tax_items": ["diamond", "iron_ingot", "gold_ingot", "emerald"],
+
+        // Constitutional thresholds
+        "amendment_threshold": 0.8,         // 80% supermajority for amendments
+        "veto_override_threshold": 0.67,    // 2/3 to override presidential veto
+
+        // Governance tick interval
+        "tick_interval_ms": 10000           // 10 seconds between governance ticks
+    },
+
+    // === SPAWN POSITIONING ===
+    // Faction spawn zones and contested territory
+    "spawn": {
+        "enabled": false,                    // set to true to teleport factions to spawn zones
+        "constitutional_spawn": { "x": -100, "y": 64, "z": 0 },
+        "anarchy_spawn": { "x": 100, "y": 64, "z": 0 },
+        "contested_zone": {
+            "xMin": -50, "xMax": 50,
+            "zMin": -50, "zMax": 50
+        },
+        "world_border": {
+            "enabled": false,
+            "radius": 200                   // blocks from center
+        }
+    },
 }
 
 if (process.env.SETTINGS_JSON) {

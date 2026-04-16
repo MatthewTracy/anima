@@ -318,6 +318,54 @@
     </div>
     <div id="agents"></div>
 
+    <!-- Governance Dashboard -->
+    <div id="governanceDashboard" style="margin-top:20px;">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <!-- Game Clock -->
+            <div id="gameClockPanel" style="background:#2d2d2d; padding:12px; border-radius:8px; display:none;">
+                <h2 style="margin:0 0 8px 0; font-size:1.1em;">Game Clock</h2>
+                <div id="clockDisplay" style="font-size:1.5em; font-weight:bold; color:#4CAF50;">--:-- / --:--</div>
+                <div id="clockBar" style="width:100%; height:8px; background:#3a3a3a; border-radius:4px; margin-top:6px;">
+                    <div id="clockProgress" style="width:0%; height:100%; background:#4CAF50; border-radius:4px; transition:width 1s;"></div>
+                </div>
+            </div>
+
+            <!-- Officers -->
+            <div style="background:#2d2d2d; padding:12px; border-radius:8px;">
+                <h2 style="margin:0 0 8px 0; font-size:1.1em;">Government</h2>
+                <div id="govOfficers">
+                    <div>President: <span id="govPresident" style="color:#4CAF50;">VACANT</span></div>
+                    <div>Judge: <span id="govJudge" style="color:#4CAF50;">VACANT</span></div>
+                </div>
+                <div id="govTreasury" style="margin-top:6px; color:#aaa;"></div>
+            </div>
+
+            <!-- Active Laws -->
+            <div style="background:#2d2d2d; padding:12px; border-radius:8px;">
+                <h2 style="margin:0 0 8px 0; font-size:1.1em;">Active Laws</h2>
+                <div id="govLaws" style="max-height:150px; overflow-y:auto; font-size:0.9em;">No laws enacted yet.</div>
+            </div>
+
+            <!-- Pending Business -->
+            <div style="background:#2d2d2d; padding:12px; border-radius:8px;">
+                <h2 style="margin:0 0 8px 0; font-size:1.1em;">Pending Business</h2>
+                <div id="govPending" style="max-height:150px; overflow-y:auto; font-size:0.9em;">No pending business.</div>
+            </div>
+
+            <!-- Treaties & Bounties -->
+            <div style="background:#2d2d2d; padding:12px; border-radius:8px;">
+                <h2 style="margin:0 0 8px 0; font-size:1.1em;">Diplomacy & Bounties</h2>
+                <div id="govDiplomacy" style="max-height:150px; overflow-y:auto; font-size:0.9em;">No active treaties or bounties.</div>
+            </div>
+
+            <!-- Narrative Feed -->
+            <div style="background:#2d2d2d; padding:12px; border-radius:8px; grid-column: 1 / -1;">
+                <h2 style="margin:0 0 8px 0; font-size:1.1em;">Live Narrative</h2>
+                <div id="narrativeFeed" style="max-height:250px; overflow-y:auto; font-size:0.9em; color:#ccc;">Waiting for game events...</div>
+            </div>
+        </div>
+    </div>
+
     <div class="page-footer">
         <div>
             <button id="openCreateAgentBtn" class="start-btn">New Agent</button>
@@ -960,6 +1008,98 @@
             inventoryOpen[name] = newVisible;
         }
         window.toggleDetails = toggleDetails;
+
+        // ==================== GOVERNANCE DASHBOARD ====================
+
+        socket.on('governance-state', (state) => {
+            if (!state) return;
+
+            // Officers
+            const presEl = document.getElementById('govPresident');
+            const judgeEl = document.getElementById('govJudge');
+            if (presEl) presEl.textContent = state.offices?.president || 'VACANT';
+            if (judgeEl) judgeEl.textContent = state.offices?.judge || 'VACANT';
+
+            // Treasury
+            const treasuryEl = document.getElementById('govTreasury');
+            if (treasuryEl) {
+                const items = Object.entries(state.treasury || {}).filter(([_, c]) => c > 0).map(([i, c]) => `${i}: ${c}`).join(', ');
+                treasuryEl.textContent = items ? `Treasury: ${items}` : 'Treasury: empty';
+            }
+
+            // Active Laws
+            const lawsEl = document.getElementById('govLaws');
+            if (lawsEl) {
+                if (state.activeLaws?.length > 0) {
+                    lawsEl.innerHTML = state.activeLaws.map(l => `<div style="margin:2px 0; padding:4px; background:#3a3a3a; border-radius:3px;">#${l.id}: ${l.text}</div>`).join('');
+                } else {
+                    lawsEl.textContent = 'No laws enacted yet.';
+                }
+            }
+
+            // Pending Business
+            const pendingEl = document.getElementById('govPending');
+            if (pendingEl) {
+                let html = '';
+                if (state.pendingElections?.length > 0) {
+                    html += state.pendingElections.map(e => `<div style="margin:2px 0; padding:4px; background:#2a3a2a; border-radius:3px;">Election #${e.id} for ${e.office} (${e.status}, ${e.candidates.length} candidates, ${e.voteCount} votes)</div>`).join('');
+                }
+                if (state.pendingLaws?.length > 0) {
+                    html += state.pendingLaws.map(l => `<div style="margin:2px 0; padding:4px; background:#3a3a2a; border-radius:3px;">Law #${l.id}: "${l.text}" (${l.yesVotes}y/${l.noVotes}n, ${l.totalVotes} voted)</div>`).join('');
+                }
+                if (state.pendingCases?.length > 0) {
+                    html += state.pendingCases.map(c => `<div style="margin:2px 0; padding:4px; background:#3a2a2a; border-radius:3px;">Case #${c.id}: ${c.plaintiff} vs ${c.defendant}</div>`).join('');
+                }
+                if (state.pendingPunishments?.length > 0) {
+                    html += state.pendingPunishments.map(p => `<div style="margin:2px 0; padding:4px; background:#3a2a3a; border-radius:3px;">Punishment #${p.id}: ${p.defendant} must "${p.punishment}"</div>`).join('');
+                }
+                pendingEl.innerHTML = html || 'No pending business.';
+            }
+
+            // Diplomacy & Bounties
+            const diploEl = document.getElementById('govDiplomacy');
+            if (diploEl) {
+                let html = '';
+                if (state.activeTreaties?.length > 0) {
+                    html += '<strong>Treaties:</strong><br>' + state.activeTreaties.map(t => `Treaty #${t.id}: "${t.terms}"`).join('<br>') + '<br>';
+                }
+                if (state.activeBounties?.length > 0) {
+                    html += '<strong>Bounties:</strong><br>' + state.activeBounties.map(b => `#${b.id}: Kill ${b.target} for ${b.reward}`).join('<br>');
+                }
+                diploEl.innerHTML = html || 'No active treaties or bounties.';
+            }
+        });
+
+        // Game Clock
+        socket.on('game-clock', (status) => {
+            const panel = document.getElementById('gameClockPanel');
+            if (panel && status) {
+                panel.style.display = '';
+                const display = document.getElementById('clockDisplay');
+                const progress = document.getElementById('clockProgress');
+                if (display) display.textContent = `${status.elapsed} / ${status.total} min (${status.remaining} min left)`;
+                if (progress) {
+                    const pct = Math.min(100, (parseFloat(status.elapsed) / parseFloat(status.total)) * 100);
+                    progress.style.width = pct + '%';
+                    if (pct > 80) progress.style.background = '#f44336';
+                    else if (pct > 60) progress.style.background = '#ff9800';
+                }
+            }
+        });
+
+        // Narrative Feed
+        socket.on('narrative-entry', (entry) => {
+            const feed = document.getElementById('narrativeFeed');
+            if (feed && entry) {
+                const div = document.createElement('div');
+                div.style.cssText = 'margin:4px 0; padding:4px 6px; background:#363636; border-radius:3px; border-left:3px solid #4CAF50;';
+                div.innerHTML = `<span style="color:#888; font-size:0.8em;">[${entry.time}]</span> ${entry.text}`;
+                feed.appendChild(div);
+                feed.scrollTop = feed.scrollHeight;
+                // Keep only last 50 entries in DOM
+                while (feed.children.length > 50) feed.removeChild(feed.firstChild);
+            }
+        });
     </script>
 </body>
 </html> 

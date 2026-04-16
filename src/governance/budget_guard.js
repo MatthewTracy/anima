@@ -8,10 +8,22 @@
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
-// Default pricing for DeepSeek V3 via OpenRouter (per million tokens)
+// Pricing per million tokens (OpenRouter rates)
 const DEFAULT_PRICING = {
-    'deepseek/deepseek-chat': { input: 0.30, output: 0.88 }, // OpenRouter markup over direct DeepSeek
-    'default': { input: 0.50, output: 1.00 } // Conservative fallback
+    'deepseek/deepseek-chat': { input: 0.30, output: 0.88 },
+    'deepseek/deepseek-reasoner': { input: 0.55, output: 2.19 },
+    'anthropic/claude-3.5-sonnet': { input: 3.00, output: 15.00 },
+    'anthropic/claude-3-haiku': { input: 0.25, output: 1.25 },
+    'anthropic/claude-sonnet-4': { input: 3.00, output: 15.00 },
+    'anthropic/claude-opus-4': { input: 15.00, output: 75.00 },
+    'openai/gpt-4o': { input: 2.50, output: 10.00 },
+    'openai/gpt-4o-mini': { input: 0.15, output: 0.60 },
+    'google/gemini-2.0-flash': { input: 0.10, output: 0.40 },
+    'google/gemini-2.5-pro': { input: 1.25, output: 10.00 },
+    'meta-llama/llama-3.1-70b-instruct': { input: 0.52, output: 0.75 },
+    'mistralai/mistral-large': { input: 2.00, output: 6.00 },
+    'qwen/qwen-2.5-72b-instruct': { input: 0.36, output: 0.40 },
+    'default': { input: 0.50, output: 1.00 }
 };
 
 class BudgetGuard {

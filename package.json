@@ -38,7 +38,11 @@
     },
     "scripts": {
         "postinstall": "patch-package",
-        "start": "node main.js"
+        "start": "node main.js",
+        "test": "node --test tests/",
+        "score": "node scripts/score_game.js",
+        "analyze": "node scripts/analyze_runs.js",
+        "replay": "node scripts/replay.js"
     },
     "devDependencies": {
         "@eslint/js": "^9.13.0",

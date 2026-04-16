@@ -17,6 +17,7 @@ import settings from './settings.js';
 import { Task } from './tasks/tasks.js';
 import { speak } from './speak.js';
 import { log, validateNameFormat, handleDisconnection } from './connection_handler.js';
+import { getGovernanceManager } from '../governance/governance_manager.js';
 
 export class Agent {
     async start(load_mem=false, init_message=null, count_id=0) {
@@ -428,6 +429,24 @@ export class Agent {
         }
     }
 
+    async factionChat(message) {
+        const gov = getGovernanceManager();
+        const members = gov.getFactionMembers(this.name);
+        message = message.replaceAll('\n', ' ');
+        for (const member of members) {
+            if (member !== this.name) {
+                this.bot.whisper(member, message);
+            }
+        }
+        sendOutputToServer(this.name, `[FACTION] ${message}`);
+    }
+
+    async whisperTo(targetName, message) {
+        message = message.replaceAll('\n', ' ');
+        this.bot.whisper(targetName, message);
+        sendOutputToServer(this.name, `[WHISPER to ${targetName}] ${message}`);
+    }
+
     startEvents() {
         // Custom events
         this.bot.on('time', () => {
@@ -479,7 +498,7 @@ export class Agent {
                 this.memory_bank.rememberPlace('last_death_position', death_pos.x, death_pos.y, death_pos.z);
                 let death_pos_text = null;
                 if (death_pos) {
-                    death_pos_text = `x: ${death_pos.x.toFixed(2)}, y: ${death_pos.y.toFixed(2)}, z: ${death_pos.x.toFixed(2)}`;
+                    death_pos_text = `x: ${death_pos.x.toFixed(2)}, y: ${death_pos.y.toFixed(2)}, z: ${death_pos.z.toFixed(2)}`;
                 }
                 let dimention = this.bot.game.dimension;
                 this.handleMessage('system', `You died at position ${death_pos_text || "unknown"} in the ${dimention} dimension with the final message: '${message}'. Your place of death is saved as 'last_death_position' if you want to return. Previous actions were stopped and you have respawned.`);
