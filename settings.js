@@ -56,7 +56,7 @@ const settings = {
     // Controls the session duration and time warnings
     "game_clock": {
         "enabled": true,                    // set to false to disable the game clock
-        "duration_minutes": 60,             // how long the game lasts (default: 60 minutes)
+        "duration_minutes": 30,             // how long the game lasts (30 min = ~$1.50-2.50)
         "warning_minutes": [30, 15, 10, 5, 2, 1]  // when to warn agents about remaining time
     },
 

@@ -128,8 +128,8 @@ let instance = null;
 export function getBudgetGuard(options = {}) {
     if (!instance) {
         instance = new BudgetGuard({
-            monthlyCapUsd: options.monthlyCapUsd || 100.00,   // $100/month cap
-            sessionCapUsd: options.sessionCapUsd || 5.00,     // $5 per session
+            monthlyCapUsd: options.monthlyCapUsd || 25.00,    // $25/month cap
+            sessionCapUsd: options.sessionCapUsd || 3.00,     // $3 per session
             warningThreshold: options.warningThreshold || 0.80
         });
     }

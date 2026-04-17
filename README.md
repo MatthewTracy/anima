@@ -53,12 +53,12 @@ Uses **DeepSeek V3** via OpenRouter by default — the cheapest capable model.
 
 | Scenario | Cost | Notes |
 |----------|------|-------|
-| 1 hour game (10 agents) | ~$3-5 | Default settings |
-| 30 min quick test (10 agents) | ~$1.50-2.50 | Set `game_clock.duration_minutes: 30` |
-| 15 min smoke test (4 agents) | ~$0.50-1.00 | Use `--profiles` flag for fewer agents |
-| 20 full sessions | ~$60-100 | Plenty for experimentation |
+| 30 min game (10 agents) | ~$1.50-2.50 | Default settings |
+| 60 min game (10 agents) | ~$3-5 | Set `game_clock.duration_minutes: 60` |
+| 10 min smoke test (4 agents) | ~$0.30-0.50 | Use `--profiles` flag for fewer agents |
+| **$25 budget** | **~10-15 sessions** | **Great for experimentation** |
 
-**Budget safety**: The budget guard auto-stops all agents at $5/session (configurable in `settings.js`). OpenRouter uses prepaid credits, so you can never exceed what you've loaded.
+**Budget safety**: The budget guard auto-stops all agents at $3/session (configurable). Monthly cap is $25. OpenRouter uses prepaid credits, so you can never exceed what you've loaded.
 
 ### Cost Optimization Tips
 - **Shorter games**: Set `game_clock.duration_minutes` to 30 or 15 for testing
@@ -222,9 +222,9 @@ All configuration is in `settings.js`:
 ```
 
 ### Budget Guard
-Default session cap is $5.00. Change in `src/governance/budget_guard.js`:
+Default session cap is $3.00, monthly cap is $25.00. Change in `src/governance/budget_guard.js`:
 ```js
-sessionCapUsd: 5.00,  // max spend per session
+sessionCapUsd: 3.00,  // max spend per session
 monthlyCapUsd: 25.00  // max spend per month
 ```
 
