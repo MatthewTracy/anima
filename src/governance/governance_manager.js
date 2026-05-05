@@ -1613,6 +1613,17 @@ class GovernanceManager {
         this.eventLog.push(event);
         this._emitEvent(event);
 
+        // v8.3: also forward to GameLogger so analyze_runs / highlights /
+        // behavioral metrics see governance events. Was scattered before:
+        // governance events lived only in logs/governance/, never in
+        // logs/games/<id>.json.
+        try {
+            // Lazy import to avoid circular dependency at module load
+            import('./game_logger.js').then(m => {
+                m.getGameLogger().logEvent(type, data);
+            }).catch(() => {});
+        } catch (e) { /* optional */ }
+
         // Write to file periodically
         if (this.eventLog.length % 5 === 0) {
             this._saveEventLog();
