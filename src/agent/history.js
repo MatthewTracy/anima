@@ -32,9 +32,11 @@ export class History {
 
     async summarizeMemories(turns) {
         console.log("Storing memories...");
-        this.memory = await this.agent.prompter.promptMemSaving(turns);
+        const result = await this.agent.prompter.promptMemSaving(turns);
+        // Defensive: promptMemSaving can return null on API error/budget exhaustion
+        this.memory = result || this.memory || '';
 
-        if (this.memory.length > 500) {
+        if (this.memory && this.memory.length > 500) {
             this.memory = this.memory.slice(0, 500);
             this.memory += '...(Memory truncated to 500 chars. Compress it more next time)';
         }

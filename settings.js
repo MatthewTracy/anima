@@ -144,9 +144,12 @@ const settings = {
     },
 
     // === SPAWN POSITIONING (#3) ===
-    // Faction spawn zones and contested territory — ON by default for territory dynamics
+    // Faction spawn zones — DISABLED by default. The /tp command runs immediately
+    // on bot login, which Vanilla's anti-cheat flags as "moved too quickly" and
+    // kicks the agent. Without it, agents spawn at world spawn and self-organize.
+    // Re-enable only if you've also OP'd the bots and confirmed they survive the TP.
     "spawn": {
-        "enabled": true,                    // teleport factions to their zones on spawn
+        "enabled": false,                   // teleport factions to their zones on spawn
         "constitutional_spawn": { "x": -100, "y": 70, "z": 0 },
         "anarchy_spawn": { "x": 100, "y": 70, "z": 0 },
         "contested_zone": {

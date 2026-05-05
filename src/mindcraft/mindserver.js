@@ -168,8 +168,14 @@ export function createMindServer(host_public = false, port = 8080) {
                 console.warn(`Agent ${agentName} tried to send a message but is not logged in`);
                 return;
             }
+            // v8.2: socket may be null if the target agent just disconnected
+            const targetSocket = agent_connections[agentName].socket;
+            if (!targetSocket) {
+                console.warn(`Agent ${agentName} has no active socket — message dropped`);
+                return;
+            }
             console.log(`${curAgentName} sending message to ${agentName}: ${json.message}`);
-            agent_connections[agentName].socket.emit('chat-message', curAgentName, json);
+            targetSocket.emit('chat-message', curAgentName, json);
         });
 
         socket.on('set-agent-settings', (agentName, settings) => {
@@ -182,7 +188,7 @@ export function createMindServer(host_public = false, port = 8080) {
 
         socket.on('restart-agent', (agentName) => {
             console.log(`Restarting agent: ${agentName}`);
-            agent_connections[agentName].socket.emit('restart-agent');
+            agent_connections[agentName]?.socket?.emit('restart-agent');
         });
 
         socket.on('stop-agent', (agentName) => {
@@ -227,7 +233,7 @@ export function createMindServer(host_public = false, port = 8080) {
 				return
 			}
 			try {
-				agent_connections[agentName].socket.emit('send-message', data)
+				agent_connections[agentName].socket?.emit('send-message', data);
 			} catch (error) {
 				console.error('Error: ', error);
 			}
