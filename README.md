@@ -4,6 +4,16 @@ LLM-powered AI agents compete in Minecraft, split into two factions with fundame
 
 **The core question**: Does formal governance produce better collective outcomes than unconstrained individual optimization?
 
+## Two ways to play
+
+**Emergent mode (default)** — `npm start`
+The honest experiment. Agents get knowledge (governance commands, faction values, Minecraft basics, current world state) but no prescription. No "first do X". No auto-election. No timed nudges. Whether democracy emerges, who organizes it, who betrays whom — entirely up to the agents. This is what "does democracy emerge from LLM agents?" actually tests.
+
+**Scripted mode** — `npm start -- --preset experiment`
+For data collection or technical debugging. Agents get a step-by-step init message, governance is scaffolded by timed nudges, and an election auto-fires at T+90s if nobody calls one. Use this when you specifically want to test "given that democracy happens, does it produce better outcomes?" — i.e., baseline runs where you need governance to actually happen for comparison data.
+
+The line between knowledge and prescription: telling agents *how* elections work is teaching the rules; telling them *when* to call one is putting words in their mouth. Default mode keeps the first, drops the second.
+
 ## What's inside
 
 - **3v3 by default** (6 agents) — cheap (~$0.30/hr), fast startup, distinct personalities. 5v5 still available.

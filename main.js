@@ -106,6 +106,9 @@ if (args.preset === 'experiment') {
     settings.win_conditions.first_to_resources = { enabled: true, threshold: 200 };
     // 30% faster cooldowns will be applied to each profile at spawn time
     settings._cooldown_multiplier = 0.7;
+    // --preset experiment is for "given that democracy happens, does it produce
+    // better outcomes?" — that means scripted scaffolding ON.
+    settings.emergent_mode = false;
 }
 
 // F7: apply any settings.budget changes (preset or env-overridden) to the

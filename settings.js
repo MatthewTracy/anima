@@ -38,22 +38,25 @@ const settings = {
     // The Minecraft server uses LEVEL_SEED env var; this just records what was used.
     "world_seed": "12345",
 
-    // === EMERGENT MODE (v8) ===
-    // false (default): scripted scaffolding — agents get step-by-step init,
-    //   timed governance nudges, and an auto-election fallback at T+90s.
-    //   Reliable for data collection.
-    // true: agents get a soft "you spawned, figure it out" init, no nudges,
-    //   no auto-election. See what emerges from personalities + faction
-    //   values alone. Less reliable, more interesting.
-    "emergent_mode": false,
+    // === EMERGENT MODE (v8.1 — now default) ===
+    // The line: KNOWLEDGE is given (commands, faction structure, Minecraft basics,
+    // current state), PRESCRIPTION is not (no "do X first", no auto-election, no
+    // timed nudges). Agents learn the rules of the game like humans learn civics
+    // in school — but they choose whether and how to play.
+    //
+    // true (default): emergent — see what naturally happens. The honest experiment.
+    // false: scripted — auto-election fallback + timed nudges + prescriptive init.
+    //   Use this only for technical debugging or "given that democracy happens,
+    //   does it produce better outcomes?" baseline runs.
+    "emergent_mode": true,
 
 
     // #1 — concrete first moves so the game actually plays
     // Scripted init (default). Used when emergent_mode is false.
     "init_message": "You spawned into the Governance Game ($GAME_DURATION minutes total).\n\nMINECRAFT BASICS (first 60 seconds):\n1. Punch a tree with bare hands → get oak_log (4-5)\n2. !craftRecipe(\"oak_planks\", 4) → !craftRecipe(\"crafting_table\", 1)\n3. Make sticks → !craftRecipe(\"wooden_pickaxe\", 1)\n4. Mine stone (cobblestone) → upgrade to stone_pickaxe\n5. Find food: !attack on cow/pig/chicken, or !collectBlocks(\"wheat\")\n6. Build a small shelter before night (zombies spawn in dark)\n\nGOVERNANCE STEPS (after first minute):\n- CONSTITUTIONAL: someone MUST !callElection(\"president\") FIRST. THEN others !nominateSelf(\"president\"). Then !castVote. Without callElection first, nominations fail silently.\n- After president is elected, !proposeLaw(\"text\") — laws need majority vote.\n- ANARCHY: !placeBounty(\"target\",\"item\",amount) on strong enemies. Coordinate raids.\n\nUse !goal to set your strategic objective. Be active — silent agents lose.",
 
-    // Emergent init (used when emergent_mode is true). Frame as context, not commands.
-    "init_message_emergent": "You spawned into a Minecraft world. The game lasts $GAME_DURATION minutes.\n\nWho's here:\n- Constitutional faction (Madison, Hamilton, Paine): they tend to favor democracy, laws, courts, and shared rules — but how they actually behave is up to them.\n- Anarchy faction (Chaos, Wolf, Fox): they tend to favor individual sovereignty and distrust authority — but how they actually behave is up to them.\n- You're one of them. Your faction is in your profile.\n\nWhat's possible: surviving (gathering wood/food/tools), governance (elections, laws, lawsuits, treaties, taxes, amendments, vetoes), conflict (raids, bounties, war), cooperation (trades, alliances). Type !help to see commands.\n\nYou're not given a script. The other agents aren't either. What you do — whether you organize an election, betray your faction, build a base, hunt a rival, propose peace, or do nothing — is your call. Set a !goal that fits who you are, and act on it.",
+    // Emergent init (default). Knowledge of the rules, no prescription about behavior.
+    "init_message_emergent": "You spawned into a Minecraft world for $GAME_DURATION minutes.\n\nTHE WORLD\n- Constitutional faction: Madison, Hamilton, Paine. They tend to value democracy, laws, courts, shared rules. They have access to a constitution, an elected presidency, and a judiciary — IF they choose to use them.\n- Anarchy faction: Chaos, Wolf, Fox. They tend to value individual sovereignty and distrust authority. They have access to bounties and raids — IF they choose to use them.\n- You're listed in your profile. You CAN act in line with your faction's typical values — or not. Free will is real.\n\nMINECRAFT BASICS\n- Wood (punch tree) → planks → sticks + crafting_table → wooden_pickaxe.\n- Stone → stone_pickaxe → iron → diamond. Higher tier mines lower tier.\n- Hunger drops over time; eat cow/pig/chicken/wheat or you can't sprint.\n- Night = zombies. Build shelter or sleep in a bed.\n\nGOVERNANCE MECHANICS (how the system works, not what to do)\n- Elections: !callElection(\"president\") opens a 60s nomination window, then 90s voting window. !nominateSelf during nomination. !castVote during voting. Majority wins.\n- Laws: anyone can !proposeLaw. Majority of constitutional faction must vote yes via !voteOnLaw. President can !vetoLaw — overridden by 2/3 supermajority.\n- Court: !fileLawsuit against a faction member. Judge !renderVerdict — guilty triggers !completePunishment.\n- Treasury: !payTax to fund collective resources. President !distributeTreasury.\n- Cross-faction: !proposeTreaty / !acceptTreaty / !declareWar. !offerTrade for goods.\n- Anarchy: !placeBounty(target, reward), !claimBounty after kill, !raid for coordinated attacks.\n- Use !help for full command list. Use !viewConstitution to see active laws and offices.\n\nIT'S YOUR CALL\nWhether to organize an election or ignore politics. Whether to cooperate or betray. Whether to build, mine, fight, talk, hide, or do nothing. The other agents are figuring it out the same way. Set a !goal that fits who you are.",
     "only_chat_with": [], // empty = chat publicly so all agents can interact
 
     "speak": false,
