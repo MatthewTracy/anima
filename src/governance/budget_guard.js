@@ -123,44 +123,36 @@ class BudgetGuard {
     }
 }
 
-// Singleton — reads settings.budget for caps, falls back to safe defaults.
-// F1: previously the singleton ignored settings.budget entirely so
-// `--preset experiment`'s $0.50 cap had no effect.
-let instance = null;
-let _settingsBudget = null;
-try {
-    // Synchronous import via require-style dynamic eval; ESM dynamic import
-    // would force this function async which we don't want for a hot-path check.
-    // Settings is a small object — read it lazily on first call instead.
-} catch (e) { /* noop */ }
+// F7: import settings synchronously at module load time so caps are correct
+// on the very first LLM call. Top-level static imports are resolved once at
+// module-graph load, before any LLM call could fire — eliminating the v6.1
+// race where the first call could use the hardcoded $3 default before async
+// settings finished loading.
+import settings from '../../settings.js';
 
-async function _loadSettingsBudget() {
-    if (_settingsBudget !== null) return _settingsBudget;
-    try {
-        const s = (await import('../../settings.js')).default;
-        _settingsBudget = s?.budget || {};
-    } catch (e) {
-        _settingsBudget = {};
-    }
-    return _settingsBudget;
-}
+// Singleton — reads settings.budget for caps, falls back to safe defaults.
+let instance = null;
 
 export function getBudgetGuard(options = {}) {
     if (!instance) {
-        // Try to read settings.budget synchronously by walking the resolved module if
-        // already cached. Fallback to defaults; an async refresh runs after construction.
+        const b = settings?.budget || {};
         instance = new BudgetGuard({
-            monthlyCapUsd: options.monthlyCapUsd || 25.00,
-            sessionCapUsd: options.sessionCapUsd || 3.00,
-            warningThreshold: options.warningThreshold || 0.80
+            monthlyCapUsd: options.monthlyCapUsd ?? b.monthly_cap_usd ?? 25.00,
+            sessionCapUsd: options.sessionCapUsd ?? b.session_cap_usd ?? 3.00,
+            warningThreshold: options.warningThreshold ?? b.warning_threshold ?? 0.80
         });
-        // Async refresh from settings — applies caps once main.js loads
-        _loadSettingsBudget().then(b => {
-            if (b.session_cap_usd != null) instance.sessionCapUsd = b.session_cap_usd;
-            if (b.monthly_cap_usd != null) instance.monthlyCapUsd = b.monthly_cap_usd;
-            if (b.warning_threshold != null) instance.warningThreshold = b.warning_threshold;
-            console.log(`[BUDGET] Caps loaded from settings: session=$${instance.sessionCapUsd}, monthly=$${instance.monthlyCapUsd}`);
-        }).catch(() => {});
+        console.log(`[BUDGET] Initialized: session=$${instance.sessionCapUsd}, monthly=$${instance.monthlyCapUsd}`);
     }
     return instance;
+}
+
+// F7: allow callers (like --preset experiment) to refresh caps after settings
+// have been mutated at runtime. Call this immediately after applying a preset.
+export function refreshBudgetCapsFromSettings() {
+    if (!instance) return;
+    const b = settings?.budget || {};
+    if (b.session_cap_usd != null) instance.sessionCapUsd = b.session_cap_usd;
+    if (b.monthly_cap_usd != null) instance.monthlyCapUsd = b.monthly_cap_usd;
+    if (b.warning_threshold != null) instance.warningThreshold = b.warning_threshold;
+    console.log(`[BUDGET] Refreshed: session=$${instance.sessionCapUsd}, monthly=$${instance.monthlyCapUsd}`);
 }

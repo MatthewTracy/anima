@@ -7,6 +7,7 @@ import { startGameClock } from './src/governance/game_setup.js';
 import { getGovernanceManager } from './src/governance/governance_manager.js';
 import { getGameLogger } from './src/governance/game_logger.js';
 import { getNarrativeLogger } from './src/governance/narrative_logger.js';
+import { refreshBudgetCapsFromSettings } from './src/governance/budget_guard.js';
 
 function parseArguments() {
     return yargs(hideBin(process.argv))
@@ -107,30 +108,23 @@ if (args.preset === 'experiment') {
     settings._cooldown_multiplier = 0.7;
 }
 
+// F7: apply any settings.budget changes (preset or env-overridden) to the
+// guard now, BEFORE the first LLM call could possibly fire.
+refreshBudgetCapsFromSettings();
+
 Mindcraft.init(true, settings.mindserver_port, settings.auto_open_ui);
 
-// C1: Eagerly initialize ALL loggers so they exist on disk even if no
+// C1: Eagerly initialize loggers so they exist on disk even if no
 // governance commands fire. Without these calls the loggers were lazy-init
 // and the first session left logs/games and logs/narratives empty.
 getGovernanceManager(); // Starts the governance tick
 getGameLogger();        // Creates logs/games/<sessionId>.json
 getNarrativeLogger();   // Writes prologue + creates logs/narratives/<sessionId>.md
 
-const gameClock = startGameClock();
-if (gameClock) {
-    gameClock.onTimeWarning((minutes, msg) => {
-        console.log(`[GAME] ${msg}`);
-    });
-    gameClock.onGameEnd((scores) => {
-        console.log('[GAME] GAME OVER!');
-        console.log('[GAME] Final scores:', JSON.stringify(scores, null, 2));
-        // B6: 20s grace period — gives session_journal + post_game_summary
-        // time to flush to disk before processes exit.
-        setTimeout(() => {
-            Mindcraft.shutdown();
-        }, 20000);
-    });
-}
+// F6: Game clock will start AFTER spawnAgents completes — declared here but
+// actually started below. Otherwise agent #6 (spawned at T+40s with 8s delay
+// × 5 gaps) loses 40 seconds of a 6-min game = 11% of the playable time.
+let gameClock = null;
 
 // B3: Spawn agents one at a time with a delay (avoids Paper connection throttle).
 // On failure, retry once after 10s, then log and continue past the failed agent.
@@ -212,7 +206,26 @@ async function spawnAgents() {
     }
 }
 
-spawnAgents().catch(err => {
-    console.error('[SPAWN] Fatal error:', err);
-    // Don't exit — let the rest of the system keep running so we can inspect
-});
+spawnAgents()
+    .then(() => {
+        // F6: start game clock AFTER all agents have spawned (or attempted to).
+        // This way the duration counts down from the moment everyone's actually
+        // in-game, not from before the first connection.
+        gameClock = startGameClock();
+        if (gameClock) {
+            console.log('[CLOCK] All agents spawned — game clock now starts.');
+            gameClock.onTimeWarning((minutes, msg) => {
+                console.log(`[GAME] ${msg}`);
+            });
+            gameClock.onGameEnd((scores) => {
+                console.log('[GAME] GAME OVER!');
+                console.log('[GAME] Final scores:', JSON.stringify(scores, null, 2));
+                // B6: 20s grace period for journal + summary flush
+                setTimeout(() => Mindcraft.shutdown(), 20000);
+            });
+        }
+    })
+    .catch(err => {
+        console.error('[SPAWN] Fatal error:', err);
+        // Don't exit — let the rest of the system keep running so we can inspect
+    });

@@ -15,8 +15,9 @@ const REFLECTION_MODEL = 'deepseek/deepseek-chat';
 const _recentReflections = new Map();  // agentName -> last reflection time
 const REFLECTION_COOLDOWN_MS = 60000;  // max 1 reflection per agent per minute
 
-// V4: serialize reflection calls — multiple rapid governance actions could
-// otherwise read budget concurrently and exceed cap by a small margin.
+// V4 + F4: serialize reflection LLM calls. Each call CHAINS on the queue so
+// the next reflection only starts after the prior LLM call completes AND
+// recorded its tokens with the budget guard.
 let _reflectionQueue = Promise.resolve();
 
 export async function reflectOnAction(agentName, action, context) {
@@ -28,14 +29,18 @@ export async function reflectOnAction(agentName, action, context) {
         if (settings.disable_reflections) return null;
     } catch (e) { /* settings unavailable — proceed */ }
 
-    // Cooldown — don't spam
+    // Cooldown — don't spam (checked synchronously, before queueing)
     const last = _recentReflections.get(agentName) || 0;
     if (Date.now() - last < REFLECTION_COOLDOWN_MS) return null;
 
-    // V4: chain on the queue so budget check happens AFTER any in-flight call records
-    const result = _reflectionQueue.then(() => _doReflect(agentName, action, context));
-    _reflectionQueue = result.catch(() => {}); // don't break the queue on error
-    return result;
+    // F4 fix: extend the queue with this call. The .catch() preserves the
+    // chain on failure so a thrown error in one call doesn't break others.
+    // Reassigning _reflectionQueue to the chained promise (not result.catch)
+    // is what makes serialization actually work — the NEXT call awaits this one.
+    _reflectionQueue = _reflectionQueue
+        .then(() => _doReflect(agentName, action, context))
+        .catch(() => null);
+    return _reflectionQueue;
 }
 
 async function _doReflect(agentName, action, context) {

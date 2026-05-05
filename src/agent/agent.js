@@ -522,9 +522,17 @@ export class Agent {
                 this.cleanKill(msg);
             }
         });
+        // #2 + B4 + F5: Track recent attack targets for kill attribution.
+        // F5: declared BEFORE the death handler so we can clear it on respawn,
+        // preventing stale targets from causing false kill attributions after death.
+        let _recentAttackTargets = []; // [{ entity, time }]
+
         this.bot.on('death', () => {
             this.actions.cancelResume();
             this.actions.stop();
+            // F5: clear stale combat targets on death so post-respawn entity
+            // deaths aren't falsely attributed to this agent.
+            _recentAttackTargets = [];
             // C2: log death for scoring
             try {
                 getGameLogger().logCombatDeath(this.name, 'unknown');
@@ -535,7 +543,6 @@ export class Agent {
         // Passive: track recent attacks via 'entitySwingArm' (which fires on the bot's
         // swing) and proximity to nearby entity damage events. Don't wrap bot.attack
         // because mineflayer-pvp has its own wrapper.
-        let _recentAttackTargets = []; // [{ entity, time }]
         this.bot.on('entitySwingArm', (entity) => {
             // The bot just swung. Find a nearby entity it could be attacking.
             try {
