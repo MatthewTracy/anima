@@ -143,21 +143,29 @@ export class Prompter {
         }
         prompt = prompt.replaceAll('$NAME', this.agent.name);
 
+        // V3: $GAME_DURATION placeholder — accurate per-run, not hardcoded text
+        if (prompt.includes('$GAME_DURATION')) {
+            try {
+                const m = await import('../governance/game_clock.js');
+                const clock = m.getGameClock();
+                const total = clock?.durationMs ? Math.round(clock.durationMs / 60000) : 10;
+                prompt = prompt.replaceAll('$GAME_DURATION', `${total}`);
+            } catch (e) {
+                prompt = prompt.replaceAll('$GAME_DURATION', '10');
+            }
+        }
+
         // Dynamic faction info (replaces hardcoded "5-member faction" text).
-        // Replaces $FACTION_INFO placeholder with current roster from settings.
+        // V1: single import, no dead-code relationship lookup.
         if (prompt.includes('$FACTION_INFO')) {
             try {
-                const gov = (await import('../governance/governance_manager.js')).getGovernanceManager();
-                const constMembers = gov.isConstitutionalMember
-                    ? Object.keys(gov.relationships || {}).concat([])
-                    : [];
-                // Pull from the source of truth: the exported constants
-                const { CONSTITUTIONAL_MEMBERS, ANARCHY_MEMBERS } = await import('../governance/governance_manager.js');
+                const gm = await import('../governance/governance_manager.js');
+                const gov = gm.getGovernanceManager();
                 const myFaction = gov.getFaction(this.agent.name);
-                const allies = (myFaction === 'constitutional' ? CONSTITUTIONAL_MEMBERS : ANARCHY_MEMBERS).filter(n => n !== this.agent.name);
-                const enemies = myFaction === 'constitutional' ? ANARCHY_MEMBERS : CONSTITUTIONAL_MEMBERS;
-                const myFactionSize = (myFaction === 'constitutional' ? CONSTITUTIONAL_MEMBERS : ANARCHY_MEMBERS).length;
-                const text = `Faction size: ${myFactionSize} members. Your allies: ${allies.join(', ') || 'none'}. Enemy faction (${enemies.length} members): ${enemies.join(', ')}.`;
+                const myMembers = myFaction === 'constitutional' ? gm.CONSTITUTIONAL_MEMBERS : gm.ANARCHY_MEMBERS;
+                const enemyMembers = myFaction === 'constitutional' ? gm.ANARCHY_MEMBERS : gm.CONSTITUTIONAL_MEMBERS;
+                const allies = myMembers.filter(n => n !== this.agent.name);
+                const text = `Faction size: ${myMembers.length} members. Your allies: ${allies.join(', ') || 'none'}. Enemy faction (${enemyMembers.length} members): ${enemyMembers.join(', ')}.`;
                 prompt = prompt.replaceAll('$FACTION_INFO', text);
             } catch (e) {
                 prompt = prompt.replaceAll('$FACTION_INFO', '');

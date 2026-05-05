@@ -1198,6 +1198,15 @@ class GovernanceManager {
             return { success: false, message: `Cannot declare war on your own faction.` };
         }
 
+        // V2: dedup repeated war declarations within 5s (network retry / spam guard)
+        if (!this._recentWars) this._recentWars = new Map();
+        const warKey = `${declarerName}->${targetFaction}`;
+        const last = this._recentWars.get(warKey) || 0;
+        if (Date.now() - last < 5000) {
+            return { success: false, message: `War on ${targetFaction} was already declared moments ago.` };
+        }
+        this._recentWars.set(warKey, Date.now());
+
         this.logEvent('war_declared', { declarer: declarerName, declarerFaction, targetFaction });
 
         // A2: ask declarer to justify the war

@@ -402,9 +402,28 @@ class GameLogger {
     save() {
         try {
             const filename = join(this.logDir, `game_${this.sessionId}.json`);
+            // S4: tag saved log with the active config so sweeps stay interpretable
+            const config = {
+                factionSizes: {
+                    constitutional: CONSTITUTIONAL_MEMBERS.length,
+                    anarchy: ANARCHY_MEMBERS.length
+                },
+                governance: {
+                    tax_rate: settings.governance?.tax_rate,
+                    amendment_threshold: settings.governance?.amendment_threshold,
+                    veto_override_threshold: settings.governance?.veto_override_threshold,
+                    president_term_ms: settings.governance?.president_term_ms,
+                    judge_term_ms: settings.governance?.judge_term_ms
+                },
+                clock: settings.game_clock,
+                winConditions: settings.win_conditions,
+                preset: settings._cooldown_multiplier ? 'experiment' : 'default'
+            };
+
             const data = {
                 sessionId: this.sessionId,
                 worldSeed: this.worldSeed,    // N3
+                config,                       // S4
                 gameStart: new Date(this.gameStart).toISOString(),
                 lastUpdate: new Date().toISOString(),
                 elapsedMinutes: ((Date.now() - this.gameStart) / 60000).toFixed(1),

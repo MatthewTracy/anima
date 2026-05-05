@@ -252,8 +252,11 @@ export function createMindServer(host_public = false, port = 8080) {
             io.emit('narrative-entry', entry);
         });
 
-        // Periodically send governance state and game clock to UI
-        setInterval(() => {
+        // P3: rolling time-series of faction stats for live charts
+        const timeseries = { points: [] };  // { t, c_res, a_res, c_kills, a_kills, c_gini, a_gini }
+
+        // Periodically send governance state, game clock, and time-series to UI
+        setInterval(async () => {
             try {
                 const govState = getGovernanceManager().getSerializableState();
                 io.emit('governance-state', govState);
@@ -262,6 +265,24 @@ export function createMindServer(host_public = false, port = 8080) {
                 if (clock.isRunning) {
                     io.emit('game-clock', clock.getStatus());
                 }
+
+                // P3: append a sample to the rolling window (max 60 points = 5 min @ 5s)
+                try {
+                    const m = await import('../governance/game_logger.js');
+                    const scores = m.getGameLogger().calculateScores();
+                    const point = {
+                        t: clock?.isRunning ? parseFloat(clock.getElapsedMinutes().toFixed(2)) : 0,
+                        c_res: scores.constitutional?.totalResources || 0,
+                        a_res: scores.anarchy?.totalResources || 0,
+                        c_kills: scores.constitutional?.kills || 0,
+                        a_kills: scores.anarchy?.kills || 0,
+                        c_gini: scores.constitutional?.giniCoefficient || 0,
+                        a_gini: scores.anarchy?.giniCoefficient || 0
+                    };
+                    timeseries.points.push(point);
+                    if (timeseries.points.length > 120) timeseries.points.shift(); // keep last 10 min
+                    io.emit('timeseries', timeseries);
+                } catch (e) { /* ignore */ }
             } catch (e) { /* ignore */ }
         }, 5000);
     } catch (e) {

@@ -26,6 +26,10 @@ function parseArguments() {
             type: 'string',
             describe: 'R3: Override per-faction model. Format: --matchup constitutional=anthropic/claude-3.5-sonnet,anarchy=openai/gpt-4o'
         })
+        .option('preset', {
+            type: 'string',
+            describe: 'S2: Apply a settings preset. Options: "experiment" (cheap, fast, data-focused), "demo" (default polished play)'
+        })
         .help()
         .alias('help', 'h')
         .parse();
@@ -80,6 +84,26 @@ if (process.env.NUM_EXAMPLES) {
 }
 if (process.env.LOG_ALL) {
     settings.log_all_prompts = process.env.LOG_ALL;
+}
+
+// S2: --preset experiment for cheap, fast, data-focused runs
+if (args.preset === 'experiment') {
+    console.log('[PRESET] Applying experiment mode: 6 min games, no LLM summary/reflection, $0.50 cap, win conditions enabled, 30% faster cooldowns.');
+    settings.game_clock = settings.game_clock || {};
+    settings.game_clock.duration_minutes = 6;
+    settings.game_clock.warning_minutes = [3, 1];
+    // Disable optional LLM calls to keep cost down
+    settings.disable_post_game_summary = true;
+    settings.disable_reflections = true;
+    // Lower budget cap to enforce frugality
+    settings.budget = settings.budget || {};
+    settings.budget.session_cap_usd = 0.50;
+    // Force interesting end conditions
+    settings.win_conditions = settings.win_conditions || {};
+    settings.win_conditions.last_faction_standing = { enabled: true };
+    settings.win_conditions.first_to_resources = { enabled: true, threshold: 200 };
+    // 30% faster cooldowns will be applied to each profile at spawn time
+    settings._cooldown_multiplier = 0.7;
 }
 
 Mindcraft.init(true, settings.mindserver_port, settings.auto_open_ui);
@@ -138,6 +162,13 @@ async function spawnAgents() {
                 profile_json.model.model = matchup[faction];
                 console.log(`[R3] ${profile_json.name} (${faction}) → ${matchup[faction]}`);
             }
+        }
+
+        // S2: apply preset cooldown multiplier
+        if (settings._cooldown_multiplier && profile_json.cooldown) {
+            profile_json.cooldown = Math.round(profile_json.cooldown * settings._cooldown_multiplier);
+            if (profile_json.idle_cooldown) profile_json.idle_cooldown = Math.round(profile_json.idle_cooldown * settings._cooldown_multiplier);
+            if (profile_json.combat_cooldown) profile_json.combat_cooldown = Math.round(profile_json.combat_cooldown * settings._cooldown_multiplier);
         }
 
         const perAgentSettings = { ...settings, profile: profile_json };

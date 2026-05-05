@@ -15,14 +15,31 @@ const REFLECTION_MODEL = 'deepseek/deepseek-chat';
 const _recentReflections = new Map();  // agentName -> last reflection time
 const REFLECTION_COOLDOWN_MS = 60000;  // max 1 reflection per agent per minute
 
+// V4: serialize reflection calls — multiple rapid governance actions could
+// otherwise read budget concurrently and exceed cap by a small margin.
+let _reflectionQueue = Promise.resolve();
+
 export async function reflectOnAction(agentName, action, context) {
     if (!hasKey('OPENROUTER_API_KEY')) return null;
+
+    // S2: honor experiment-mode disable flag
+    try {
+        const settings = (await import('../../settings.js')).default;
+        if (settings.disable_reflections) return null;
+    } catch (e) { /* settings unavailable — proceed */ }
 
     // Cooldown — don't spam
     const last = _recentReflections.get(agentName) || 0;
     if (Date.now() - last < REFLECTION_COOLDOWN_MS) return null;
 
-    // Budget check
+    // V4: chain on the queue so budget check happens AFTER any in-flight call records
+    const result = _reflectionQueue.then(() => _doReflect(agentName, action, context));
+    _reflectionQueue = result.catch(() => {}); // don't break the queue on error
+    return result;
+}
+
+async function _doReflect(agentName, action, context) {
+    // Budget check (now serialized — sees up-to-date totals)
     try {
         const status = getBudgetGuard().getStatus();
         if (parseFloat(status.percentUsed) > 75) return null;

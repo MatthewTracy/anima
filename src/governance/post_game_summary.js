@@ -14,6 +14,15 @@ import OpenAIApi from 'openai';
 const SUMMARY_MODEL = 'deepseek/deepseek-chat';
 
 export async function generatePostGameSummary(gameLogger, finalScores) {
+    // S2: honor experiment-mode disable flag
+    try {
+        const settings = (await import('../../settings.js')).default;
+        if (settings.disable_post_game_summary) {
+            console.log('[POST-GAME] Skipped (disable_post_game_summary set, e.g. experiment preset)');
+            return null;
+        }
+    } catch (e) { /* settings unavailable — proceed */ }
+
     if (!hasKey('OPENROUTER_API_KEY')) {
         console.log('[POST-GAME] No API key — skipping LLM summary');
         return null;
@@ -24,7 +33,7 @@ export async function generatePostGameSummary(gameLogger, finalScores) {
         const budget = getBudgetGuard();
         const status = budget.getStatus();
         if (parseFloat(status.percentUsed) > 80) {
-            console.log(`[POST-GAME] Budget at ${status.percentUsed}% — skipping LLM summary to avoid cap overrun`);
+            console.log(`[POST-GAME] Budget at ${parseFloat(status.percentUsed).toFixed(1)}% — skipping LLM summary to avoid cap overrun`);
             return null;
         }
     } catch (e) { /* if budget guard fails, continue */ }

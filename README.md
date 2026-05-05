@@ -52,6 +52,12 @@ Wait ~60 seconds for the server world to generate. Verify health:
 docker ps   # look for (healthy) on the minecraft container
 ```
 
+> **Note on Windows users upgrading from earlier versions:** v5 switched
+> from a Windows-specific bind mount (`D:/minecraft-data`) to a cross-platform
+> named volume. Old `D:/minecraft-data` data is now orphaned — delete the
+> folder if you want the disk space back. To use a custom location, set
+> `MINECRAFT_DATA_DIR=/your/path` before `docker compose up`.
+
 ### 4. Run the game
 ```bash
 npm start

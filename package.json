@@ -46,7 +46,9 @@
         "replay": "node scripts/replay.js",
         "record": "node scripts/record.js",
         "convert-video": "node scripts/frames_to_video.js",
-        "tournament": "node scripts/tournament.js"
+        "tournament": "node scripts/tournament.js",
+        "sweep": "node scripts/sweep.js",
+        "highlights": "node scripts/highlights.js"
     },
     "devDependencies": {
         "@eslint/js": "^9.13.0",

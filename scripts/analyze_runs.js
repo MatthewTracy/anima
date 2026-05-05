@@ -39,12 +39,58 @@ function variance(arr) {
     return mean(arr.map(x => (x - m) ** 2));
 }
 
+// S3: Recompute behavioral metrics from saved event log (the data is there but
+// older logs may not have the metrics object — we derive them on demand).
+function computeBehavioralMetrics(log) {
+    const events = log.events || [];
+    const minutes = Math.max(0.1, parseFloat(log.elapsedMinutes || 1));
+    const result = { constitutional: {}, anarchy: {} };
+
+    const involves = (e, faction) => {
+        const fname = (n) => {
+            // Reasonable inference from event field names — matches game_logger
+            if (!n) return null;
+            if (['Madison','Hamilton','Paine','Marshall','Franklin'].includes(n)) return 'constitutional';
+            if (['Chaos','Wolf','Fox','Bear','Raven'].includes(n)) return 'anarchy';
+            return null;
+        };
+        return [e.agent, e.payer, e.proposedBy, e.offerer, e.target, e.killer, e.victim, e.declarer, e.accepter, e.proposer]
+            .some(n => fname(n) === faction);
+    };
+
+    for (const faction of ['constitutional', 'anarchy']) {
+        const factionEvents = events.filter(e => involves(e, faction));
+        const m = result[faction];
+
+        const trades = events.filter(e => e.type === 'trade_accepted' && involves(e, faction)).length;
+        const treatiesKept = events.filter(e => e.type === 'treaty_accepted' && involves(e, faction)).length;
+        const taxes = events.filter(e => e.type === 'tax_paid' && involves(e, faction)).length;
+        const cooperativeActs = trades + treatiesKept + taxes;
+        m.coopIndex = factionEvents.length > 0 ? cooperativeActs / factionEvents.length : 0;
+
+        const treatiesSigned = treatiesKept;
+        const treatiesVoided = events.filter(e => e.type === 'treaty_voided' && involves(e, faction)).length;
+        m.betrayalRate = treatiesSigned > 0 ? treatiesVoided / treatiesSigned : 0;
+
+        const lawsEnacted = events.filter(e => e.type === 'law_enacted').length;
+        const lawsuitsFiled = events.filter(e => e.type === 'lawsuit_filed' && involves(e, faction)).length;
+        m.lawAdherence = lawsEnacted > 0 ? Math.max(0, (lawsEnacted - lawsuitsFiled) / lawsEnacted) : 1.0;
+
+        const govEvents = events.filter(e =>
+            ['election_called','election_result','law_proposed','law_enacted','lawsuit_filed','verdict_rendered','amendment_ratified','tax_paid','impeachment_initiated','treaty_proposed','treaty_accepted'].includes(e.type) &&
+            involves(e, faction)
+        ).length;
+        m.governanceDensity = govEvents / minutes;
+    }
+    return result;
+}
+
 function analyze(logs) {
     console.log(`\n=== MULTI-GAME ANALYSIS (${logs.length} sessions) ===\n`);
 
     const stats = {
-        constitutional: { resources: [], kills: [], deaths: [], blocks: [], gini: [] },
-        anarchy: { resources: [], kills: [], deaths: [], blocks: [], gini: [] }
+        constitutional: { resources: [], kills: [], deaths: [], blocks: [], gini: [], coop: [], betrayal: [], lawAdh: [], govDens: [] },
+        anarchy: { resources: [], kills: [], deaths: [], blocks: [], gini: [], coop: [], betrayal: [], lawAdh: [], govDens: [] }
     };
     const durations = [];
     const eventCounts = [];
@@ -59,15 +105,23 @@ function analyze(logs) {
         ).length;
         govEventCounts.push(govEvents);
 
+        // S3: behavioral metrics — use stored if present, recompute otherwise
+        const beh = log.scores?.behavioralMetrics || computeBehavioralMetrics(log);
+
         if (log.scores) {
             for (const faction of ['constitutional', 'anarchy']) {
                 const s = log.scores[faction];
+                const b = beh[faction] || {};
                 if (s) {
                     stats[faction].resources.push(s.totalResources || 0);
                     stats[faction].kills.push(s.kills || 0);
                     stats[faction].deaths.push(s.deaths || 0);
                     stats[faction].blocks.push(s.blocksPlaced || 0);
                     stats[faction].gini.push(s.giniCoefficient || 0);
+                    stats[faction].coop.push(parseFloat(b.coopIndex) || 0);
+                    stats[faction].betrayal.push(parseFloat(b.betrayalRate) || 0);
+                    stats[faction].lawAdh.push(parseFloat(b.lawAdherence) || 0);
+                    stats[faction].govDens.push(parseFloat(b.governanceDensity) || 0);
                 }
             }
         }
@@ -86,6 +140,11 @@ function analyze(logs) {
         console.log(`  Deaths:     mean=${mean(s.deaths).toFixed(1)}, var=${variance(s.deaths).toFixed(1)}`);
         console.log(`  Blocks:     mean=${mean(s.blocks).toFixed(1)}, var=${variance(s.blocks).toFixed(1)}`);
         console.log(`  Gini:       mean=${mean(s.gini).toFixed(3)}, var=${variance(s.gini).toFixed(6)}`);
+        // S3: behavioral metrics
+        console.log(`  CoopIndex:  mean=${mean(s.coop).toFixed(3)} (cooperative acts / interactions)`);
+        console.log(`  BetrayalRate: mean=${mean(s.betrayal).toFixed(3)} (treaties broken / signed)`);
+        console.log(`  LawAdherence: mean=${mean(s.lawAdh).toFixed(3)} (1 = no lawsuits)`);
+        console.log(`  GovDensity: mean=${mean(s.govDens).toFixed(2)} events/min`);
     }
 
     // Win rate comparison

@@ -92,14 +92,15 @@ class BudgetGuard {
     getStatus() {
         const elapsed = (Date.now() - this.sessionStart) / 1000 / 60; // minutes
         const costPerMinute = elapsed > 0 ? this.totalCostUsd / elapsed : 0;
+        // V6: numbers are numbers (not strings). Display formatting belongs in the UI layer.
         return {
             sessionCost: this.totalCostUsd,
             sessionCap: this.sessionCapUsd,
-            percentUsed: (this.totalCostUsd / this.sessionCapUsd * 100).toFixed(1),
+            percentUsed: (this.totalCostUsd / this.sessionCapUsd * 100),
             requestCount: this.requestCount,
             totalTokens: this.totalInputTokens + this.totalOutputTokens,
-            costPerMinute: costPerMinute.toFixed(4),
-            elapsedMinutes: elapsed.toFixed(1)
+            costPerMinute,
+            elapsedMinutes: elapsed
         };
     }
 
