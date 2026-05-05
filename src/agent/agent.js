@@ -18,6 +18,7 @@ import { Task } from './tasks/tasks.js';
 import { speak } from './speak.js';
 import { log, validateNameFormat, handleDisconnection } from './connection_handler.js';
 import { getGovernanceManager } from '../governance/governance_manager.js';
+import { getGameLogger } from '../governance/game_logger.js';
 
 export class Agent {
     async start(load_mem=false, init_message=null, count_id=0) {
@@ -467,9 +468,38 @@ export class Agent {
             if (this.bot.health < prev_health) {
                 this.bot.lastDamageTime = Date.now();
                 this.bot.lastDamageTaken = prev_health - this.bot.health;
+                // C2: log damage for analytics/scoring
+                try {
+                    getGameLogger().logEvent('damage_taken', {
+                        agent: this.name,
+                        before: prev_health,
+                        after: this.bot.health,
+                        delta: prev_health - this.bot.health
+                    });
+                } catch (e) { /* logger optional */ }
             }
             prev_health = this.bot.health;
         });
+
+        // C2: respawn detection (health goes from 0 to full)
+        this.bot.on('respawn', () => {
+            try {
+                getGameLogger().logRespawn(this.name);
+            } catch (e) { /* optional */ }
+            prev_health = this.bot.health;
+        });
+
+        // C2: periodic inventory snapshots every 30 seconds
+        this._invSnapshotInterval = setInterval(() => {
+            try {
+                if (!this.bot?.inventory) return;
+                const counts = {};
+                for (const item of this.bot.inventory.items()) {
+                    counts[item.name] = (counts[item.name] || 0) + item.count;
+                }
+                getGameLogger().logInventorySnapshot(this.name, counts);
+            } catch (e) { /* optional */ }
+        }, 30000);
         // Logging callbacks
         this.bot.on('error' , (err) => {
             console.error('Error event!', err);
@@ -484,6 +514,10 @@ export class Agent {
         this.bot.on('death', () => {
             this.actions.cancelResume();
             this.actions.stop();
+            // C2: log death for scoring
+            try {
+                getGameLogger().logCombatDeath(this.name, 'unknown');
+            } catch (e) { /* optional */ }
         });
         this.bot.on('kicked', (reason) => {
             if (!this._disconnectHandled) {

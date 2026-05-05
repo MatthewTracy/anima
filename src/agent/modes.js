@@ -21,7 +21,56 @@ async function say(agent, message) {
 // the order of this list matters! first modes will be prioritized
 // while update functions are async, they should *not* be awaited longer than ~100ms as it will block the update loop
 // to perform longer actions, use the execute function which won't block the update loop
+//
+// COMBAT REACTION ORDER (A4):
+//   1. damage_response  — fires the instant we take damage; no path check
+//   2. self_preservation — drowning, fire, low HP
+//   3. self_defense     — hostile in range (range-based, not path-based)
+//   4. weapon_ready     — pre-equip best weapon if hostiles nearby (no combat yet)
+//   5. cowardice        — only flees when outmatched (low HP / no weapon)
 const modes_list = [
+    {
+        name: 'damage_response',
+        description: 'Fires when taking damage. Equips weapon and attacks/flees instantly.',
+        interrupts: ['all'],
+        on: true,
+        active: false,
+        last_response_at: 0,
+        cooldown_ms: 1000, // don't re-fire too rapidly
+        update: async function (agent) {
+            const bot = agent.bot;
+            // Only react if we took damage in the last 1500ms
+            if (!bot.lastDamageTime || Date.now() - bot.lastDamageTime > 1500) return;
+            // Throttle so we don't spam reactions
+            if (Date.now() - this.last_response_at < this.cooldown_ms) return;
+            this.last_response_at = Date.now();
+
+            // Try to find the attacker (hostile or hostile player) within 16 blocks (no path check!)
+            const attacker = world.getNearestEntityWhere(bot, e => mc.isHostile(e) || e.type === 'player' && e.username !== bot.username, 16);
+
+            // Log to game logger if available
+            try {
+                const { getGameLogger } = await import('../governance/game_logger.js');
+                getGameLogger().logEvent('damage_taken', {
+                    agent: bot.username,
+                    health: bot.health,
+                    damage: bot.lastDamageTaken,
+                    attacker: attacker ? (attacker.username || attacker.name) : 'unknown'
+                });
+            } catch (e) { /* logger optional */ }
+
+            say(agent, `Taking damage! Reacting!`);
+            execute(this, agent, async () => {
+                if (attacker && (bot.health > 8 || !mc.isHostile(attacker))) {
+                    // Fight if we have HP or it's a player (always engage players)
+                    await skills.defendSelf(bot, 12);
+                } else {
+                    // Low HP or fleeing makes more sense
+                    await skills.moveAway(bot, 16);
+                }
+            });
+        }
+    },
     {
         name: 'self_preservation',
         description: 'Respond to drowning, burning, and damage at low health. Interrupts all actions.',
@@ -138,35 +187,98 @@ const modes_list = [
         }
     },
     {
+        name: 'self_defense',
+        description: 'Attack nearby enemies. Interrupts all actions. (A1 — range-based, no path check)',
+        interrupts: ['all'],
+        on: true,
+        active: false,
+        update: async function (agent) {
+            // A1: drop the path check; detect on range alone. The path decision
+            // (fight/flee) is the response, not the trigger.
+            const enemy = world.getNearestEntityWhere(agent.bot, entity => mc.isHostile(entity), 12);
+            if (!enemy) return;
+
+            // A4 priority: only fight if we have HP and a weapon-ish item; otherwise let cowardice handle.
+            const hp = agent.bot.health;
+            const hasWeapon = agent.bot.inventory.items().some(i =>
+                /sword|axe|trident/.test(i.name) && !i.name.includes('pickaxe')
+            );
+            if (hp < 6 || (!hasWeapon && hp < 14)) return; // let cowardice flee
+
+            try {
+                const { getGameLogger } = await import('../governance/game_logger.js');
+                getGameLogger().logEvent('combat_engaged', {
+                    agent: agent.bot.username,
+                    target: enemy.name || enemy.username,
+                    distance: enemy.position.distanceTo(agent.bot.entity.position).toFixed(1)
+                });
+            } catch (e) { /* optional */ }
+
+            say(agent, `Fighting ${enemy.name}!`);
+            execute(this, agent, async () => {
+                await skills.defendSelf(agent.bot, 12);
+            });
+        }
+    },
+    {
+        name: 'weapon_ready',
+        description: 'Pre-equip best weapon when hostiles are nearby (A3 — eliminates equip-swap delay during combat).',
+        interrupts: [],
+        on: true,
+        active: false,
+        last_check: 0,
+        check_interval_ms: 2000,
+        update: async function (agent) {
+            // Don't run too often
+            if (Date.now() - this.last_check < this.check_interval_ms) return;
+            this.last_check = Date.now();
+
+            const bot = agent.bot;
+            const enemy = world.getNearestEntityWhere(bot, e => mc.isHostile(e), 16);
+            if (!enemy) return;
+
+            // Find best weapon
+            const weapons = bot.inventory.items().filter(i =>
+                /sword|axe|trident/.test(i.name) && !i.name.includes('pickaxe')
+            );
+            if (weapons.length === 0) return;
+
+            // Sort by material tier (netherite > diamond > iron > stone > wooden > golden)
+            const tiers = { netherite: 6, diamond: 5, iron: 4, stone: 3, golden: 2, wooden: 1 };
+            weapons.sort((a, b) => {
+                const at = Object.entries(tiers).find(([k]) => a.name.includes(k))?.[1] || 0;
+                const bt = Object.entries(tiers).find(([k]) => b.name.includes(k))?.[1] || 0;
+                return bt - at;
+            });
+
+            const heldItem = bot.heldItem;
+            if (heldItem && heldItem.name === weapons[0].name) return; // already holding best
+
+            // Don't interrupt active combat to swap, but pre-equip when not actively fighting
+            try { await bot.equip(weapons[0], 'hand'); } catch (e) { /* equip can fail mid-action */ }
+        }
+    },
+    {
         name: 'cowardice',
-        description: 'Run away from enemies. Interrupts all actions.',
+        description: 'Run away from enemies when outmatched. Interrupts all actions.',
         interrupts: ['all'],
         on: true,
         active: false,
         update: async function (agent) {
             const enemy = world.getNearestEntityWhere(agent.bot, entity => mc.isHostile(entity), 16);
-            if (enemy && await world.isClearPath(agent.bot, enemy)) {
-                say(agent, `Aaa! A ${enemy.name.replace("_", " ")}!`);
-                execute(this, agent, async () => {
-                    await skills.avoidEnemies(agent.bot, 24);
-                });
-            }
-        }
-    },
-    {
-        name: 'self_defense',
-        description: 'Attack nearby enemies. Interrupts all actions.',
-        interrupts: ['all'],
-        on: true,
-        active: false,
-        update: async function (agent) {
-            const enemy = world.getNearestEntityWhere(agent.bot, entity => mc.isHostile(entity), 8);
-            if (enemy && await world.isClearPath(agent.bot, enemy)) {
-                say(agent, `Fighting ${enemy.name}!`);
-                execute(this, agent, async () => {
-                    await skills.defendSelf(agent.bot, 8);
-                });
-            }
+            if (!enemy) return;
+
+            // A4: only flee if we're actually outmatched (low HP or unarmed)
+            const hp = agent.bot.health;
+            const hasWeapon = agent.bot.inventory.items().some(i =>
+                /sword|axe|trident/.test(i.name) && !i.name.includes('pickaxe')
+            );
+            if (hp >= 14 && hasWeapon) return; // let self_defense handle
+
+            say(agent, `Aaa! A ${enemy.name.replace("_", " ")}!`);
+            execute(this, agent, async () => {
+                await skills.avoidEnemies(agent.bot, 24);
+            });
         }
     },
     {

@@ -9,6 +9,9 @@ export class ActionManager {
         this.resume_name = '';
         this.last_action_time = 0;
         this.recent_action_counter = 0;
+        // D4: track recent action LABELS with timestamps to detect goal thrashing
+        // (cycling through 3+ different actions quickly without finishing any).
+        this.recent_action_labels = []; // [{ label, time }]
     }
 
     async resumeAction(actionFn, timeout) {
@@ -78,6 +81,20 @@ export class ActionManager {
                     this.agent.cleanKill('Infinite action loop detected, shutting down.');
                     return { success: false, message: 'Infinite action loop detected, shutting down.', interrupted: false, timedout: false };
                 }
+            }
+            // D4: detect goal thrashing — agent cycles through ≥3 distinct labels in <10s
+            const now = Date.now();
+            this.recent_action_labels.push({ label: actionLabel, time: now });
+            // keep only last 10s of history
+            this.recent_action_labels = this.recent_action_labels.filter(e => now - e.time < 10000);
+            const distinctLabels = new Set(this.recent_action_labels.map(e => e.label));
+            if (distinctLabels.size >= 4 && this.recent_action_labels.length >= 4) {
+                console.warn(`Goal thrashing detected: ${[...distinctLabels].join(', ')}`);
+                if (this.agent.self_prompter?.isActive()) {
+                    this.agent.history.add('system', `You're switching goals too fast (${[...distinctLabels].join(', ')}). Pick one and finish it before starting another.`);
+                    this.agent.self_prompter.stopLoop();
+                }
+                this.recent_action_labels = []; // reset to avoid spam
             }
             this.last_action_time = Date.now();
             console.log('executing code...\n');

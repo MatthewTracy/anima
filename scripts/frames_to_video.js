@@ -14,10 +14,18 @@ import { readFileSync, readdirSync, writeFileSync, mkdirSync, existsSync, rmSync
 import { join, basename } from 'path';
 import { spawn } from 'child_process';
 
+// Try to use ffmpeg-static if installed, otherwise use system ffmpeg
+let FFMPEG_PATH = 'ffmpeg';
+try {
+    const ffmpegStatic = await import('ffmpeg-static');
+    if (ffmpegStatic.default) FFMPEG_PATH = ffmpegStatic.default;
+} catch (e) {
+    // ffmpeg-static not installed, use system ffmpeg
+}
+
 function findFfmpeg() {
-    // Check if ffmpeg is on PATH
     return new Promise((resolve) => {
-        const proc = spawn('ffmpeg', ['-version']);
+        const proc = spawn(FFMPEG_PATH, ['-version']);
         proc.on('error', () => resolve(false));
         proc.on('exit', (code) => resolve(code === 0));
     });
@@ -62,7 +70,7 @@ async function convertFrames(framesJsonPath) {
             '-crf', '23',
             outputMp4
         ];
-        const proc = spawn('ffmpeg', args, { stdio: ['ignore', 'ignore', 'pipe'] });
+        const proc = spawn(FFMPEG_PATH, args, { stdio: ['ignore', 'ignore', 'pipe'] });
         let stderr = '';
         proc.stderr.on('data', d => stderr += d.toString());
         proc.on('exit', code => {

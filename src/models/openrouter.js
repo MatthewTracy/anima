@@ -34,36 +34,63 @@ export class OpenRouter {
         };
 
         let res = null;
-        try {
-            console.log('Awaiting openrouter api response...');
-            let completion = await this.openai.chat.completions.create(pack);
-            if (!completion?.choices?.[0]) {
-                console.error('No completion or choices returned:', completion);
-                return 'No response received.';
-            }
-            if (completion.choices[0].finish_reason === 'length') {
-                throw new Error('Context length exceeded');
-            }
-            console.log('Received.');
-            res = completion.choices[0].message.content;
-
-            // Track budget usage
-            if (completion.usage) {
-                const budget = getBudgetGuard();
-                const check = budget.recordUsage(
-                    this.model_name,
-                    completion.usage.prompt_tokens || 0,
-                    completion.usage.completion_tokens || 0
-                );
-                if (!check.allowed) {
-                    console.error(`[BUDGET GUARD] ${check.message}`);
-                    process.exit(1);
+        // C3: structured retry/backoff with error classification
+        const MAX_ATTEMPTS = 3;
+        for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            try {
+                console.log(`Awaiting openrouter api response... (attempt ${attempt}/${MAX_ATTEMPTS})`);
+                let completion = await this.openai.chat.completions.create(pack);
+                if (!completion?.choices?.[0]) {
+                    console.error('No completion or choices returned:', completion);
+                    res = 'No response received.';
+                    break;
                 }
+                if (completion.choices[0].finish_reason === 'length') {
+                    throw new Error('Context length exceeded');
+                }
+                console.log('Received.');
+                res = completion.choices[0].message.content;
+
+                if (completion.usage) {
+                    const budget = getBudgetGuard();
+                    const check = budget.recordUsage(
+                        this.model_name,
+                        completion.usage.prompt_tokens || 0,
+                        completion.usage.completion_tokens || 0
+                    );
+                    if (!check.allowed) {
+                        console.error(`[BUDGET GUARD] ${check.message}`);
+                        process.exit(1);
+                    }
+                }
+                break; // success
+            } catch (err) {
+                const msg = String(err?.message || err);
+                const status = err?.status || err?.response?.status;
+                let kind = 'unknown';
+                let retryable = false;
+                if (status === 401 || /api key|unauthorized/i.test(msg)) kind = 'invalid_key';
+                else if (status === 429 || /rate limit|too many/i.test(msg)) { kind = 'rate_limit'; retryable = true; }
+                else if (status === 408 || /timeout|timed out|ECONNRESET|ETIMEDOUT/i.test(msg)) { kind = 'timeout'; retryable = true; }
+                else if (/context length|too long/i.test(msg)) kind = 'context_too_long';
+                else if (status >= 500 && status < 600) { kind = 'server_error'; retryable = true; }
+
+                console.error(`[OpenRouter ${kind}] attempt ${attempt}/${MAX_ATTEMPTS}: ${msg}`);
+
+                if (kind === 'invalid_key') {
+                    console.error('[OpenRouter] FATAL: API key is invalid. Check keys.json.');
+                    res = 'API key error. Operator must check configuration.';
+                    break;
+                }
+                if (!retryable || attempt === MAX_ATTEMPTS) {
+                    res = `My brain disconnected (${kind}), try again.`;
+                    break;
+                }
+                // Exponential backoff: 2s, 4s, 8s
+                const backoff = 2000 * Math.pow(2, attempt - 1);
+                console.log(`[OpenRouter] Retrying in ${backoff}ms...`);
+                await new Promise(r => setTimeout(r, backoff));
             }
-        } catch (err) {
-            console.error('Error while awaiting response:', err);
-            // If the error indicates a context-length problem, we can slice the turns array, etc.
-            res = 'My brain disconnected, try again.';
         }
         return res;
     }

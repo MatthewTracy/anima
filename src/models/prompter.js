@@ -136,6 +136,11 @@ export class Prompter {
     }
 
     async replaceStrings(prompt, messages, examples=null, to_summarize=[], last_goals=null) {
+        // D2: prepend per-agent system_prompt_prefix from profile if defined,
+        // so personality differences are enforced beyond just example messages.
+        if (this.profile.system_prompt_prefix) {
+            prompt = this.profile.system_prompt_prefix.trim() + '\n\n' + prompt;
+        }
         prompt = prompt.replaceAll('$NAME', this.agent.name);
 
         if (prompt.includes('$STATS')) {
@@ -215,10 +220,23 @@ export class Prompter {
         return prompt;
     }
 
-    async checkCooldown() {
+    // A5: Detect combat context from recent messages so we can use a shorter cooldown
+    // when the agent needs to react quickly to threats.
+    _isCombatContext(messages) {
+        if (!Array.isArray(messages) || messages.length === 0) return false;
+        const recent = messages.slice(-3).map(m => (m.content || '').toLowerCase()).join(' ');
+        return /(damage|attacked|hurt|enemy|hostile|dying|kill(?!ed by)|fight|help)/i.test(recent);
+    }
+
+    async checkCooldown(urgency = 'idle') {
+        // Allow per-profile combat_cooldown / idle_cooldown overrides; fall back to legacy `cooldown`.
+        const idleCooldown = this.profile.idle_cooldown ?? this.cooldown;
+        const combatCooldown = this.profile.combat_cooldown ?? Math.min(1500, this.cooldown);
+        const effective = urgency === 'combat' ? combatCooldown : idleCooldown;
+
         let elapsed = Date.now() - this.last_prompt_time;
-        if (elapsed < this.cooldown && this.cooldown > 0) {
-            await new Promise(r => setTimeout(r, this.cooldown - elapsed));
+        if (elapsed < effective && effective > 0) {
+            await new Promise(r => setTimeout(r, effective - elapsed));
         }
         this.last_prompt_time = Date.now();
     }
@@ -226,9 +244,10 @@ export class Prompter {
     async promptConvo(messages) {
         this.most_recent_msg_time = Date.now();
         let current_msg_time = this.most_recent_msg_time;
+        const urgency = this._isCombatContext(messages) ? 'combat' : 'idle';
 
         for (let i = 0; i < 3; i++) { // try 3 times to avoid hallucinations
-            await this.checkCooldown();
+            await this.checkCooldown(urgency);
             if (current_msg_time !== this.most_recent_msg_time) {
                 return '';
             }

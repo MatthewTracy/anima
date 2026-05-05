@@ -1,21 +1,67 @@
 services:
+  minecraft:
+    image: itzg/minecraft-server:latest
+    environment:
+      EULA: "TRUE"
+      VERSION: "1.21.1"
+      TYPE: "PAPER"
+      MEMORY: "2G"
+      ONLINE_MODE: "FALSE"   # required for offline auth used by Mindcraft
+      MODE: "survival"
+      DIFFICULTY: "normal"
+      OPS: ""
+      ALLOW_FLIGHT: "TRUE"
+      MAX_PLAYERS: "20"
+      SPAWN_PROTECTION: "0"
+      VIEW_DISTANCE: "8"
+      SIMULATION_DISTANCE: "8"
+      SERVER_PORT: "25565"
+      # B2: Disable connection throttle (default is 4000ms which blocks rapid bot joins).
+      # -1 is the documented "disable" value; some images treat 0 as unlimited but -1 is safer.
+      CFG_CONNECTION_THROTTLE: "-1"
+      NETWORK_COMPRESSION_THRESHOLD: "256"
+      ENABLE_STATUS: "TRUE"
+      ENABLE_QUERY: "FALSE"
+      ENFORCE_SECURE_PROFILE: "FALSE"
+      PREVENT_PROXY_CONNECTIONS: "FALSE"
+      # Auth/whitelist permissive (offline mode bots)
+      ONLINE_MODE: "FALSE"
+      # No idle kick — bots may pause briefly between LLM calls
+      PLAYER_IDLE_TIMEOUT: "0"
+    ports:
+      - "25565:25565"   # default Minecraft port
+    volumes:
+      - D:/minecraft-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mc-monitor", "status", "--host", "localhost", "--port", "25565"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 120s
+
   mindcraft:
     build: .
     environment:
       SETTINGS_JSON: |
-        {"auto_open_ui": false}
+        {"auto_open_ui": false, "host": "host.docker.internal"}
     volumes:
       - ./settings.js:/app/settings.js
       - ./keys.json:/app/keys.json
       - ./profiles:/app/profiles
       - ./bots:/app/bots
     ports:
-      - "3000-3003:3000-3003" # see the view from the camera mounted on your bot head: http://localhost:3000/
-      - 8080 # Mindserver port
+      - "3000-3009:3000-3009"
+      - "8080:8080"
     extra_hosts:
-    - "host.docker.internal:host-gateway"
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      minecraft:
+        condition: service_healthy
+    profiles:
+      - full-docker   # only start with: docker compose --profile full-docker up -d
 
-  viaproxy: #use this service to connect to an unsupported minecraft server versions. more info: ./services/viaproxy/README.md
+  viaproxy:
     image: ghcr.io/viaversion/viaproxy:latest
     volumes:
       - ./services/viaproxy:/app/run

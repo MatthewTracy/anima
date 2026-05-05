@@ -62,10 +62,35 @@ export class SelfPrompter {
         this.loop_active = true;
         let no_command_count = 0;
         const MAX_NO_COMMAND = 3;
+
+        // D1: stuck-goal detection — track the last few command labels.
+        // If the agent fires the same command 3 times in a row, the goal is broken.
+        const recent_actions = [];
+        const MAX_REPEAT = 3;
+
         while (!this.interrupt) {
             const msg = `You are self-prompting with the goal: '${this.prompt}'. Your next response MUST contain a command with this syntax: !commandName. Respond:`;
-            
+            const before_label = this.agent.actions?.currentActionLabel || '';
+
             let used_command = await this.agent.handleMessage('system', msg, -1);
+
+            // D1: track recent action labels to detect stuck loops
+            const after_label = this.agent.actions?.currentActionLabel || '';
+            if (after_label && after_label !== before_label) {
+                recent_actions.push(after_label);
+                if (recent_actions.length > MAX_REPEAT) recent_actions.shift();
+            }
+
+            // D1: if the same action label appears MAX_REPEAT times consecutively, signal stuck
+            if (recent_actions.length === MAX_REPEAT && recent_actions.every(a => a === recent_actions[0])) {
+                let out = `Self-prompt detected: agent stuck repeating '${recent_actions[0]}'. Stopping goal '${this.prompt}'.`;
+                this.agent.openChat(out);
+                console.warn(out);
+                this.agent.history.add('system', `Goal '${this.prompt}' was abandoned because the agent kept repeating ${recent_actions[0]} without progress. Reconsider your approach.`);
+                this.state = STOPPED;
+                break;
+            }
+
             if (!used_command) {
                 no_command_count++;
                 if (no_command_count >= MAX_NO_COMMAND) {

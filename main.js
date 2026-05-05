@@ -5,6 +5,8 @@ import { hideBin } from 'yargs/helpers';
 import { readFileSync } from 'fs';
 import { startGameClock } from './src/governance/game_setup.js';
 import { getGovernanceManager } from './src/governance/governance_manager.js';
+import { getGameLogger } from './src/governance/game_logger.js';
+import { getNarrativeLogger } from './src/governance/narrative_logger.js';
 
 function parseArguments() {
     return yargs(hideBin(process.argv))
@@ -67,8 +69,13 @@ if (process.env.LOG_ALL) {
 
 Mindcraft.init(true, settings.mindserver_port, settings.auto_open_ui);
 
-// Initialize governance system and game clock
+// C1: Eagerly initialize ALL loggers so they exist on disk even if no
+// governance commands fire. Without these calls the loggers were lazy-init
+// and the first session left logs/games and logs/narratives empty.
 getGovernanceManager(); // Starts the governance tick
+getGameLogger();        // Creates logs/games/<sessionId>.json
+getNarrativeLogger();   // Writes prologue + creates logs/narratives/<sessionId>.md
+
 const gameClock = startGameClock();
 if (gameClock) {
     gameClock.onTimeWarning((minutes, msg) => {
@@ -84,8 +91,58 @@ if (gameClock) {
     });
 }
 
-for (let profile of settings.profiles) {
-    const profile_json = JSON.parse(readFileSync(profile, 'utf8'));
-    settings.profile = profile_json;
-    Mindcraft.createAgent(settings);
+// B3: Spawn agents one at a time with a delay (avoids Paper connection throttle).
+// On failure, retry once after 10s, then log and continue past the failed agent.
+const SPAWN_DELAY_MS = settings.spawn_delay_ms || 8000;
+
+async function spawnAgents() {
+    const failed = [];
+    const succeeded = [];
+
+    for (let i = 0; i < settings.profiles.length; i++) {
+        const profile = settings.profiles[i];
+        const profile_json = JSON.parse(readFileSync(profile, 'utf8'));
+        const perAgentSettings = { ...settings, profile: profile_json };
+        const name = profile_json.name;
+        console.log(`[SPAWN] Starting agent ${i + 1}/${settings.profiles.length}: ${name}`);
+
+        let result = null;
+        try {
+            result = await Mindcraft.createAgent(perAgentSettings);
+            if (result?.success) {
+                succeeded.push(name);
+            } else {
+                throw new Error(result?.error || 'unknown');
+            }
+        } catch (e) {
+            console.warn(`[SPAWN] First attempt for ${name} failed: ${e.message}. Retrying in 10s...`);
+            await new Promise(r => setTimeout(r, 10000));
+            try {
+                result = await Mindcraft.createAgent(perAgentSettings);
+                if (result?.success) {
+                    succeeded.push(name);
+                    console.log(`[SPAWN] Retry succeeded for ${name}`);
+                } else {
+                    throw new Error(result?.error || 'unknown on retry');
+                }
+            } catch (e2) {
+                console.error(`[SPAWN] ${name} FAILED after retry: ${e2.message}. Continuing without ${name}.`);
+                failed.push(name);
+            }
+        }
+
+        if (i < settings.profiles.length - 1) {
+            await new Promise(r => setTimeout(r, SPAWN_DELAY_MS));
+        }
+    }
+
+    console.log(`[SPAWN] Done. Spawned ${succeeded.length}/${settings.profiles.length}: [${succeeded.join(', ')}]`);
+    if (failed.length > 0) {
+        console.warn(`[SPAWN] Failed: [${failed.join(', ')}]`);
+    }
 }
+
+spawnAgents().catch(err => {
+    console.error('[SPAWN] Fatal error:', err);
+    // Don't exit — let the rest of the system keep running so we can inspect
+});

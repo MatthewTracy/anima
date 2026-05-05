@@ -37,6 +37,12 @@ class Conversation {
     }
 
     queue(message) {
+        // D3: dedup consecutive identical messages (don't process same "hello" twice).
+        // Does NOT throttle outgoing — agents need fast coordination in combat.
+        const last = this.in_queue[this.in_queue.length - 1];
+        if (last && message?.message && last.message === message.message) {
+            return; // skip exact duplicate of the previous queued message
+        }
         this.in_queue.push(message);
     }
 }
