@@ -211,6 +211,11 @@ class NarrativeLogger {
         }
     }
 
+    // A2: agent's own reasoning for major decisions
+    logReflection(agentName, action, reasoning) {
+        this._addEntry('reflection', `**${agentName}** (on "${action}"): _"${reasoning}"_`);
+    }
+
     logResourceMilestone(agentName, item, totalCount) {
         this._addEntry('economy', `**${agentName}** (${this._faction(agentName)}) accumulates ${totalCount} ${item}.`);
     }

@@ -412,6 +412,14 @@ class GovernanceManager {
             tally
         });
 
+        // A2: ask the winner to reflect on what they'll do as <office>
+        if (winner) {
+            import('./reflection.js').then(m => {
+                m.reflectOnAction(winner, `won ${election.office} election`,
+                    `Tally: ${Object.entries(tally).map(([c,v])=>`${c}:${v}`).join(', ')}`);
+            }).catch(() => {});
+        }
+
         const tallyStr = Object.entries(tally).map(([c, v]) => `${c}: ${v}`).join(', ');
         return {
             success: true,
@@ -589,6 +597,11 @@ class GovernanceManager {
 
         law.status = 'vetoed';
         this.logEvent('law_vetoed', { law_id: lawId, text: law.text, president: presidentName });
+
+        // A2: ask president to justify the veto
+        import('./reflection.js').then(m => {
+            m.reflectOnAction(presidentName, `vetoed law: "${law.text}"`, `As president`);
+        }).catch(() => {});
 
         return {
             success: true,
@@ -1148,6 +1161,12 @@ class GovernanceManager {
         // N2: treaty acceptance builds trust between proposer and accepter
         this.adjustTrust(treaty.proposedBy, accepterName, +0.3, `treaty #${treatyId}`);
 
+        // A2: reflection — ask the accepter why they trusted the cross-faction deal
+        import('./reflection.js').then(m => {
+            m.reflectOnAction(accepterName, `accepted treaty: "${treaty.terms}"`,
+                `From ${treaty.proposedBy} (${treaty.proposerFaction})`);
+        }).catch(() => {});
+
         return {
             success: true,
             message: `Treaty #${treatyId} ACCEPTED by ${accepterName}! Terms: "${treaty.terms}". Both factions should honor this agreement.`
@@ -1180,6 +1199,11 @@ class GovernanceManager {
         }
 
         this.logEvent('war_declared', { declarer: declarerName, declarerFaction, targetFaction });
+
+        // A2: ask declarer to justify the war
+        import('./reflection.js').then(m => {
+            m.reflectOnAction(declarerName, `declared war on ${targetFaction}`, `From ${declarerFaction}`);
+        }).catch(() => {});
 
         // N2: declaring war breaks trust with anyone who had an accepted treaty
         for (const treaty of this.treaties) {

@@ -22,9 +22,24 @@ function parseArguments() {
             type: 'string',
             describe: 'Task ID to execute'
         })
+        .option('matchup', {
+            type: 'string',
+            describe: 'R3: Override per-faction model. Format: --matchup constitutional=anthropic/claude-3.5-sonnet,anarchy=openai/gpt-4o'
+        })
         .help()
         .alias('help', 'h')
         .parse();
+}
+
+// R3: parse --matchup flag into a {faction: model} map
+function parseMatchup(str) {
+    if (!str) return null;
+    const map = {};
+    for (const pair of str.split(',')) {
+        const [faction, model] = pair.split('=').map(s => s.trim());
+        if (faction && model) map[faction] = model;
+    }
+    return Object.keys(map).length > 0 ? map : null;
 }
 const args = parseArguments();
 if (args.profiles) {
@@ -95,6 +110,16 @@ if (gameClock) {
 // B3: Spawn agents one at a time with a delay (avoids Paper connection throttle).
 // On failure, retry once after 10s, then log and continue past the failed agent.
 const SPAWN_DELAY_MS = settings.spawn_delay_ms || 8000;
+const matchup = parseMatchup(args.matchup);
+if (matchup) console.log('[R3 MATCHUP]', matchup);
+
+const CONSTITUTIONAL_NAMES = ['Madison', 'Hamilton', 'Paine', 'Marshall', 'Franklin'];
+const ANARCHY_NAMES = ['Chaos', 'Wolf', 'Fox', 'Bear', 'Raven'];
+function factionForProfile(name) {
+    if (CONSTITUTIONAL_NAMES.includes(name)) return 'constitutional';
+    if (ANARCHY_NAMES.includes(name)) return 'anarchy';
+    return null;
+}
 
 async function spawnAgents() {
     const failed = [];
@@ -103,6 +128,18 @@ async function spawnAgents() {
     for (let i = 0; i < settings.profiles.length; i++) {
         const profile = settings.profiles[i];
         const profile_json = JSON.parse(readFileSync(profile, 'utf8'));
+
+        // R3: override the model based on faction matchup
+        if (matchup) {
+            const faction = factionForProfile(profile_json.name);
+            if (faction && matchup[faction]) {
+                profile_json.model = profile_json.model || {};
+                profile_json.model.api = 'openrouter';
+                profile_json.model.model = matchup[faction];
+                console.log(`[R3] ${profile_json.name} (${faction}) → ${matchup[faction]}`);
+            }
+        }
+
         const perAgentSettings = { ...settings, profile: profile_json };
         const name = profile_json.name;
         console.log(`[SPAWN] Starting agent ${i + 1}/${settings.profiles.length}: ${name}`);

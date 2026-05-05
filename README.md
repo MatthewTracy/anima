@@ -4,6 +4,20 @@ LLM-powered AI agents compete in Minecraft, split into two factions with fundame
 
 **The core question**: Does formal governance produce better collective outcomes than unconstrained individual optimization?
 
+## What's inside
+
+- **3v3 by default** (6 agents) — cheap (~$0.30/hr), fast startup, distinct personalities. 5v5 still available.
+- **Live web dashboard** with governance panel, narrative feed, personality radar charts, click-to-focus cameras
+- **OBS streaming overlays** — three transparent-background HTML pages for Twitch
+- **Reproducible experiments** — fixed world seed captured into game logs
+- **Behavioral metrics** — coop index, betrayal rate, coalition stability, law adherence
+- **Inter-agent relationship memory** — agents track trust with each other across decisions
+- **Cross-model matchups** — `--matchup constitutional=anthropic/claude-3.5-sonnet,anarchy=openai/gpt-4o`
+- **Reflection prompts** — agents explain their decisions in 1 sentence
+- **Tournament mode** — `npm run tournament 5 20` runs 5 games × 20 min, aggregates results
+- **Persistent journal** — past 3 games injected into agent prompts ("last time Hamilton was president")
+- **Combat-tuned modes** — agents react to damage in <1.5s with pre-equipped weapons
+
 ## Quick Start
 
 ### Prerequisites
@@ -31,21 +45,28 @@ Edit `keys.json` and add your OpenRouter API key:
 
 ### 3. Start the Minecraft server
 ```bash
-docker compose up -d
+docker compose up -d minecraft
 ```
-Wait ~30 seconds for the server to fully start.
+Wait ~60 seconds for the server world to generate. Verify health:
+```bash
+docker ps   # look for (healthy) on the minecraft container
+```
 
 ### 4. Run the game
 ```bash
-node main.js
+npm start
 ```
 
-All 10 agents spawn and begin playing. Open the dashboard at **http://localhost:8080** to watch.
+All 6 agents spawn (3v3 by default) and begin playing. Open the dashboard at **http://localhost:8080** to watch.
 
 ### 5. Watch the game
-- **Web Dashboard**: http://localhost:8080 — agent status, governance panel, live narrative feed, game clock
-- **Camera Feeds**: http://localhost:3000 through :3009 — first-person view from each agent
-- **In-Game Spectator** (optional): Connect Minecraft Java Edition to `localhost:55916`, then `/gamemode spectator`
+- **Web Dashboard**: http://localhost:8080 — agent status, governance panel, narrative feed, game clock, personality fingerprint radars
+- **Camera Feeds**: http://localhost:3000 through :3005 — first-person view per agent (📺 button on dashboard for full-screen focus)
+- **OBS Overlays** (transparent backgrounds for streaming):
+  - http://localhost:8080/overlay/score.html — live faction scores
+  - http://localhost:8080/overlay/clock.html — countdown timer
+  - http://localhost:8080/overlay/event-feed.html — narrative event ticker
+- **In-Game Spectator** (best view): Connect Minecraft Java Edition to `localhost:25565`, then `/gamemode spectator`
 
 ## Cost
 
@@ -53,8 +74,9 @@ Uses **DeepSeek V3** via OpenRouter by default — the cheapest capable model.
 
 | Scenario | Cost | Notes |
 |----------|------|-------|
-| 30 min game (10 agents) | ~$1.50-2.50 | Default settings |
-| 60 min game (10 agents) | ~$3-5 | Set `game_clock.duration_minutes: 60` |
+| 30 min game (6 agents, 3v3) | ~$0.30-0.50 | Default — quality over quantity |
+| 30 min game (10 agents, 5v5) | ~$1.50-2.50 | Uncomment 4 profiles in settings.js |
+| 60 min game (10 agents, 5v5) | ~$3-5 | Set `game_clock.duration_minutes: 60` |
 | 10 min smoke test (4 agents) | ~$0.30-0.50 | Use `--profiles` flag for fewer agents |
 | **$25 budget** | **~10-15 sessions** | **Great for experimentation** |
 

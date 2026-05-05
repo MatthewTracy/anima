@@ -30,11 +30,11 @@ services:
       ENFORCE_SECURE_PROFILE: "FALSE"
       PREVENT_PROXY_CONNECTIONS: "FALSE"
       PLAYER_IDLE_TIMEOUT: "0"
-      # #15 + B2: Whitelist (case-insensitive variants in case mineflayer lowercases).
-      # Allows only the 10 faction agent names + Operator + Observer slots.
+      # Whitelist: keeps random Minecraft accounts off your localhost server.
+      # Both case variants since mineflayer might use either.
       ENABLE_WHITELIST: "TRUE"
       WHITELIST: "Madison,Hamilton,Paine,Marshall,Franklin,Chaos,Wolf,Fox,Bear,Raven,Observer,Operator,madison,hamilton,paine,marshall,franklin,chaos,wolf,fox,bear,raven,observer,operator"
-      ENFORCE_WHITELIST: "FALSE"   # B2: don't kick mid-session if name case mismatches
+      ENFORCE_WHITELIST: "TRUE"   # actually enforce — both case variants are listed above
       # #16: Restrict mob spawn for cleaner experimental setup
       SPAWN_MONSTERS: "TRUE"
       SPAWN_ANIMALS: "TRUE"
@@ -42,7 +42,9 @@ services:
     ports:
       - "25565:25565"   # default Minecraft port
     volumes:
-      - D:/minecraft-data:/data
+      # Cross-platform: named volume managed by Docker (works on Windows/Mac/Linux).
+      # Override via MINECRAFT_DATA_DIR env var if you want a host bind mount.
+      - ${MINECRAFT_DATA_DIR:-minecraft-data}:/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "mc-monitor", "status", "--host", "localhost", "--port", "25565"]
@@ -82,3 +84,7 @@ services:
       - viaproxy
     stdin_open: true
     tty: true
+
+volumes:
+  minecraft-data:
+    # Default named volume. Override with MINECRAFT_DATA_DIR=/path to use a bind mount.

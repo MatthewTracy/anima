@@ -143,6 +143,27 @@ export class Prompter {
         }
         prompt = prompt.replaceAll('$NAME', this.agent.name);
 
+        // Dynamic faction info (replaces hardcoded "5-member faction" text).
+        // Replaces $FACTION_INFO placeholder with current roster from settings.
+        if (prompt.includes('$FACTION_INFO')) {
+            try {
+                const gov = (await import('../governance/governance_manager.js')).getGovernanceManager();
+                const constMembers = gov.isConstitutionalMember
+                    ? Object.keys(gov.relationships || {}).concat([])
+                    : [];
+                // Pull from the source of truth: the exported constants
+                const { CONSTITUTIONAL_MEMBERS, ANARCHY_MEMBERS } = await import('../governance/governance_manager.js');
+                const myFaction = gov.getFaction(this.agent.name);
+                const allies = (myFaction === 'constitutional' ? CONSTITUTIONAL_MEMBERS : ANARCHY_MEMBERS).filter(n => n !== this.agent.name);
+                const enemies = myFaction === 'constitutional' ? ANARCHY_MEMBERS : CONSTITUTIONAL_MEMBERS;
+                const myFactionSize = (myFaction === 'constitutional' ? CONSTITUTIONAL_MEMBERS : ANARCHY_MEMBERS).length;
+                const text = `Faction size: ${myFactionSize} members. Your allies: ${allies.join(', ') || 'none'}. Enemy faction (${enemies.length} members): ${enemies.join(', ')}.`;
+                prompt = prompt.replaceAll('$FACTION_INFO', text);
+            } catch (e) {
+                prompt = prompt.replaceAll('$FACTION_INFO', '');
+            }
+        }
+
         if (prompt.includes('$STATS')) {
             let stats = await getCommand('!stats').perform(this.agent) + '\n';
             stats += await getCommand('!entities').perform(this.agent) + '\n';
