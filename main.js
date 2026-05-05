@@ -209,8 +209,6 @@ async function spawnAgents() {
 spawnAgents()
     .then(() => {
         // F6: start game clock AFTER all agents have spawned (or attempted to).
-        // This way the duration counts down from the moment everyone's actually
-        // in-game, not from before the first connection.
         gameClock = startGameClock();
         if (gameClock) {
             console.log('[CLOCK] All agents spawned — game clock now starts.');
@@ -220,9 +218,27 @@ spawnAgents()
             gameClock.onGameEnd((scores) => {
                 console.log('[GAME] GAME OVER!');
                 console.log('[GAME] Final scores:', JSON.stringify(scores, null, 2));
-                // B6: 20s grace period for journal + summary flush
                 setTimeout(() => Mindcraft.shutdown(), 20000);
             });
+
+            // G3: Auto-call election if no president by T+90s.
+            // Runs from main process. Forces the constitutional faction
+            // to actually have an active election so nominations work.
+            setTimeout(() => {
+                try {
+                    const gov = getGovernanceManager();
+                    if (!gov.constitution.offices.president.holder) {
+                        const active = gov.elections.find(e => e.office === 'president' && e.status !== 'completed');
+                        if (!active) {
+                            console.log('[G3] T+90s: No president, no active election — auto-calling.');
+                            const r = gov.callElection('system', 'president');
+                            console.log('[G3]', r.message);
+                        }
+                    }
+                } catch (e) {
+                    console.warn('[G3] auto-election check failed:', e.message);
+                }
+            }, 90000);
         }
     })
     .catch(err => {

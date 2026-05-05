@@ -12,7 +12,7 @@ import { SelfPrompter } from './self_prompter.js';
 import convoManager from './conversation.js';
 import { handleTranslation, handleEnglishTranslation } from '../utils/translator.js';
 import { addBrowserViewer } from './vision/browser_viewer.js';
-import { serverProxy, sendOutputToServer } from './mindserver_proxy.js';
+import { serverProxy, sendOutputToServer, logEventToMindserver } from './mindserver_proxy.js';
 import settings from './settings.js';
 import { Task } from './tasks/tasks.js';
 import { speak } from './speak.js';
@@ -479,28 +479,28 @@ export class Agent {
             if (this.bot.health < prev_health) {
                 this.bot.lastDamageTime = Date.now();
                 this.bot.lastDamageTaken = prev_health - this.bot.health;
-                // C2: log damage for analytics/scoring
+                // G1: log damage via mindserver so all events end up in one log
                 try {
-                    getGameLogger().logEvent('damage_taken', {
+                    logEventToMindserver('logEvent', { args: ['damage_taken', {
                         agent: this.name,
                         before: prev_health,
                         after: this.bot.health,
                         delta: prev_health - this.bot.health
-                    });
-                } catch (e) { /* logger optional */ }
+                    }] });
+                } catch (e) { /* optional */ }
             }
             prev_health = this.bot.health;
         });
 
-        // C2: respawn detection (health goes from 0 to full)
+        // G1: respawn detection routed through mindserver
         this.bot.on('respawn', () => {
             try {
-                getGameLogger().logRespawn(this.name);
+                logEventToMindserver('logRespawn', { args: [this.name] });
             } catch (e) { /* optional */ }
             prev_health = this.bot.health;
         });
 
-        // C2: periodic inventory snapshots every 30 seconds
+        // G1: periodic inventory snapshots routed through mindserver
         this._invSnapshotInterval = setInterval(() => {
             try {
                 if (!this.bot?.inventory) return;
@@ -508,7 +508,7 @@ export class Agent {
                 for (const item of this.bot.inventory.items()) {
                     counts[item.name] = (counts[item.name] || 0) + item.count;
                 }
-                getGameLogger().logInventorySnapshot(this.name, counts);
+                logEventToMindserver('logInventorySnapshot', { args: [this.name, counts] });
             } catch (e) { /* optional */ }
         }, 30000);
         // Logging callbacks
@@ -533,9 +533,9 @@ export class Agent {
             // F5: clear stale combat targets on death so post-respawn entity
             // deaths aren't falsely attributed to this agent.
             _recentAttackTargets = [];
-            // C2: log death for scoring
+            // G1: log death via mindserver
             try {
-                getGameLogger().logCombatDeath(this.name, 'unknown');
+                logEventToMindserver('logCombatDeath', { args: [this.name, 'unknown'] });
             } catch (e) { /* optional */ }
         });
 
@@ -571,7 +571,7 @@ export class Agent {
                 const recent = _recentAttackTargets.find(t => t.entity.id === entity.id);
                 if (recent) {
                     const victim = entity.username || entity.name || 'mob';
-                    getGameLogger().logCombatKill(this.name, victim);
+                    logEventToMindserver('logCombatKill', { args: [this.name, victim] });
                 }
             } catch (e) { /* optional */ }
         });

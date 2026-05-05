@@ -143,6 +143,20 @@ export class Prompter {
         }
         prompt = prompt.replaceAll('$NAME', this.agent.name);
 
+        // Minecraft basics cheat sheet — injected on demand to save tokens
+        if (prompt.includes('$MINECRAFT_BASICS')) {
+            const basics = `MINECRAFT TECH PROGRESSION:
+- Punch tree → oak_log → !craftRecipe("oak_planks", 4) → planks
+- planks + planks = sticks; planks (4) = crafting_table
+- Stand near crafting_table: !craftRecipe("wooden_pickaxe", 1)
+- Wood pickaxe mines stone (cobblestone). Stone pickaxe mines iron.
+- Iron pickaxe mines diamond. Diamond pickaxe mines obsidian.
+SURVIVAL: hunger drops over time → eat (cow/pig/wheat/bread). Below 6 hunger you can't sprint.
+NIGHT: zombies/skeletons spawn in dark. Build shelter or sleep in bed to skip.
+KEY COMMANDS: !collectBlocks, !craftRecipe, !goToCoordinates, !attack, !goToPlayer, !inventory.`;
+            prompt = prompt.replaceAll('$MINECRAFT_BASICS', basics);
+        }
+
         // V3: $GAME_DURATION placeholder — accurate per-run, not hardcoded text
         if (prompt.includes('$GAME_DURATION')) {
             try {

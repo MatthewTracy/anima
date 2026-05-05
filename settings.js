@@ -40,7 +40,7 @@ const settings = {
 
 
     // #1 — concrete first moves so the game actually plays
-    "init_message": "You have spawned into the Governance Game. Wood, food, and shelter first, but quickly: CONSTITUTIONAL faction — the first member to spawn should !callElection(\"president\") within 90 seconds. Other constitutional members should !nominateSelf(\"president\") and propose a !proposeLaw soon. ANARCHY faction — !placeBounty on the strongest constitutional agent and consider !raid coordination. Set your goal with !goal. Be aggressive — the game lasts $GAME_DURATION minutes total.",
+    "init_message": "You spawned into the Governance Game ($GAME_DURATION minutes total).\n\nMINECRAFT BASICS (first 60 seconds):\n1. Punch a tree with bare hands → get oak_log (4-5)\n2. !craftRecipe(\"oak_planks\", 4) → !craftRecipe(\"crafting_table\", 1)\n3. Make sticks → !craftRecipe(\"wooden_pickaxe\", 1)\n4. Mine stone (cobblestone) → upgrade to stone_pickaxe\n5. Find food: !attack on cow/pig/chicken, or !collectBlocks(\"wheat\")\n6. Build a small shelter before night (zombies spawn in dark)\n\nGOVERNANCE STEPS (after first minute):\n- CONSTITUTIONAL: someone MUST !callElection(\"president\") FIRST. THEN others !nominateSelf(\"president\"). Then !castVote. Without callElection first, nominations fail silently.\n- After president is elected, !proposeLaw(\"text\") — laws need majority vote.\n- ANARCHY: !placeBounty(\"target\",\"item\",amount) on strong enemies. Coordinate raids.\n\nUse !goal to set your strategic objective. Be active — silent agents lose.",
     "only_chat_with": [], // empty = chat publicly so all agents can interact
 
     "speak": false,

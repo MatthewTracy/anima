@@ -267,7 +267,8 @@ class GovernanceManager {
     // ==================== ELECTIONS ====================
 
     callElection(callerName, office) {
-        if (!this.isConstitutionalMember(callerName)) {
+        // G3: allow 'system' as a special caller for auto-fallback elections
+        if (callerName !== 'system' && !this.isConstitutionalMember(callerName)) {
             return { success: false, message: `${callerName} is not a Constitutional faction member.` };
         }
 

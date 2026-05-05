@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import * as mindcraft from './mindcraft.js';
 import { readFileSync } from 'fs';
 import { getGovernanceManager } from '../governance/governance_manager.js';
+import { getGameLogger } from '../governance/game_logger.js';
 import { getNarrativeLogger } from '../governance/narrative_logger.js';
 import { getGameClock } from '../governance/game_clock.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -237,6 +238,56 @@ export function createMindServer(host_public = false, port = 8080) {
 
         socket.on('listen-to-agents', () => {
             addListener(socket);
+        });
+
+        // G1: agents forward log events to mindserver's GameLogger so we have
+        // ONE consolidated game log instead of one per child process.
+        socket.on('agent-log-event', (eventType, data) => {
+            try {
+                const logger = getGameLogger();
+                if (!logger) return;
+                if (typeof logger[eventType] === 'function') {
+                    // Convenience methods like logCombatKill, logCombatDeath, etc.
+                    logger[eventType](...(data?.args || []));
+                } else {
+                    // Generic logEvent fallthrough
+                    logger.logEvent(eventType, data || {});
+                }
+            } catch (e) {
+                console.warn('[mindserver] agent-log-event error:', e.message);
+            }
+        });
+
+        // G1.5: agents forward governance method calls to mindserver's
+        // GovernanceManager so all agents share one canonical state.
+        socket.on('agent-gov-action', (method, args, ack) => {
+            try {
+                const gov = getGovernanceManager();
+                if (typeof gov[method] !== 'function') {
+                    return ack?.({ success: false, message: `Unknown governance method: ${method}` });
+                }
+                const result = gov[method](...(args || []));
+                ack?.(result);
+                // Re-broadcast updated state so all agents (and dashboard) see it
+                io.emit('governance-state', gov.getSerializableState());
+            } catch (e) {
+                console.warn('[mindserver] agent-gov-action error:', e.message);
+                ack?.({ success: false, message: e.message });
+            }
+        });
+
+        // G1.5: read-only governance queries from agents (sync via ack)
+        socket.on('agent-gov-query', (method, args, ack) => {
+            try {
+                const gov = getGovernanceManager();
+                if (typeof gov[method] !== 'function') {
+                    return ack?.({ result: null, error: `Unknown method: ${method}` });
+                }
+                const result = gov[method](...(args || []));
+                ack?.({ result });
+            } catch (e) {
+                ack?.({ result: null, error: e.message });
+            }
         });
     });
 

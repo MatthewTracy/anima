@@ -104,17 +104,19 @@ export function setupGameWorld(bot, agentName) {
 }
 
 function placeTerritoryMarkers(bot, constSpawn, anarchySpawn) {
-    // Constitutional zone: blue wool tower (constitutional = order = blue)
+    // Place markers 8 blocks AWAY from spawn so agents don't spawn inside them.
+    // Towers are visible from the spawn point but don't obstruct movement.
     const cs = constSpawn;
-    bot.chat(`/setblock ${cs.x} ${cs.y - 1} ${cs.z} minecraft:beacon`);
-    for (let i = 1; i <= 12; i++) {
-        bot.chat(`/setblock ${cs.x} ${cs.y + i} ${cs.z} minecraft:blue_wool`);
+    const csTowerX = cs.x - 8;  // 8 blocks west of constitutional spawn
+    bot.chat(`/setblock ${csTowerX} ${cs.y - 1} ${cs.z} minecraft:beacon`);
+    for (let i = 1; i <= 16; i++) {
+        bot.chat(`/setblock ${csTowerX} ${cs.y + i} ${cs.z} minecraft:blue_wool`);
     }
-    // Anarchy zone: red wool tower
     const as = anarchySpawn;
-    bot.chat(`/setblock ${as.x} ${as.y - 1} ${as.z} minecraft:beacon`);
-    for (let i = 1; i <= 12; i++) {
-        bot.chat(`/setblock ${as.x} ${as.y + i} ${as.z} minecraft:red_wool`);
+    const asTowerX = as.x + 8;  // 8 blocks east of anarchy spawn
+    bot.chat(`/setblock ${asTowerX} ${as.y - 1} ${as.z} minecraft:beacon`);
+    for (let i = 1; i <= 16; i++) {
+        bot.chat(`/setblock ${asTowerX} ${as.y + i} ${as.z} minecraft:red_wool`);
     }
     // Mark contested zone corners with golden wool
     const cz = settings.spawn?.contested_zone || { xMin: -50, xMax: 50, zMin: -50, zMax: 50 };

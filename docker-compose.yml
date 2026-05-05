@@ -4,7 +4,10 @@ services:
     environment:
       EULA: "TRUE"
       VERSION: "1.21.1"
-      TYPE: "PAPER"
+      # G4: switched to VANILLA — Paper's anti-cheat ("flying", "moved too quickly")
+      # was kicking mineflayer bots even with spigot.yml patched. Vanilla doesn't
+      # ship those checks at all. Slightly slower but bots actually stay connected.
+      TYPE: "VANILLA"
       MEMORY: "2G"
       ONLINE_MODE: "FALSE"   # required for offline auth used by Mindcraft
       MODE: "survival"
@@ -19,6 +22,11 @@ services:
       ALLOW_FLIGHT: "TRUE"
       MAX_PLAYERS: "20"
       SPAWN_PROTECTION: "0"
+      # Note: Paper's "moved too quickly" anti-cheat must be loosened in
+      # spigot.yml AFTER the world generates. Run this once per world:
+      #   docker exec governance-game-minecraft-1 sh -c \
+      #     "sed -i 's/moved-too-quickly-multiplier:.*/moved-too-quickly-multiplier: 10000.0/' /data/spigot.yml"
+      #   docker restart governance-game-minecraft-1
       VIEW_DISTANCE: "10"    # bumped from 8 for better camera footage
       SIMULATION_DISTANCE: "8"
       SERVER_PORT: "25565"
@@ -30,11 +38,12 @@ services:
       ENFORCE_SECURE_PROFILE: "FALSE"
       PREVENT_PROXY_CONNECTIONS: "FALSE"
       PLAYER_IDLE_TIMEOUT: "0"
-      # Whitelist: keeps random Minecraft accounts off your localhost server.
-      # Both case variants since mineflayer might use either.
-      ENABLE_WHITELIST: "TRUE"
-      WHITELIST: "Madison,Hamilton,Paine,Marshall,Franklin,Chaos,Wolf,Fox,Bear,Raven,Observer,Operator,madison,hamilton,paine,marshall,franklin,chaos,wolf,fox,bear,raven,observer,operator"
-      ENFORCE_WHITELIST: "TRUE"   # actually enforce — both case variants are listed above
+      # Whitelist disabled — localhost-only server with offline auth has UUID
+      # mismatch issues between Paper's whitelist generator and mineflayer's
+      # offline UUIDs. Since this only listens on 127.0.0.1, the security risk
+      # is zero anyway.
+      ENABLE_WHITELIST: "FALSE"
+      ENFORCE_WHITELIST: "FALSE"
       # #16: Restrict mob spawn for cleaner experimental setup
       SPAWN_MONSTERS: "TRUE"
       SPAWN_ANIMALS: "TRUE"

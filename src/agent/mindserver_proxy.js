@@ -134,3 +134,51 @@ export function sendBotChatToServer(agentName, json) {
 export function sendOutputToServer(agentName, message) {
     serverProxy.getSocket().emit('bot-output', agentName, message);
 }
+
+// G1: log a game event via mindserver so all agents share one log
+export function logEventToMindserver(eventType, dataOrArgs) {
+    try {
+        const sock = serverProxy.getSocket();
+        if (!sock || !sock.connected) return;
+        sock.emit('agent-log-event', eventType, dataOrArgs);
+    } catch (e) { /* ignore — best-effort */ }
+}
+
+// G1.5: invoke a governance method on mindserver's singleton.
+// Returns a Promise resolving to the method's result. Falls back to a
+// not-connected response if the socket is down.
+export function callGovernanceOnMindserver(method, args) {
+    return new Promise((resolve) => {
+        try {
+            const sock = serverProxy.getSocket();
+            if (!sock || !sock.connected) {
+                return resolve({ success: false, message: 'Mindserver not connected.' });
+            }
+            // Timeout safety: 5s
+            const timer = setTimeout(() => resolve({ success: false, message: 'Governance call timed out.' }), 5000);
+            sock.emit('agent-gov-action', method, args || [], (result) => {
+                clearTimeout(timer);
+                resolve(result || { success: false, message: 'No response.' });
+            });
+        } catch (e) {
+            resolve({ success: false, message: e.message });
+        }
+    });
+}
+
+// G1.5: read-only query
+export function queryGovernanceOnMindserver(method, args) {
+    return new Promise((resolve) => {
+        try {
+            const sock = serverProxy.getSocket();
+            if (!sock || !sock.connected) return resolve(null);
+            const timer = setTimeout(() => resolve(null), 5000);
+            sock.emit('agent-gov-query', method, args || [], (response) => {
+                clearTimeout(timer);
+                resolve(response?.result ?? null);
+            });
+        } catch (e) {
+            resolve(null);
+        }
+    });
+}

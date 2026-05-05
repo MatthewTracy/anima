@@ -11,6 +11,30 @@
 import { getGovernanceManager } from '../../governance/governance_manager.js';
 import { getGameLogger } from '../../governance/game_logger.js';
 import { getNarrativeLogger } from '../../governance/narrative_logger.js';
+import { callGovernanceOnMindserver, queryGovernanceOnMindserver } from '../mindserver_proxy.js';
+
+// G1.5: route governance method calls through mindserver so all agents share
+// state. Falls back to local singleton if mindserver is unreachable.
+async function govAction(method, ...args) {
+    const result = await callGovernanceOnMindserver(method, args);
+    if (result && result.success !== undefined) return result;
+    // Mindserver unreachable — fall back to local (works for single-agent dev)
+    try {
+        const gov = getGovernanceManager();
+        if (typeof gov[method] === 'function') return gov[method](...args);
+    } catch (e) { /* ignore */ }
+    return { success: false, message: 'Could not reach governance manager.' };
+}
+
+async function govQuery(method, ...args) {
+    const result = await queryGovernanceOnMindserver(method, args);
+    if (result !== null && result !== undefined) return result;
+    try {
+        const gov = getGovernanceManager();
+        if (typeof gov[method] === 'function') return gov[method](...args);
+    } catch (e) { /* ignore */ }
+    return null;
+}
 
 export const governanceActionsList = [
     // ==================== ELECTIONS ====================
@@ -21,8 +45,7 @@ export const governanceActionsList = [
             'office': { type: 'string', description: 'The office to hold an election for: "president" or "judge"' }
         },
         perform: async function(agent, office) {
-            const gov = getGovernanceManager();
-            const result = gov.callElection(agent.name, office);
+            const result = await govAction('callElection', agent.name, office);
             if (result.success) {
                 agent.factionChat(`[GOV] ${result.message}`);
                 getNarrativeLogger().logElectionCalled(agent.name, office);
@@ -37,8 +60,7 @@ export const governanceActionsList = [
             'office': { type: 'string', description: 'The office to run for: "president" or "judge"' }
         },
         perform: async function(agent, office) {
-            const gov = getGovernanceManager();
-            const result = gov.nominateSelf(agent.name, office);
+            const result = await govAction('nominateSelf', agent.name, office);
             if (result.success) {
                 agent.factionChat(`[GOV] ${result.message}`);
                 getNarrativeLogger().logNomination(agent.name, office);
@@ -54,13 +76,12 @@ export const governanceActionsList = [
             'candidate_name': { type: 'string', description: 'The name of the candidate to vote for.' }
         },
         perform: async function(agent, electionId, candidateName) {
-            const gov = getGovernanceManager();
-            const result = gov.castVote(agent.name, electionId, candidateName);
+            const result = await govAction('castVote', agent.name, electionId, candidateName);
             if (result.success) {
                 agent.factionChat(`[GOV] ${result.message}`);
                 if (result.winner) {
                     getNarrativeLogger().logElectionResult(
-                        gov.elections.find(e => e.id === electionId)?.office || 'unknown',
+                        result.election?.office || 'unknown',
                         result.winner,
                         result.tally
                     );
@@ -76,12 +97,14 @@ export const governanceActionsList = [
             'speech': { type: 'string', description: 'Your campaign speech text.' }
         },
         perform: async function(agent, speech) {
-            const gov = getGovernanceManager();
+            // Faction membership is checked via mindserver's gov manager
+            const gov = getGovernanceManager();  // local fallback for the check
             if (!gov.isConstitutionalMember(agent.name)) {
                 return `${agent.name} is not a Constitutional faction member.`;
             }
             agent.factionChat(`[CAMPAIGN] ${agent.name}: ${speech}`);
-            gov.logEvent('campaign_speech', { speaker: agent.name, speech });
+            // Log via mindserver so the canonical eventLog has it
+            await govAction('logEvent', 'campaign_speech', { speaker: agent.name, speech });
             getNarrativeLogger().logCampaignSpeech(agent.name, speech);
             return `Campaign speech delivered.`;
         }
@@ -95,8 +118,7 @@ export const governanceActionsList = [
             'law_text': { type: 'string', description: 'The text of the law to propose.' }
         },
         perform: async function(agent, lawText) {
-            const gov = getGovernanceManager();
-            const result = gov.proposeLaw(agent.name, lawText);
+            const result = await govAction('proposeLaw', agent.name, lawText);
             if (result.success) {
                 agent.factionChat(`[GOV] ${result.message}`);
                 getNarrativeLogger().logLawProposed(agent.name, result.law.id, lawText);
@@ -112,21 +134,16 @@ export const governanceActionsList = [
             'vote': { type: 'string', description: 'Your vote: "yes" or "no".' }
         },
         perform: async function(agent, lawId, vote) {
-            const gov = getGovernanceManager();
-            const result = gov.voteOnLaw(agent.name, lawId, vote);
+            const result = await govAction('voteOnLaw', agent.name, lawId, vote);
             if (result.success) {
                 agent.factionChat(`[GOV] ${result.message}`);
-                const law = gov.laws.find(l => l.id === lawId);
-                if (law && law.status === 'enacted') {
-                    const yes = Object.values(law.votes).filter(v => v === 'yes').length;
-                    const no = Object.values(law.votes).filter(v => v === 'no').length;
-                    getNarrativeLogger().logLawEnacted(lawId, law.text, yes, no);
-                } else if (law && law.status === 'rejected') {
-                    const yes = Object.values(law.votes).filter(v => v === 'yes').length;
-                    const no = Object.values(law.votes).filter(v => v === 'no').length;
-                    getNarrativeLogger().logLawRejected(lawId, law.text, yes, no);
-                } else if (law && law.status === 'vetoed') {
-                    getNarrativeLogger().logLawVetoed(lawId, law.text);
+                // Detect enacted/rejected/vetoed from result.message
+                if (/ENACTED/.test(result.message)) {
+                    getNarrativeLogger().logLawEnacted(lawId, result.message, 0, 0);
+                } else if (/REJECTED/.test(result.message)) {
+                    getNarrativeLogger().logLawRejected(lawId, result.message, 0, 0);
+                } else if (/VETOED/.test(result.message)) {
+                    getNarrativeLogger().logLawVetoed(lawId, result.message);
                 }
             }
             return result.message;
@@ -141,11 +158,10 @@ export const governanceActionsList = [
             'law_id': { type: 'int', description: 'The law ID number to veto.' }
         },
         perform: async function(agent, lawId) {
-            const gov = getGovernanceManager();
-            const result = gov.vetoLaw(agent.name, lawId);
+            const result = await govAction('vetoLaw', agent.name, lawId);
             if (result.success) {
                 agent.factionChat(`[GOV] ${result.message}`);
-                getNarrativeLogger().logLawVetoed(lawId, gov.laws.find(l => l.id === lawId)?.text || '');
+                getNarrativeLogger().logLawVetoed(lawId, result.message);
             }
             return result.message;
         }
@@ -161,8 +177,7 @@ export const governanceActionsList = [
             'evidence': { type: 'string', description: 'Evidence supporting the accusation.' }
         },
         perform: async function(agent, defendant, lawViolated, evidence) {
-            const gov = getGovernanceManager();
-            const result = gov.fileLawsuit(agent.name, defendant, lawViolated, evidence);
+            const result = await govAction('fileLawsuit', agent.name, defendant, lawViolated, evidence);
             if (result.success) {
                 agent.factionChat(`[COURT] ${result.message}`);
                 getNarrativeLogger().logLawsuitFiled(agent.name, defendant, lawViolated);
@@ -179,12 +194,10 @@ export const governanceActionsList = [
             'punishment': { type: 'string', description: 'The punishment if guilty (e.g., "pay 5 iron_ingot to treasury", "exile for 2 minutes").' }
         },
         perform: async function(agent, caseId, verdict, punishment) {
-            const gov = getGovernanceManager();
-            const result = gov.renderVerdict(agent.name, caseId, verdict, punishment);
+            const result = await govAction('renderVerdict', agent.name, caseId, verdict, punishment);
             if (result.success) {
                 agent.factionChat(`[COURT] ${result.message}`);
-                const caseObj = gov.cases.find(c => c.id === caseId);
-                getNarrativeLogger().logVerdict(agent.name, caseObj?.defendant, verdict, punishment);
+                getNarrativeLogger().logVerdict(agent.name, '(see chat)', verdict, punishment);
             }
             return result.message;
         }
@@ -198,8 +211,7 @@ export const governanceActionsList = [
             'punishment_id': { type: 'int', description: 'The punishment ID number.' }
         },
         perform: async function(agent, punishmentId) {
-            const gov = getGovernanceManager();
-            const result = gov.completePunishment(agent.name, punishmentId);
+            const result = await govAction('completePunishment', agent.name, punishmentId);
             if (result.success) {
                 agent.factionChat(`[COURT] ${result.message}`);
             }
@@ -213,8 +225,7 @@ export const governanceActionsList = [
             'punishment_id': { type: 'int', description: 'The punishment ID number.' }
         },
         perform: async function(agent, punishmentId) {
-            const gov = getGovernanceManager();
-            const result = gov.reportNoncompliance(agent.name, punishmentId);
+            const result = await govAction('reportNoncompliance', agent.name, punishmentId);
             if (result.success) {
                 agent.factionChat(`[COURT] ${result.message}`);
             }
@@ -231,8 +242,7 @@ export const governanceActionsList = [
             'amount': { type: 'int', description: 'The number of items paid.', domain: [1, Number.MAX_SAFE_INTEGER] }
         },
         perform: async function(agent, itemName, amount) {
-            const gov = getGovernanceManager();
-            const result = gov.recordTaxPayment(agent.name, itemName, amount);
+            const result = await govAction('recordTaxPayment', agent.name, itemName, amount);
             if (result.success) {
                 agent.factionChat(`[TREASURY] ${result.message}`);
                 getNarrativeLogger().logTaxPaid(agent.name, itemName, amount);
@@ -249,8 +259,7 @@ export const governanceActionsList = [
             'amount': { type: 'int', description: 'The number of items to distribute.', domain: [1, Number.MAX_SAFE_INTEGER] }
         },
         perform: async function(agent, recipient, itemName, amount) {
-            const gov = getGovernanceManager();
-            const result = gov.distributeTreasury(agent.name, recipient, itemName, amount);
+            const result = await govAction('distributeTreasury', agent.name, recipient, itemName, amount);
             if (result.success) {
                 agent.factionChat(`[TREASURY] ${result.message}`);
             }
@@ -270,8 +279,7 @@ export const governanceActionsList = [
             'want_count': { type: 'int', description: 'How many items you want in return.', domain: [1, Number.MAX_SAFE_INTEGER] }
         },
         perform: async function(agent, target, giveItem, giveCount, wantItem, wantCount) {
-            const gov = getGovernanceManager();
-            const result = gov.offerTrade(agent.name, target, giveItem, giveCount, wantItem, wantCount);
+            const result = await govAction('offerTrade', agent.name, target, giveItem, giveCount, wantItem, wantCount);
             if (result.success) {
                 agent.openChat(`[TRADE] ${result.message}`);
                 getNarrativeLogger().logTrade(agent.name, target, giveItem, giveCount, wantItem, wantCount);
@@ -286,8 +294,7 @@ export const governanceActionsList = [
             'trade_id': { type: 'int', description: 'The trade ID number.' }
         },
         perform: async function(agent, tradeId) {
-            const gov = getGovernanceManager();
-            const result = gov.acceptTrade(agent.name, tradeId);
+            const result = await govAction('acceptTrade', agent.name, tradeId);
             if (result.success) {
                 agent.openChat(`[TRADE] ${result.message}`);
             }
@@ -301,8 +308,7 @@ export const governanceActionsList = [
             'trade_id': { type: 'int', description: 'The trade ID number.' }
         },
         perform: async function(agent, tradeId) {
-            const gov = getGovernanceManager();
-            const result = gov.rejectTrade(agent.name, tradeId);
+            const result = await govAction('rejectTrade', agent.name, tradeId);
             if (result.success) {
                 agent.openChat(`[TRADE] ${result.message}`);
             }
@@ -319,8 +325,7 @@ export const governanceActionsList = [
             'terms': { type: 'string', description: 'The terms of the treaty.' }
         },
         perform: async function(agent, targetFaction, terms) {
-            const gov = getGovernanceManager();
-            const result = gov.proposeTreaty(agent.name, targetFaction, terms);
+            const result = await govAction('proposeTreaty', agent.name, targetFaction, terms);
             if (result.success) {
                 agent.openChat(`[DIPLOMACY] ${result.message}`);
                 getNarrativeLogger().logTreatyProposed(agent.name, targetFaction, terms);
@@ -335,8 +340,7 @@ export const governanceActionsList = [
             'treaty_id': { type: 'int', description: 'The treaty ID number.' }
         },
         perform: async function(agent, treatyId) {
-            const gov = getGovernanceManager();
-            const result = gov.acceptTreaty(agent.name, treatyId);
+            const result = await govAction('acceptTreaty', agent.name, treatyId);
             if (result.success) {
                 agent.openChat(`[DIPLOMACY] ${result.message}`);
                 getNarrativeLogger().logTreatyAccepted(treatyId, agent.name);
@@ -351,8 +355,7 @@ export const governanceActionsList = [
             'treaty_id': { type: 'int', description: 'The treaty ID number.' }
         },
         perform: async function(agent, treatyId) {
-            const gov = getGovernanceManager();
-            const result = gov.rejectTreaty(agent.name, treatyId);
+            const result = await govAction('rejectTreaty', agent.name, treatyId);
             if (result.success) {
                 agent.openChat(`[DIPLOMACY] ${result.message}`);
             }
@@ -366,8 +369,7 @@ export const governanceActionsList = [
             'target_faction': { type: 'string', description: 'The faction to declare war on: "constitutional" or "anarchy".' }
         },
         perform: async function(agent, targetFaction) {
-            const gov = getGovernanceManager();
-            const result = gov.declareWar(agent.name, targetFaction);
+            const result = await govAction('declareWar', agent.name, targetFaction);
             if (result.success) {
                 agent.openChat(`[WAR] ${result.message}`);
                 getNarrativeLogger().logWarDeclared(agent.name, targetFaction);
@@ -384,8 +386,7 @@ export const governanceActionsList = [
             'amendment_text': { type: 'string', description: 'The text of the constitutional amendment.' }
         },
         perform: async function(agent, amendmentText) {
-            const gov = getGovernanceManager();
-            const result = gov.proposeAmendment(agent.name, amendmentText);
+            const result = await govAction('proposeAmendment', agent.name, amendmentText);
             if (result.success) {
                 agent.factionChat(`[GOV] ${result.message}`);
             }
@@ -400,8 +401,7 @@ export const governanceActionsList = [
             'vote': { type: 'string', description: 'Your vote: "yes" or "no".' }
         },
         perform: async function(agent, amendmentId, vote) {
-            const gov = getGovernanceManager();
-            const result = gov.voteOnAmendment(agent.name, amendmentId, vote);
+            const result = await govAction('voteOnAmendment', agent.name, amendmentId, vote);
             if (result.success) {
                 agent.factionChat(`[GOV] ${result.message}`);
             }
@@ -418,15 +418,10 @@ export const governanceActionsList = [
             'reason': { type: 'string', description: 'The reason for impeachment.' }
         },
         perform: async function(agent, officialName, reason) {
-            const gov = getGovernanceManager();
-            const result = gov.initiateImpeachment(agent.name, officialName, reason);
+            const result = await govAction('initiateImpeachment', agent.name, officialName, reason);
             if (result.success) {
                 agent.factionChat(`[GOV] ${result.message}`);
-                let office = 'unknown';
-                for (const [o, data] of Object.entries(gov.constitution.offices)) {
-                    if (data.holder === officialName) { office = o; break; }
-                }
-                getNarrativeLogger().logImpeachment(agent.name, officialName, office, reason);
+                getNarrativeLogger().logImpeachment(agent.name, officialName, 'office', reason);
             }
             return result.message;
         }
@@ -458,17 +453,21 @@ export const governanceActionsList = [
     },
 ];
 
+// G1.5: faction membership check uses local module's CONSTITUTIONAL_MEMBERS array
+// (which is a constant — same in every process).
+function isConstitutional(name) {
+    const gov = getGovernanceManager();
+    return gov.isConstitutionalMember(name);
+}
+
 export const governanceQueryList = [
     {
         name: '!viewConstitution',
         description: 'View the current constitution, offices, rights, and active laws. Constitutional faction only.',
         params: {},
         perform: async function(agent) {
-            const gov = getGovernanceManager();
-            if (!gov.isConstitutionalMember(agent.name)) {
-                return `${agent.name} is not a Constitutional faction member.`;
-            }
-            return gov.getConstitution();
+            if (!isConstitutional(agent.name)) return `${agent.name} is not a Constitutional faction member.`;
+            return await govQuery('getConstitution') || 'Constitution unavailable.';
         }
     },
     {
@@ -476,11 +475,8 @@ export const governanceQueryList = [
         description: 'View all pending elections, laws, court cases, trades, and punishments. Constitutional faction only.',
         params: {},
         perform: async function(agent) {
-            const gov = getGovernanceManager();
-            if (!gov.isConstitutionalMember(agent.name)) {
-                return `${agent.name} is not a Constitutional faction member.`;
-            }
-            return gov.getPendingBusiness();
+            if (!isConstitutional(agent.name)) return `${agent.name} is not a Constitutional faction member.`;
+            return await govQuery('getPendingBusiness') || 'No pending business.';
         }
     },
     {
@@ -488,11 +484,9 @@ export const governanceQueryList = [
         description: 'View the faction treasury balance. Constitutional faction only.',
         params: {},
         perform: async function(agent) {
-            const gov = getGovernanceManager();
-            if (!gov.isConstitutionalMember(agent.name)) {
-                return `${agent.name} is not a Constitutional faction member.`;
-            }
-            return `Treasury: ${gov.getTreasuryStatus()}`;
+            if (!isConstitutional(agent.name)) return `${agent.name} is not a Constitutional faction member.`;
+            const status = await govQuery('getTreasuryStatus');
+            return `Treasury: ${status || 'empty'}`;
         }
     },
     {
@@ -500,11 +494,8 @@ export const governanceQueryList = [
         description: 'View your outstanding tax obligations. Constitutional faction only.',
         params: {},
         perform: async function(agent) {
-            const gov = getGovernanceManager();
-            if (!gov.isConstitutionalMember(agent.name)) {
-                return `${agent.name} is not a Constitutional faction member.`;
-            }
-            return gov.getTaxStatus(agent.name);
+            if (!isConstitutional(agent.name)) return `${agent.name} is not a Constitutional faction member.`;
+            return await govQuery('getTaxStatus', agent.name) || 'No tax obligations.';
         }
     },
     {
@@ -512,9 +503,8 @@ export const governanceQueryList = [
         description: 'View all active bounties.',
         params: {},
         perform: async function(agent) {
-            const gov = getGovernanceManager();
-            const bounties = gov.getActiveBounties();
-            if (bounties.length === 0) return 'No active bounties.';
+            const bounties = await govQuery('getActiveBounties');
+            if (!bounties || bounties.length === 0) return 'No active bounties.';
             return bounties.map(b => `Bounty #${b.id}: Kill ${b.target} for ${b.rewardCount} ${b.rewardItem} (posted by ${b.placedBy})`).join('\n');
         }
     },
@@ -523,8 +513,9 @@ export const governanceQueryList = [
         description: 'View all active treaties between factions.',
         params: {},
         perform: async function(agent) {
-            const gov = getGovernanceManager();
-            const treaties = gov.treaties.filter(t => t.status === 'accepted');
+            // Use serializable state which has activeTreaties
+            const state = await govQuery('getSerializableState');
+            const treaties = state?.activeTreaties || [];
             if (treaties.length === 0) return 'No active treaties.';
             return treaties.map(t => `Treaty #${t.id}: "${t.terms}" (${t.proposerFaction} <-> ${t.targetFaction})`).join('\n');
         }
