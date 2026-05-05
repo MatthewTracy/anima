@@ -12,8 +12,12 @@
  */
 
 import { spawn } from 'child_process';
-import { readdirSync, readFileSync } from 'fs';
+import { readdirSync, readFileSync, statSync, existsSync } from 'fs';
 import { join } from 'path';
+
+// v9: track when this tournament started so we only aggregate games
+// from THIS run (not stale files from previous tournaments).
+const TOURNAMENT_START = Date.now() - 5000; // 5s buffer for clock drift
 
 const numGames = parseInt(process.argv[2]) || 3;
 const durationMinutes = parseInt(process.argv[3]) || 15;
@@ -77,10 +81,17 @@ async function runGame(index) {
 function aggregate() {
     console.log(`\n=== TOURNAMENT RESULTS ===\n`);
     const dir = './logs/games';
+    if (!existsSync(dir)) {
+        console.log('No game logs found.');
+        return;
+    }
+    // v9: only aggregate games from this tournament (started after the run began)
     const files = readdirSync(dir)
         .filter(f => f.endsWith('.json'))
-        .sort()
-        .slice(-numGames);
+        .map(f => ({ name: f, mtime: statSync(join(dir, f)).mtimeMs }))
+        .filter(f => f.mtime >= TOURNAMENT_START)
+        .sort((a, b) => a.mtime - b.mtime)
+        .map(f => f.name);
 
     const stats = {
         constitutional: { wins: 0, totalScore: 0, kills: 0, deaths: 0, resources: 0 },

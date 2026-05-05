@@ -533,9 +533,15 @@ export class Agent {
             // F5: clear stale combat targets on death so post-respawn entity
             // deaths aren't falsely attributed to this agent.
             _recentAttackTargets = [];
-            // G1: log death via mindserver
+            // G1 + v9: log death via mindserver, with the most recent damage source as cause
             try {
-                logEventToMindserver('logCombatDeath', { args: [this.name, 'unknown'] });
+                let cause = 'unknown';
+                // Use the last attack target as a hint (could be mob the bot was fighting)
+                if (_recentAttackTargets && _recentAttackTargets.length > 0) {
+                    const last = _recentAttackTargets[_recentAttackTargets.length - 1];
+                    cause = `combat with ${last.entity?.name || last.entity?.username || 'unknown'}`;
+                }
+                logEventToMindserver('logCombatDeath', { args: [this.name, cause] });
             } catch (e) { /* optional */ }
         });
 

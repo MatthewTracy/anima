@@ -36,9 +36,11 @@ export class History {
         // Defensive: promptMemSaving can return null on API error/budget exhaustion
         this.memory = result || this.memory || '';
 
-        if (this.memory && this.memory.length > 500) {
-            this.memory = this.memory.slice(0, 500);
-            this.memory += '...(Memory truncated to 500 chars. Compress it more next time)';
+        // v9: bumped 500 → 1500. Madison's memory used to truncate mid-sentence
+        // ("Distrust Fox/Wo..."). 1500 chars holds richer multi-event narratives.
+        if (this.memory && this.memory.length > 1500) {
+            this.memory = this.memory.slice(0, 1500);
+            this.memory += '...(Memory truncated to 1500 chars. Compress it more next time)';
         }
 
         console.log("Memory updated to: ", this.memory);

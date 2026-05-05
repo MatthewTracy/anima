@@ -52,7 +52,18 @@ async function _doReflect(agentName, action, context) {
 
     _recentReflections.set(agentName, Date.now());
 
-    const prompt = `You are ${agentName}. You just performed: ${action}\nContext: ${context}\n\nIn ONE short sentence (max 25 words), explain why you did that. Stay in character.`;
+    // v9: Stronger grounding so the model doesn't hallucinate fictional opponents
+    // (Hamilton's reflection invented "Jefferson" who wasn't in the game).
+    let actualAgents = '';
+    try {
+        const gm = await import('./governance_manager.js');
+        actualAgents = `\nActual players in THIS game: ${[...gm.CONSTITUTIONAL_MEMBERS, ...gm.ANARCHY_MEMBERS].join(', ')}.`;
+    } catch (e) { /* optional */ }
+
+    const prompt = `You are ${agentName}, a Minecraft AI agent. You just performed: ${action}
+Context: ${context}${actualAgents}
+
+In ONE short sentence (max 25 words), explain why you did that. Reference only the actual players above — do NOT mention historical figures who aren't in this game. Stay in character.`;
 
     try {
         const openai = new OpenAIApi({

@@ -59,7 +59,11 @@ const modes_list = [
                 });
             } catch (e) { /* logger optional */ }
 
-            say(agent, `Taking damage! Reacting!`);
+            // v9: name the actual attacker, not generic "damage"
+            const attackerLabel = attacker
+                ? (attacker.username || attacker.name || attacker.displayName || 'unknown')
+                : 'something';
+            say(agent, `Taking damage from ${attackerLabel}! Reacting!`);
             execute(this, agent, async () => {
                 if (attacker && (bot.health > 8 || !mc.isHostile(attacker))) {
                     // Fight if we have HP or it's a player (always engage players)
@@ -214,7 +218,7 @@ const modes_list = [
                 });
             } catch (e) { /* optional */ }
 
-            say(agent, `Fighting ${enemy.name}!`);
+            say(agent, `Fighting ${enemy.username || enemy.name || 'enemy'}!`);
             execute(this, agent, async () => {
                 await skills.defendSelf(agent.bot, 12);
             });

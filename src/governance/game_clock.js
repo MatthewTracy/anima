@@ -10,7 +10,11 @@ import { getGovernanceManager } from './governance_manager.js';
 
 const clockConfig = settings.game_clock || {};
 const GAME_DURATION_MS = (clockConfig.duration_minutes || 60) * 60 * 1000;
-const WARNING_INTERVALS = clockConfig.warning_minutes || [30, 15, 10, 5, 2, 1];
+const _RAW_WARNINGS = clockConfig.warning_minutes || [30, 15, 10, 5, 2, 1];
+// v9 fix: filter warnings to those actually less than the game duration.
+// Was firing "30/15/10 minutes remaining" all at game start on a 10-min game.
+const _DURATION_MIN = GAME_DURATION_MS / 60000;
+const WARNING_INTERVALS = _RAW_WARNINGS.filter(w => w < _DURATION_MIN);
 const WIN_CONDITIONS = settings.win_conditions || {};
 
 class GameClock {
