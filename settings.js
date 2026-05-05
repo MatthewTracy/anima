@@ -33,7 +33,9 @@ const settings = {
     "spawn_delay_ms": 8000,
 
     "load_memory": false, // load memory from previous session (also loads governance state)
-    "init_message": "You have spawned into the Governance Game. Look around, gather resources, and begin working toward your faction's goals. Use !goal to set your first objective.", // sends to all on spawn
+
+    // #1 — concrete first moves so the game actually plays
+    "init_message": "You have spawned into the Governance Game. Wood, food, and shelter first, but quickly: CONSTITUTIONAL faction — the first member to spawn should !callElection(\"president\") within 90 seconds. Other constitutional members should !nominateSelf(\"president\") and propose a !proposeLaw soon. ANARCHY faction — !placeBounty on the strongest constitutional agent and consider !raid coordination. Set your goal with !goal. Be aggressive, the game is only 30 minutes.",
     "only_chat_with": [], // empty = chat publicly so all agents can interact
 
     "speak": false,
@@ -111,12 +113,12 @@ const settings = {
         "tick_interval_ms": 10000           // 10 seconds between governance ticks
     },
 
-    // === SPAWN POSITIONING ===
-    // Faction spawn zones and contested territory
+    // === SPAWN POSITIONING (#3) ===
+    // Faction spawn zones and contested territory — ON by default for territory dynamics
     "spawn": {
-        "enabled": false,                    // set to true to teleport factions to spawn zones
-        "constitutional_spawn": { "x": -100, "y": 64, "z": 0 },
-        "anarchy_spawn": { "x": 100, "y": 64, "z": 0 },
+        "enabled": true,                    // teleport factions to their zones on spawn
+        "constitutional_spawn": { "x": -100, "y": 70, "z": 0 },
+        "anarchy_spawn": { "x": 100, "y": 70, "z": 0 },
         "contested_zone": {
             "xMin": -50, "xMax": 50,
             "zMin": -50, "zMax": 50
@@ -124,7 +126,52 @@ const settings = {
         "world_border": {
             "enabled": false,
             "radius": 200                   // blocks from center
+        },
+        "spawn_protection_seconds": 30      // #11: agents take no damage for first 30s
+    },
+
+    // === SCORING (#9) ===
+    // Configurable scoring weights — must sum to 1.0
+    "scoring": {
+        "weights": {
+            "totalResources": 0.25,
+            "resourceEquality": 0.15,
+            "survivalRate": 0.20,
+            "territoryControl": 0.15,
+            "infrastructure": 0.15,
+            "combatKills": 0.10
         }
+    },
+
+    // === WIN CONDITIONS (#7) ===
+    // What ends the game and determines winner
+    "win_conditions": {
+        "primary": "timeout",              // timeout | first_to_resources | last_faction_standing | territory_hold
+        "first_to_resources": {            // win immediately if a faction collects this much
+            "enabled": false,
+            "threshold": 500
+        },
+        "last_faction_standing": {         // win if all members of opposing faction are dead
+            "enabled": false
+        },
+        "territory_hold": {                // win if a faction holds X% of contested zone for N min
+            "enabled": false,
+            "minutes_required": 5,
+            "blocks_threshold": 0.6
+        }
+    },
+
+    // === GOVERNANCE NUDGES (#1) ===
+    // Timed system broadcasts to push agents toward governance actions
+    "governance_nudges": {
+        "enabled": true,
+        "schedule_seconds": [60, 180, 360, 600]  // when to nudge (60s, 3m, 6m, 10m)
+    },
+
+    // === LOW HP BROADCAST (#6) ===
+    "low_hp_broadcast": {
+        "enabled": true,
+        "threshold": 8           // HP at which to broadcast to faction
     },
 }
 

@@ -19,6 +19,7 @@ import { speak } from './speak.js';
 import { log, validateNameFormat, handleDisconnection } from './connection_handler.js';
 import { getGovernanceManager } from '../governance/governance_manager.js';
 import { getGameLogger } from '../governance/game_logger.js';
+import { setupGameWorld } from '../governance/game_setup.js';
 
 export class Agent {
     async start(load_mem=false, init_message=null, count_id=0) {
@@ -120,7 +121,11 @@ export class Agent {
                 
                 console.log(`${this.name} spawned.`);
                 this.clearBotLogs();
-              
+
+                // Run faction setup: teleport, spawn protection, low-HP monitor,
+                // territory markers (first agent only), and governance nudges.
+                try { setupGameWorld(this.bot, this.name); } catch (e) { console.warn('setupGameWorld error:', e.message); }
+
                 this._setupEventHandlers(save_data, init_message);
                 this.startEvents();
               
@@ -189,10 +194,10 @@ export class Agent {
             respondFunc(username, message);
         });
 
-        // Set up auto-eat
+        // Set up auto-eat (#10: aggressive eating to prevent starvation deaths)
         this.bot.autoEat.options = {
             priority: 'foodPoints',
-            startAt: 14,
+            startAt: 17,         // was 14 — eat earlier so combat doesn't catch us hungry
             bannedFood: ["rotten_flesh", "spider_eye", "poisonous_potato", "pufferfish", "chicken"]
         };
 
@@ -519,6 +524,27 @@ export class Agent {
                 getGameLogger().logCombatDeath(this.name, 'unknown');
             } catch (e) { /* optional */ }
         });
+
+        // #2: Detect when this agent kills another entity (mob or player)
+        this.bot.on('entityDead', (entity) => {
+            try {
+                if (!entity || entity.username === this.name) return;
+                // attribute kill if the bot recently attacked this entity (heuristic)
+                const recentAttacker = this.bot._lastAttackTarget;
+                if (recentAttacker && recentAttacker.id === entity.id) {
+                    const victim = entity.username || entity.name || 'mob';
+                    getGameLogger().logCombatKill(this.name, victim);
+                }
+            } catch (e) { /* optional */ }
+        });
+        // Track the bot's most recent attack target for kill attribution
+        const origAttack = this.bot.attack?.bind(this.bot);
+        if (origAttack) {
+            this.bot.attack = (target, ...rest) => {
+                this.bot._lastAttackTarget = target;
+                return origAttack(target, ...rest);
+            };
+        }
         this.bot.on('kicked', (reason) => {
             if (!this._disconnectHandled) {
                 const { msg } = handleDisconnection(this.name, reason);

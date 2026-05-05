@@ -45,7 +45,8 @@
         "analyze": "node scripts/analyze_runs.js",
         "replay": "node scripts/replay.js",
         "record": "node scripts/record.js",
-        "convert-video": "node scripts/frames_to_video.js"
+        "convert-video": "node scripts/frames_to_video.js",
+        "tournament": "node scripts/tournament.js"
     },
     "devDependencies": {
         "@eslint/js": "^9.13.0",

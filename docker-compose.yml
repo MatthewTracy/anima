@@ -8,26 +8,30 @@ services:
       MEMORY: "2G"
       ONLINE_MODE: "FALSE"   # required for offline auth used by Mindcraft
       MODE: "survival"
-      DIFFICULTY: "normal"
+      DIFFICULTY: "hard"     # #4: hard difficulty stress-tests combat fixes
       OPS: ""
       ALLOW_FLIGHT: "TRUE"
       MAX_PLAYERS: "20"
       SPAWN_PROTECTION: "0"
-      VIEW_DISTANCE: "8"
+      VIEW_DISTANCE: "10"    # bumped from 8 for better camera footage
       SIMULATION_DISTANCE: "8"
       SERVER_PORT: "25565"
-      # B2: Disable connection throttle (default is 4000ms which blocks rapid bot joins).
-      # -1 is the documented "disable" value; some images treat 0 as unlimited but -1 is safer.
+      # B2: Disable connection throttle (default 4000ms blocks rapid bot joins)
       CFG_CONNECTION_THROTTLE: "-1"
       NETWORK_COMPRESSION_THRESHOLD: "256"
       ENABLE_STATUS: "TRUE"
       ENABLE_QUERY: "FALSE"
       ENFORCE_SECURE_PROFILE: "FALSE"
       PREVENT_PROXY_CONNECTIONS: "FALSE"
-      # Auth/whitelist permissive (offline mode bots)
-      ONLINE_MODE: "FALSE"
-      # No idle kick — bots may pause briefly between LLM calls
       PLAYER_IDLE_TIMEOUT: "0"
+      # #15: Whitelist — allows only the 10 faction agent names + an Operator slot.
+      # Prevents random Minecraft accounts from joining your localhost server.
+      ENABLE_WHITELIST: "TRUE"
+      WHITELIST: "Madison,Hamilton,Paine,Marshall,Franklin,Chaos,Wolf,Fox,Bear,Raven,Observer,Operator"
+      # #16: Restrict mob spawn for cleaner experimental setup
+      SPAWN_MONSTERS: "TRUE"
+      SPAWN_ANIMALS: "TRUE"
+      SPAWN_NPCS: "FALSE"
     ports:
       - "25565:25565"   # default Minecraft port
     volumes:

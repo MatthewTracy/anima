@@ -1243,6 +1243,19 @@ class GovernanceManager {
     // ==================== GOVERNANCE CONTEXT FOR PROMPTS ====================
 
     getCompactStatus(agentName) {
+        // #14: include past-session memory for both factions
+        let pastHistory = '';
+        try {
+            const fp = './logs/sessions/journal.json';
+            if (existsSync(fp)) {
+                const data = JSON.parse(readFileSync(fp, 'utf8')).slice(-3);
+                if (data.length > 0) {
+                    pastHistory = '\n--- RECENT GAMES ---\n' +
+                        data.map(s => `[${s.date.slice(0,10)}] ${s.winner} won. Presidents: ${s.presidents?.join(', ') || 'none'}, Laws: ${s.lawsEnacted}`).join('\n') + '\n';
+                }
+            }
+        } catch (e) { /* ignore */ }
+
         if (!this.isConstitutionalMember(agentName)) {
             // Anarchy agents get minimal info
             const activeBounties = this.getActiveBounties();
@@ -1254,7 +1267,7 @@ class GovernanceManager {
             if (activeTreaties.length > 0) {
                 text += 'Active treaties: ' + activeTreaties.map(t => `#${t.id}: "${t.terms}"`).join('; ') + '\n';
             }
-            return text.trim() || 'No faction business.';
+            return (text + pastHistory).trim() || 'No faction business.';
         }
 
         let text = '--- GOVERNANCE STATUS ---\n';

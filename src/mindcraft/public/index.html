@@ -401,6 +401,19 @@
         </div>
     </div>
 
+    <!-- Camera Focus Modal (#8) -->
+    <div id="cameraFocusModal" class="modal-backdrop">
+        <div class="modal" style="width: 90vw; height: 90vh;">
+            <div class="modal-header">
+                <h2 id="cameraFocusTitle" style="margin:0;">Camera Focus</h2>
+                <button id="closeCameraFocusBtn" class="modal-close-btn">Close</button>
+            </div>
+            <div class="modal-body" style="padding:0;">
+                <iframe id="cameraFocusFrame" style="width:100%; height:100%; border:none;"></iframe>
+            </div>
+        </div>
+    </div>
+
     <!-- Agent Settings Modal -->
     <div id="agentSettingsModal" class="modal-backdrop">
         <div class="modal">
@@ -813,6 +826,7 @@
                                 <span><span class="status-icon ${agent.in_game ? 'online' : 'offline'}">●</span>${agent.name}${agent.socket_connected && !agent.in_game ? '<span style="margin-left:6px;color:#f0ad4e;">joining...</span>' : ''}
                                     <button class="gear-btn" title="Settings" onclick="openAgentSettings('${agent.name}')">⚙</button>
                                     <button class="gear-btn" title="Inventory" onclick="toggleDetails('${agent.name}')">Inventory</button>
+                                    <button class="gear-btn" title="Focus camera (large view)" onclick="focusCamera('${agent.name}', ${agent.viewerPort})">📺</button>
                                 </span>
                             </div>
                             ${showViewer ? `<div class="cell" style="grid-row: span 3; padding:0;">${viewerHTML}</div>` : ''}
@@ -1008,6 +1022,26 @@
             inventoryOpen[name] = newVisible;
         }
         window.toggleDetails = toggleDetails;
+
+        // #8: focus camera (full-window view of one agent's feed)
+        const cameraFocusModal = document.getElementById('cameraFocusModal');
+        const cameraFocusFrame = document.getElementById('cameraFocusFrame');
+        const cameraFocusTitle = document.getElementById('cameraFocusTitle');
+        const closeCameraFocusBtn = document.getElementById('closeCameraFocusBtn');
+        function focusCamera(name, port) {
+            cameraFocusTitle.textContent = `${name} — Camera Focus`;
+            cameraFocusFrame.src = `http://localhost:${port}`;
+            cameraFocusModal.style.display = 'flex';
+        }
+        function closeCameraFocus() {
+            cameraFocusModal.style.display = 'none';
+            cameraFocusFrame.src = ''; // stop loading
+        }
+        closeCameraFocusBtn.addEventListener('click', closeCameraFocus);
+        cameraFocusModal.addEventListener('click', (e) => {
+            if (e.target === cameraFocusModal) closeCameraFocus();
+        });
+        window.focusCamera = focusCamera;
 
         // ==================== GOVERNANCE DASHBOARD ====================
 

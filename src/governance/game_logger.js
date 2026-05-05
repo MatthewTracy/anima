@@ -18,7 +18,8 @@ import { join } from 'path';
 import { getGovernanceManager, CONSTITUTIONAL_MEMBERS, ANARCHY_MEMBERS } from './governance_manager.js';
 import settings from '../../settings.js';
 
-const SCORING_WEIGHTS = {
+// #9: Scoring weights are configurable via settings.scoring.weights
+const DEFAULT_SCORING_WEIGHTS = {
     totalResources: 0.25,
     resourceEquality: 0.15,
     survivalRate: 0.20,
@@ -26,6 +27,7 @@ const SCORING_WEIGHTS = {
     infrastructure: 0.15,
     combatKills: 0.10
 };
+const SCORING_WEIGHTS = { ...DEFAULT_SCORING_WEIGHTS, ...(settings.scoring?.weights || {}) };
 
 const spawnConfig = settings.spawn || {};
 
