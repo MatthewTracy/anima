@@ -3,6 +3,7 @@
 <head>
     <title>Mindcraft</title>
     <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -362,6 +363,14 @@
             <div style="background:#2d2d2d; padding:12px; border-radius:8px; grid-column: 1 / -1;">
                 <h2 style="margin:0 0 8px 0; font-size:1.1em;">Live Narrative</h2>
                 <div id="narrativeFeed" style="max-height:250px; overflow-y:auto; font-size:0.9em; color:#ccc;">Waiting for game events...</div>
+            </div>
+
+            <!-- N5: Personality Fingerprints (radar charts) -->
+            <div style="background:#2d2d2d; padding:12px; border-radius:8px; grid-column: 1 / -1;">
+                <h2 style="margin:0 0 8px 0; font-size:1.1em;">Personality Fingerprints
+                    <button id="refreshFingerprints" class="gear-btn" style="margin-left:8px;">Refresh</button>
+                </h2>
+                <div id="fingerprintGrid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;"></div>
             </div>
         </div>
     </div>
@@ -1134,6 +1143,71 @@
                 while (feed.children.length > 50) feed.removeChild(feed.firstChild);
             }
         });
+
+        // N5: per-agent personality fingerprint radar charts
+        const FINGERPRINT_AXES = ['Aggression', 'Social', 'Lawful', 'Hoarding', 'Loyal'];
+        const fingerprintCharts = {};
+
+        async function refreshFingerprints() {
+            try {
+                const r = await fetch('/governance/scores').then(r => r.ok ? r.json() : null);
+                const stateR = await fetch('/governance/state').then(r => r.ok ? r.json() : null);
+                if (!r) return;
+                const agents = [...(currentAgents || [])].filter(a => a.in_game);
+                const grid = document.getElementById('fingerprintGrid');
+
+                for (const agent of agents) {
+                    const canvasId = `fingerprint-${agent.name}`;
+                    let cell = document.getElementById(`fingerprint-cell-${agent.name}`);
+                    if (!cell) {
+                        cell = document.createElement('div');
+                        cell.id = `fingerprint-cell-${agent.name}`;
+                        cell.style.cssText = 'background:#363636; padding:8px; border-radius:6px;';
+                        cell.innerHTML = `<div style="font-size:0.9em; margin-bottom:4px; text-align:center;">${agent.name}</div><canvas id="${canvasId}" width="180" height="180"></canvas>`;
+                        grid.appendChild(cell);
+                    }
+                    const faction = ['Madison','Hamilton','Paine','Marshall','Franklin'].includes(agent.name) ? 'constitutional' : 'anarchy';
+                    const fs = r[faction] || {};
+                    const myRes = fs.agentResources?.[agent.name] || 0;
+                    const factionTotal = fs.totalResources || 1;
+                    const aggression = Math.min(1, (fs.kills || 0) / 10);
+                    const social = Math.min(1, ((stateR?.recentEvents || []).filter(e => e.agent === agent.name && (e.type === 'campaign_speech' || e.type === 'chat')).length) / 5);
+                    const lawful = faction === 'constitutional' ? 0.7 : 0.2;
+                    const hoarding = Math.min(1, myRes / Math.max(1, factionTotal));
+                    const loyal = Math.min(1, ((stateR?.activeTreaties || []).length) / 3);
+                    const data = [aggression, social, lawful, hoarding, loyal];
+
+                    if (fingerprintCharts[agent.name]) {
+                        fingerprintCharts[agent.name].data.datasets[0].data = data;
+                        fingerprintCharts[agent.name].update();
+                    } else {
+                        const ctx = document.getElementById(canvasId)?.getContext('2d');
+                        if (!ctx) continue;
+                        fingerprintCharts[agent.name] = new Chart(ctx, {
+                            type: 'radar',
+                            data: {
+                                labels: FINGERPRINT_AXES,
+                                datasets: [{
+                                    label: agent.name,
+                                    data,
+                                    backgroundColor: faction === 'constitutional' ? 'rgba(33,150,243,0.4)' : 'rgba(244,67,54,0.4)',
+                                    borderColor: faction === 'constitutional' ? '#2196F3' : '#f44336',
+                                    pointBackgroundColor: '#fff'
+                                }]
+                            },
+                            options: {
+                                scales: { r: { min: 0, max: 1, ticks: { display: false }, grid: { color: '#555' }, pointLabels: { color: '#ccc', font: { size: 9 } } } },
+                                plugins: { legend: { display: false } },
+                                animation: false
+                            }
+                        });
+                    }
+                }
+            } catch (e) { console.warn('fingerprint refresh failed:', e); }
+        }
+        document.getElementById('refreshFingerprints')?.addEventListener('click', refreshFingerprints);
+        setInterval(refreshFingerprints, 30000);
+        setTimeout(refreshFingerprints, 5000);
     </script>
 </body>
 </html> 

@@ -84,10 +84,11 @@ if (gameClock) {
     gameClock.onGameEnd((scores) => {
         console.log('[GAME] GAME OVER!');
         console.log('[GAME] Final scores:', JSON.stringify(scores, null, 2));
-        // Graceful shutdown after 10 seconds
+        // B6: 20s grace period — gives session_journal + post_game_summary
+        // time to flush to disk before processes exit.
         setTimeout(() => {
             Mindcraft.shutdown();
-        }, 10000);
+        }, 20000);
     });
 }
 

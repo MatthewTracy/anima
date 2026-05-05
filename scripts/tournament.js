@@ -21,6 +21,24 @@ const mode = process.argv[4] || '3v3';
 
 console.log(`\n=== TOURNAMENT: ${numGames} games × ${durationMinutes} min, ${mode} ===\n`);
 
+async function resetMinecraftWorld() {
+    // B8: stop, wipe world data, restart for a clean slate between games
+    console.log('[TOURNAMENT] Resetting Minecraft world...');
+    return new Promise((resolve) => {
+        const stop = spawn('docker', ['compose', 'stop', 'minecraft'], { stdio: 'inherit' });
+        stop.on('exit', () => {
+            const rm = spawn('docker', ['compose', 'rm', '-f', 'minecraft'], { stdio: 'inherit' });
+            rm.on('exit', () => {
+                const up = spawn('docker', ['compose', 'up', '-d', 'minecraft'], { stdio: 'inherit' });
+                up.on('exit', () => {
+                    // Wait for healthy
+                    setTimeout(resolve, 90000); // 90s for fresh world generation
+                });
+            });
+        });
+    });
+}
+
 async function runGame(index) {
     console.log(`\n--- Game ${index + 1}/${numGames} starting ---`);
 
@@ -48,6 +66,9 @@ async function runGame(index) {
         });
         proc.on('error', (err) => {
             clearTimeout(killTimer);
+            // B8: properly reject so the runner knows this game failed
+            try { proc.kill('SIGKILL'); } catch (e) {}
+            console.error(`[TOURNAMENT] Game ${index + 1} process error:`, err.message);
             reject(err);
         });
     });
@@ -120,14 +141,21 @@ function aggregate() {
     console.log(`  Avg governance events: ${stats.avgGovEvents.toFixed(1)} (elections + laws + lawsuits + verdicts)`);
 }
 
+const FRESH_WORLD = process.argv.includes('--fresh-world');
+
 (async () => {
     for (let i = 0; i < numGames; i++) {
         try {
+            if (FRESH_WORLD && i > 0) {
+                // B8: optionally wipe world between games for true reproducibility
+                await resetMinecraftWorld();
+            } else if (i > 0) {
+                // Brief pause to let Minecraft cleanup
+                await new Promise(r => setTimeout(r, 30000));
+            }
             await runGame(i);
-            // Brief pause between games to let Minecraft cleanup
-            await new Promise(r => setTimeout(r, 30000));
         } catch (e) {
-            console.error(`Game ${i + 1} failed:`, e);
+            console.error(`Game ${i + 1} failed:`, e?.message || e);
         }
     }
     aggregate();

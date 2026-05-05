@@ -34,6 +34,11 @@ const settings = {
 
     "load_memory": false, // load memory from previous session (also loads governance state)
 
+    // N3: world seed (for reproducibility). Captured in saved game logs.
+    // The Minecraft server uses LEVEL_SEED env var; this just records what was used.
+    "world_seed": "12345",
+
+
     // #1 — concrete first moves so the game actually plays
     "init_message": "You have spawned into the Governance Game. Wood, food, and shelter first, but quickly: CONSTITUTIONAL faction — the first member to spawn should !callElection(\"president\") within 90 seconds. Other constitutional members should !nominateSelf(\"president\") and propose a !proposeLaw soon. ANARCHY faction — !placeBounty on the strongest constitutional agent and consider !raid coordination. Set your goal with !goal. Be aggressive, the game is only 30 minutes.",
     "only_chat_with": [], // empty = chat publicly so all agents can interact

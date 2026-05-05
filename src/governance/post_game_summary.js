@@ -8,6 +8,7 @@
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { getKey, hasKey } from '../utils/keys.js';
+import { getBudgetGuard } from './budget_guard.js';
 import OpenAIApi from 'openai';
 
 const SUMMARY_MODEL = 'deepseek/deepseek-chat';
@@ -17,6 +18,16 @@ export async function generatePostGameSummary(gameLogger, finalScores) {
         console.log('[POST-GAME] No API key — skipping LLM summary');
         return null;
     }
+
+    // B7: Skip summary if we're already over 80% of session budget — don't blow past cap.
+    try {
+        const budget = getBudgetGuard();
+        const status = budget.getStatus();
+        if (parseFloat(status.percentUsed) > 80) {
+            console.log(`[POST-GAME] Budget at ${status.percentUsed}% — skipping LLM summary to avoid cap overrun`);
+            return null;
+        }
+    } catch (e) { /* if budget guard fails, continue */ }
 
     const events = gameLogger.events || [];
 
@@ -75,6 +86,17 @@ Write the recap now (markdown, ~400 words):`;
             messages: [{ role: 'user', content: prompt }],
             max_tokens: 800
         });
+
+        // B7: Record usage so the post-game call counts against budget cap
+        if (completion?.usage) {
+            try {
+                getBudgetGuard().recordUsage(
+                    SUMMARY_MODEL,
+                    completion.usage.prompt_tokens || 0,
+                    completion.usage.completion_tokens || 0
+                );
+            } catch (e) { /* optional */ }
+        }
 
         const summary = completion?.choices?.[0]?.message?.content;
         if (!summary) {

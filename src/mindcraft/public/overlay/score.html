@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html><head><title>Score Overlay</title>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+  body { background: transparent; color: white; font-family: 'Arial Black', sans-serif; margin: 0; padding: 16px; }
+  .score-box { display: flex; gap: 24px; }
+  .faction { padding: 12px 20px; border-radius: 8px; min-width: 220px; text-shadow: 2px 2px 4px black; }
+  .const { background: rgba(33, 150, 243, 0.85); }
+  .anarch { background: rgba(244, 67, 54, 0.85); }
+  .label { font-size: 1.1em; opacity: 0.9; }
+  .score { font-size: 2.4em; font-weight: bold; }
+  .stats { font-size: 0.9em; margin-top: 4px; opacity: 0.85; }
+</style></head>
+<body>
+<div class="score-box">
+  <div class="faction const">
+    <div class="label">CONSTITUTIONAL</div>
+    <div class="score" id="cScore">0</div>
+    <div class="stats" id="cStats">--</div>
+  </div>
+  <div class="faction anarch">
+    <div class="label">ANARCHY</div>
+    <div class="score" id="aScore">0</div>
+    <div class="stats" id="aStats">--</div>
+  </div>
+</div>
+<script>
+const socket = io({ path: '/socket.io' });
+socket.emit('listen-to-agents');
+let lastResources = { constitutional: 0, anarchy: 0 };
+let lastKills = { constitutional: 0, anarchy: 0 };
+socket.on('governance-state', () => {});  // keep socket alive
+setInterval(async () => {
+  // poll the game logger via a known endpoint; for now read from window.lastStates aggregation
+  try {
+    const r = await fetch('/governance/scores').then(r => r.ok ? r.json() : null);
+    if (!r) return;
+    document.getElementById('cScore').textContent = (r.constitutional?.totalResources || 0);
+    document.getElementById('aScore').textContent = (r.anarchy?.totalResources || 0);
+    document.getElementById('cStats').textContent = `Kills: ${r.constitutional?.kills || 0} | Deaths: ${r.constitutional?.deaths || 0}`;
+    document.getElementById('aStats').textContent = `Kills: ${r.anarchy?.kills || 0} | Deaths: ${r.anarchy?.deaths || 0}`;
+  } catch (e) {}
+}, 2000);
+</script>
+</body></html>

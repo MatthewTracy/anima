@@ -9,7 +9,13 @@ services:
       ONLINE_MODE: "FALSE"   # required for offline auth used by Mindcraft
       MODE: "survival"
       DIFFICULTY: "hard"     # #4: hard difficulty stress-tests combat fixes
-      OPS: ""
+      # N3: Fixed world seed for reproducibility. Same seed = same map every game.
+      # Set to empty string for randomized worlds.
+      LEVEL_SEED: "12345"
+      # B1 (CRITICAL): without op, /setblock /effect /say /tp all silently fail.
+      # Territory markers, spawn protection, governance nudges, faction spawn TPs
+      # all needed this. Op all faction members + observer + manual operator slot.
+      OPS: "Madison,Hamilton,Paine,Marshall,Franklin,Chaos,Wolf,Fox,Bear,Raven,Observer,Operator,madison,hamilton,paine,marshall,franklin,chaos,wolf,fox,bear,raven,observer,operator"
       ALLOW_FLIGHT: "TRUE"
       MAX_PLAYERS: "20"
       SPAWN_PROTECTION: "0"
@@ -24,10 +30,11 @@ services:
       ENFORCE_SECURE_PROFILE: "FALSE"
       PREVENT_PROXY_CONNECTIONS: "FALSE"
       PLAYER_IDLE_TIMEOUT: "0"
-      # #15: Whitelist — allows only the 10 faction agent names + an Operator slot.
-      # Prevents random Minecraft accounts from joining your localhost server.
+      # #15 + B2: Whitelist (case-insensitive variants in case mineflayer lowercases).
+      # Allows only the 10 faction agent names + Operator + Observer slots.
       ENABLE_WHITELIST: "TRUE"
-      WHITELIST: "Madison,Hamilton,Paine,Marshall,Franklin,Chaos,Wolf,Fox,Bear,Raven,Observer,Operator"
+      WHITELIST: "Madison,Hamilton,Paine,Marshall,Franklin,Chaos,Wolf,Fox,Bear,Raven,Observer,Operator,madison,hamilton,paine,marshall,franklin,chaos,wolf,fox,bear,raven,observer,operator"
+      ENFORCE_WHITELIST: "FALSE"   # B2: don't kick mid-session if name case mismatches
       # #16: Restrict mob spawn for cleaner experimental setup
       SPAWN_MONSTERS: "TRUE"
       SPAWN_ANIMALS: "TRUE"

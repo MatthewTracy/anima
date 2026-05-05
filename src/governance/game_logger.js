@@ -38,6 +38,8 @@ class GameLogger {
         this.events = [];
         this.agentSnapshots = {}; // name -> latest snapshot
         this.gameStart = Date.now();
+        // N3: capture world seed in saved game JSON so replays know which world
+        this.worldSeed = process.env.LEVEL_SEED || settings.world_seed || 'random';
 
         // Survival tracking
         this.aliveStatus = {}; // name -> boolean
@@ -223,6 +225,68 @@ class GameLogger {
         return scores;
     }
 
+    // N1: Behavioral metrics — derived from existing event log. These answer
+    // the actual research question ("did democracy work?") much better than
+    // raw resource counts.
+    calculateBehavioralMetrics() {
+        const minutes = Math.max(0.1, (Date.now() - this.gameStart) / 60000);
+        const result = { constitutional: {}, anarchy: {} };
+
+        for (const faction of ['constitutional', 'anarchy']) {
+            const factionEvents = this.events.filter(e => e.faction === faction);
+            const involvingFactionMembers = (e) => {
+                const fname = (n) => this._getFaction(n);
+                return fname(e.agent) === faction || fname(e.payer) === faction ||
+                       fname(e.proposedBy) === faction || fname(e.offerer) === faction ||
+                       fname(e.target) === faction;
+            };
+            const m = result[faction];
+
+            // Cooperation index: trades_accepted + treaties_kept + tax_paid + lawful_acts
+            const trades = this.events.filter(e => e.type === 'trade_accepted' && involvingFactionMembers(e)).length;
+            const treatiesKept = this.events.filter(e => e.type === 'treaty_accepted' && involvingFactionMembers(e)).length;
+            const taxes = this.events.filter(e => e.type === 'tax_paid' && involvingFactionMembers(e)).length;
+            const cooperativeActs = trades + treatiesKept + taxes;
+            const totalInteractions = factionEvents.length || 1;
+            m.coopIndex = (cooperativeActs / totalInteractions).toFixed(3);
+
+            // Betrayal rate: treaties broken / treaties signed
+            const treatiesSigned = this.events.filter(e => e.type === 'treaty_accepted' && involvingFactionMembers(e)).length;
+            const treatiesVoided = this.events.filter(e => e.type === 'treaty_voided' && involvingFactionMembers(e)).length;
+            m.betrayalRate = treatiesSigned > 0 ? (treatiesVoided / treatiesSigned).toFixed(3) : '0.000';
+
+            // Coalition stability: mean lifetime of treaties (in seconds)
+            const treaties = this.events.filter(e => e.type === 'treaty_accepted');
+            const lifetimes = [];
+            for (const t of treaties) {
+                const voided = this.events.find(v => v.type === 'treaty_voided' && v.treaty_id === t.treaty_id);
+                if (voided) lifetimes.push((voided.timestamp - t.timestamp) / 1000);
+                else lifetimes.push((Date.now() - t.timestamp) / 1000); // still active
+            }
+            m.coalitionStabilitySec = lifetimes.length > 0
+                ? (lifetimes.reduce((a, b) => a + b, 0) / lifetimes.length).toFixed(1)
+                : '0';
+
+            // Law adherence: laws_enacted_and_followed / laws_enacted (proxy: lawsuits filed = breaks)
+            const lawsEnacted = this.events.filter(e => e.type === 'law_enacted').length;
+            const lawsuitsFiled = this.events.filter(e => e.type === 'lawsuit_filed' && involvingFactionMembers(e)).length;
+            m.lawAdherence = lawsEnacted > 0
+                ? Math.max(0, (lawsEnacted - lawsuitsFiled) / lawsEnacted).toFixed(3)
+                : '1.000'; // no laws = vacuous adherence
+
+            // Governance density: governance events per minute
+            const govEvents = this.events.filter(e =>
+                ['election_called', 'election_result', 'law_proposed', 'law_enacted',
+                 'lawsuit_filed', 'verdict_rendered', 'amendment_ratified', 'tax_paid',
+                 'impeachment_initiated', 'treaty_proposed', 'treaty_accepted'].includes(e.type) &&
+                involvingFactionMembers(e)
+            ).length;
+            m.governanceDensity = (govEvents / minutes).toFixed(2);
+        }
+
+        return result;
+    }
+
     calculateFinalScores() {
         const base = this.calculateScores();
         const elapsed = Date.now() - this.gameStart;
@@ -314,6 +378,9 @@ class GameLogger {
                 ? 'anarchy'
                 : 'tie';
 
+        // N1: attach behavioral metrics
+        result.behavioralMetrics = this.calculateBehavioralMetrics();
+
         return result;
     }
 
@@ -337,6 +404,7 @@ class GameLogger {
             const filename = join(this.logDir, `game_${this.sessionId}.json`);
             const data = {
                 sessionId: this.sessionId,
+                worldSeed: this.worldSeed,    // N3
                 gameStart: new Date(this.gameStart).toISOString(),
                 lastUpdate: new Date().toISOString(),
                 elapsedMinutes: ((Date.now() - this.gameStart) / 60000).toFixed(1),

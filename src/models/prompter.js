@@ -202,6 +202,16 @@ export class Prompter {
                 prompt = prompt.replaceAll('$GOVERNANCE', '');
             }
         }
+        // N2: $RELATIONSHIPS placeholder — per-agent trust ledger
+        if (prompt.includes('$RELATIONSHIPS')) {
+            try {
+                const gov = getGovernanceManager();
+                const relText = gov.getRelationshipsText(this.agent.name);
+                prompt = prompt.replaceAll('$RELATIONSHIPS', relText);
+            } catch (e) {
+                prompt = prompt.replaceAll('$RELATIONSHIPS', '');
+            }
+        }
         if (prompt.includes('$BLUEPRINTS')) {
             if (this.agent.npc.constructions) {
                 let blueprints = '';

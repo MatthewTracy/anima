@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html><head><title>Game Clock Overlay</title>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+  body { background: transparent; color: white; font-family: 'Arial Black', sans-serif; margin: 0; padding: 16px; }
+  .clock { padding: 12px 24px; border-radius: 8px; background: rgba(0,0,0,0.7); display: inline-block; text-shadow: 2px 2px 4px black; }
+  .label { font-size: 0.9em; opacity: 0.85; }
+  .time { font-size: 2.6em; font-weight: bold; color: #4CAF50; }
+  .time.warn { color: #ff9800; }
+  .time.crit { color: #f44336; }
+  .progress { width: 280px; height: 6px; background: rgba(255,255,255,0.2); border-radius: 3px; margin-top: 6px; overflow: hidden; }
+  .bar { height: 100%; background: #4CAF50; transition: width 1s; }
+</style></head>
+<body>
+<div class="clock">
+  <div class="label">REMAINING</div>
+  <div class="time" id="time">--:--</div>
+  <div class="progress"><div class="bar" id="bar" style="width:0%"></div></div>
+</div>
+<script>
+const socket = io({ path: '/socket.io' });
+socket.on('game-clock', (s) => {
+  if (!s) return;
+  const remaining = parseFloat(s.remaining);
+  const total = parseFloat(s.total);
+  const m = Math.floor(remaining);
+  const sec = Math.floor((remaining - m) * 60);
+  const el = document.getElementById('time');
+  el.textContent = `${m}:${sec.toString().padStart(2, '0')}`;
+  el.className = 'time' + (remaining < 2 ? ' crit' : remaining < 5 ? ' warn' : '');
+  const pct = Math.min(100, (parseFloat(s.elapsed) / total) * 100);
+  document.getElementById('bar').style.width = pct + '%';
+  document.getElementById('bar').style.background = pct > 80 ? '#f44336' : pct > 60 ? '#ff9800' : '#4CAF50';
+});
+</script>
+</body></html>

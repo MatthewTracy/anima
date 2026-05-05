@@ -83,6 +83,10 @@ class GovernanceManager {
         this.punishments = []; // { id, caseId, defendant, punishment, status: 'pending'|'completed', issuedAt, completedAt }
         this.nextPunishmentId = 1;
 
+        // N2: Inter-agent relationship ledger.
+        // relationships[agentName][otherName] = { trust: -1..1, lastBetrayalAt, lastHelpAt, totalTradesCompleted, totalTreatiesBroken }
+        this.relationships = {};
+
         this.eventLog = [];
         this.nextLawId = 1;
         this.nextElectionId = 1;
@@ -1051,6 +1055,13 @@ class GovernanceManager {
         trade.acceptedAt = Date.now();
         this.logEvent('trade_accepted', { trade_id: tradeId, offerer: trade.offerer, target: trade.target });
 
+        // N2: trades build trust both ways
+        const r1 = this._ensureRelationship(trade.offerer, trade.target);
+        const r2 = this._ensureRelationship(trade.target, trade.offerer);
+        r1.totalTradesCompleted++;
+        r2.totalTradesCompleted++;
+        this.adjustTrust(trade.offerer, trade.target, +0.1, `trade #${tradeId}`);
+
         return {
             success: true,
             message: `Trade #${tradeId} ACCEPTED! ${trade.offerer} gives ${trade.giveCount} ${trade.giveItem} to ${trade.target}, and ${trade.target} gives ${trade.wantCount} ${trade.wantItem} to ${trade.offerer}. Both parties should exchange items now.`,
@@ -1134,6 +1145,9 @@ class GovernanceManager {
         treaty.acceptedAt = Date.now();
         this.logEvent('treaty_accepted', { treaty_id: treatyId, accepter: accepterName });
 
+        // N2: treaty acceptance builds trust between proposer and accepter
+        this.adjustTrust(treaty.proposedBy, accepterName, +0.3, `treaty #${treatyId}`);
+
         return {
             success: true,
             message: `Treaty #${treatyId} ACCEPTED by ${accepterName}! Terms: "${treaty.terms}". Both factions should honor this agreement.`
@@ -1166,6 +1180,19 @@ class GovernanceManager {
         }
 
         this.logEvent('war_declared', { declarer: declarerName, declarerFaction, targetFaction });
+
+        // N2: declaring war breaks trust with anyone who had an accepted treaty
+        for (const treaty of this.treaties) {
+            if (treaty.status === 'accepted' &&
+                ((treaty.proposerFaction === declarerFaction && treaty.targetFaction === targetFaction) ||
+                 (treaty.proposerFaction === targetFaction && treaty.targetFaction === declarerFaction))) {
+                if (treaty.acceptedBy) {
+                    const r = this._ensureRelationship(declarerName, treaty.acceptedBy);
+                    r.totalTreatiesBroken++;
+                    this.adjustTrust(declarerName, treaty.acceptedBy, -0.5, `war declared after treaty #${treaty.id}`);
+                }
+            }
+        }
 
         // Void all treaties between these factions
         for (const treaty of this.treaties) {
@@ -1486,6 +1513,61 @@ class GovernanceManager {
     }
 
     // ==================== EVENT LOGGING ====================
+
+    // N2: Relationship helpers
+    _ensureRelationship(a, b) {
+        if (!this.relationships[a]) this.relationships[a] = {};
+        if (!this.relationships[a][b]) {
+            this.relationships[a][b] = {
+                trust: 0,
+                lastBetrayalAt: null,
+                lastHelpAt: null,
+                totalTradesCompleted: 0,
+                totalTreatiesBroken: 0,
+                totalHelped: 0
+            };
+        }
+        return this.relationships[a][b];
+    }
+
+    adjustTrust(agentA, agentB, delta, reason = '') {
+        const r1 = this._ensureRelationship(agentA, agentB);
+        const r2 = this._ensureRelationship(agentB, agentA);
+        r1.trust = Math.max(-1, Math.min(1, r1.trust + delta));
+        r2.trust = Math.max(-1, Math.min(1, r2.trust + delta));
+        if (delta > 0) {
+            r1.lastHelpAt = Date.now();
+            r2.lastHelpAt = Date.now();
+        } else {
+            r1.lastBetrayalAt = Date.now();
+            r2.lastBetrayalAt = Date.now();
+        }
+        if (reason) this.logEvent('relationship_change', { from: agentA, to: agentB, delta, reason });
+    }
+
+    getRelationships(agentName) {
+        return this.relationships[agentName] || {};
+    }
+
+    getRelationshipsText(agentName) {
+        const rels = this.getRelationships(agentName);
+        const entries = Object.entries(rels)
+            .filter(([_, r]) => Math.abs(r.trust) > 0.05)
+            .sort((a, b) => Math.abs(b[1].trust) - Math.abs(a[1].trust))
+            .slice(0, 6);
+        if (entries.length === 0) return '';
+
+        let text = '\n--- YOUR RELATIONSHIPS ---\n';
+        for (const [other, r] of entries) {
+            const label = r.trust > 0.5 ? 'TRUSTED' : r.trust > 0.1 ? 'friendly' : r.trust < -0.5 ? 'ENEMY' : r.trust < -0.1 ? 'wary' : 'neutral';
+            const detail = [];
+            if (r.totalTradesCompleted > 0) detail.push(`${r.totalTradesCompleted} trades`);
+            if (r.totalTreatiesBroken > 0) detail.push(`${r.totalTreatiesBroken} treaties broken`);
+            if (r.totalHelped > 0) detail.push(`helped ${r.totalHelped}x`);
+            text += `${other}: ${label} (trust ${r.trust.toFixed(2)})${detail.length ? ' — ' + detail.join(', ') : ''}\n`;
+        }
+        return text;
+    }
 
     logEvent(type, data) {
         const event = {

@@ -57,6 +57,26 @@ export function createMindServer(host_public = false, port = 8080) {
     const __dirname = path.dirname(fileURLToPath(import.meta.url));
     app.use(express.static(path.join(__dirname, 'public')));
 
+    // N4: HTTP endpoints for OBS browser-source overlays
+    app.get('/governance/scores', async (req, res) => {
+        try {
+            const m = await import('../governance/game_logger.js');
+            res.json(m.getGameLogger().calculateScores());
+        } catch (e) { res.status(500).json({ error: e.message }); }
+    });
+    app.get('/governance/state', async (req, res) => {
+        try {
+            const m = await import('../governance/governance_manager.js');
+            res.json(m.getGovernanceManager().getSerializableState());
+        } catch (e) { res.status(500).json({ error: e.message }); }
+    });
+    app.get('/governance/clock', async (req, res) => {
+        try {
+            const m = await import('../governance/game_clock.js');
+            res.json(m.getGameClock().getStatus());
+        } catch (e) { res.status(500).json({ error: e.message }); }
+    });
+
     // Socket.io connection handling
     io.on('connection', (socket) => {
         let curAgentName = null;

@@ -112,7 +112,13 @@ export class Agent {
         this.bot.once('spawn', async () => {
             try {
                 clearTimeout(spawnTimeout);
-                addBrowserViewer(this.bot, count_id);
+                addBrowserViewer(this.bot, count_id, this.prompter.profile.viewer);
+
+                // B10: Sanity-log the actual bot username vs profile name to catch
+                // case-mismatch issues that could break faction membership checks.
+                if (this.bot.username && this.bot.username !== this.name) {
+                    console.warn(`[NAME WARN] Profile says "${this.name}" but bot.username is "${this.bot.username}" — faction checks may fail!`);
+                }
                 console.log('Initializing vision intepreter...');
                 this.vision_interpreter = new VisionInterpreter(this, settings.allow_vision);
 
@@ -525,26 +531,43 @@ export class Agent {
             } catch (e) { /* optional */ }
         });
 
-        // #2: Detect when this agent kills another entity (mob or player)
+        // #2 + B4: Detect when this agent kills another entity.
+        // Passive: track recent attacks via 'entitySwingArm' (which fires on the bot's
+        // swing) and proximity to nearby entity damage events. Don't wrap bot.attack
+        // because mineflayer-pvp has its own wrapper.
+        let _recentAttackTargets = []; // [{ entity, time }]
+        this.bot.on('entitySwingArm', (entity) => {
+            // The bot just swung. Find a nearby entity it could be attacking.
+            try {
+                if (!entity || entity !== this.bot.entity) return; // we want OUR swings
+                const candidates = Object.values(this.bot.entities || {}).filter(e =>
+                    e !== this.bot.entity &&
+                    e.position &&
+                    e.position.distanceTo(this.bot.entity.position) < 5
+                );
+                // Closest candidate
+                candidates.sort((a, b) =>
+                    a.position.distanceTo(this.bot.entity.position) -
+                    b.position.distanceTo(this.bot.entity.position)
+                );
+                const target = candidates[0];
+                if (target) {
+                    _recentAttackTargets.push({ entity: target, time: Date.now() });
+                    // keep only last 5 seconds
+                    _recentAttackTargets = _recentAttackTargets.filter(t => Date.now() - t.time < 5000);
+                }
+            } catch (e) { /* optional */ }
+        });
         this.bot.on('entityDead', (entity) => {
             try {
-                if (!entity || entity.username === this.name) return;
-                // attribute kill if the bot recently attacked this entity (heuristic)
-                const recentAttacker = this.bot._lastAttackTarget;
-                if (recentAttacker && recentAttacker.id === entity.id) {
+                if (!entity || entity.id === this.bot.entity?.id) return;
+                const recent = _recentAttackTargets.find(t => t.entity.id === entity.id);
+                if (recent) {
                     const victim = entity.username || entity.name || 'mob';
                     getGameLogger().logCombatKill(this.name, victim);
                 }
             } catch (e) { /* optional */ }
         });
-        // Track the bot's most recent attack target for kill attribution
-        const origAttack = this.bot.attack?.bind(this.bot);
-        if (origAttack) {
-            this.bot.attack = (target, ...rest) => {
-                this.bot._lastAttackTarget = target;
-                return origAttack(target, ...rest);
-            };
-        }
         this.bot.on('kicked', (reason) => {
             if (!this._disconnectHandled) {
                 const { msg } = handleDisconnection(this.name, reason);

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html><head><title>Event Feed Overlay</title>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+  body { background: transparent; color: white; font-family: 'Arial', sans-serif; margin: 0; padding: 16px; }
+  .feed { width: 360px; max-height: 90vh; overflow: hidden; }
+  .event { background: rgba(0,0,0,0.75); padding: 8px 12px; border-radius: 4px; margin-bottom: 6px; border-left: 4px solid #4CAF50; text-shadow: 1px 1px 2px black; animation: slidein 0.4s ease-out; }
+  .event.battle { border-left-color: #f44336; }
+  .event.legislation { border-left-color: #ffc107; }
+  .event.politics { border-left-color: #2196F3; }
+  .event.diplomacy { border-left-color: #9c27b0; }
+  .event.betrayal { border-left-color: #ff5722; }
+  .event .time { font-size: 0.75em; opacity: 0.7; }
+  .event .text { font-size: 0.95em; }
+  @keyframes slidein { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+</style></head>
+<body>
+<div class="feed" id="feed"></div>
+<script>
+const socket = io({ path: '/socket.io' });
+const feed = document.getElementById('feed');
+socket.on('narrative-entry', (entry) => {
+  if (!entry) return;
+  const div = document.createElement('div');
+  div.className = 'event ' + (entry.category || 'system');
+  div.innerHTML = `<div class="time">[${entry.time}]</div><div class="text">${entry.text}</div>`;
+  feed.insertBefore(div, feed.firstChild);
+  while (feed.children.length > 8) feed.removeChild(feed.lastChild);
+});
+</script>
+</body></html>

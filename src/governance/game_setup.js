@@ -46,11 +46,15 @@ export function setupGameWorld(bot, agentName) {
         console.log(`[SETUP] Teleported ${agentName} to Anarchy spawn (${x}, ${y}, ${z})`);
     }
 
-    // #11: Spawn protection — give the agent invulnerability for the configured duration
+    // #11 + B5: Spawn protection — full invulnerability for the configured duration.
+    // Resistance 4 blocks physical damage, fire_resistance blocks fire/lava,
+    // water_breathing prevents drowning, saturation prevents starvation.
     const protectSec = spawnConfig.spawn_protection_seconds || 0;
     if (protectSec > 0) {
         bot.chat(`/effect give ${agentName} minecraft:resistance ${protectSec} 4 true`);
         bot.chat(`/effect give ${agentName} minecraft:fire_resistance ${protectSec} 0 true`);
+        bot.chat(`/effect give ${agentName} minecraft:water_breathing ${protectSec} 0 true`);
+        bot.chat(`/effect give ${agentName} minecraft:saturation ${protectSec} 0 true`);
         _spawnProtectedAgents.add(agentName);
         setTimeout(() => _spawnProtectedAgents.delete(agentName), protectSec * 1000);
     }
