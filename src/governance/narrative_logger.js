@@ -29,7 +29,18 @@ class NarrativeLogger {
             console.warn('Could not create narrative log directory:', e.message);
         }
 
-        this._addEntry('prologue', 'The Governance Game begins. Ten AI agents spawn into a Minecraft world, divided into two factions. The Constitutional faction — Madison, Hamilton, Paine, Marshall, and Franklin — believe in democracy, law, and collective governance. The Anarchy faction — Chaos, Wolf, Fox, Bear, and Raven — answer to no one. Who will prevail?');
+        // F2: build prologue dynamically from actual rosters (was hardcoded for 5v5)
+        const total = CONSTITUTIONAL_MEMBERS.length + ANARCHY_MEMBERS.length;
+        const list = (arr) => {
+            if (arr.length <= 1) return arr.join('');
+            if (arr.length === 2) return arr.join(' and ');
+            return arr.slice(0, -1).join(', ') + ', and ' + arr[arr.length - 1];
+        };
+        this._addEntry('prologue',
+            `The Governance Game begins. ${total} AI agents spawn into a Minecraft world, ` +
+            `divided into two factions. The Constitutional faction — ${list(CONSTITUTIONAL_MEMBERS)} — ` +
+            `believe in democracy, law, and collective governance. The Anarchy faction — ` +
+            `${list(ANARCHY_MEMBERS)} — answer to no one. Who will prevail?`);
     }
 
     // ==================== STREAMING ====================

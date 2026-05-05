@@ -64,14 +64,20 @@ function reciprocityBonus(event, allEvents, idx) {
             .filter(e => e.type === 'combat_kill' && e.killer === event.victim && e.victim === event.killer);
         if (recent.length > 0) bonus += 3; // revenge kill
     }
-    // War after a treaty
-    if (event.type === 'war_declared') {
-        const treaty = allEvents.slice(0, idx).find(e =>
-            e.type === 'treaty_accepted' &&
-            ((event.declarerFaction && event.targetFaction) &&
-             ((e.proposerFaction === event.declarerFaction && e.targetFaction === event.targetFaction) ||
-              (e.proposerFaction === event.targetFaction && e.targetFaction === event.declarerFaction))));
-        if (treaty) bonus += 4; // betrayal after treaty
+    // War after a treaty — F3: search treaty_proposed (has faction fields) and
+    // verify it was accepted via the matching treaty_accepted event.
+    if (event.type === 'war_declared' && event.declarerFaction && event.targetFaction) {
+        const matchingProposal = allEvents.slice(0, idx).find(e =>
+            e.type === 'treaty_proposed' &&
+            ((e.proposerFaction === event.declarerFaction && e.targetFaction === event.targetFaction) ||
+             (e.proposerFaction === event.targetFaction && e.targetFaction === event.declarerFaction))
+        );
+        if (matchingProposal) {
+            const wasAccepted = allEvents.slice(0, idx).some(e =>
+                e.type === 'treaty_accepted' && e.treaty_id === matchingProposal.treaty_id
+            );
+            if (wasAccepted) bonus += 4; // betrayal after treaty
+        }
     }
     return bonus;
 }

@@ -95,9 +95,10 @@ if (args.preset === 'experiment') {
     // Disable optional LLM calls to keep cost down
     settings.disable_post_game_summary = true;
     settings.disable_reflections = true;
-    // Lower budget cap to enforce frugality
+    // Lower budget cap to enforce frugality. BudgetGuard reads settings.budget.*
     settings.budget = settings.budget || {};
     settings.budget.session_cap_usd = 0.50;
+    settings.budget.warning_threshold = 0.70;
     // Force interesting end conditions
     settings.win_conditions = settings.win_conditions || {};
     settings.win_conditions.last_faction_standing = { enabled: true };

@@ -79,6 +79,15 @@ const settings = {
 
     "log_all_prompts": false, // set to true for debugging
 
+    // === BUDGET CONTROL ===
+    // Per-session and per-month spending caps. session_cap_usd is the hard
+    // kill-switch — agents stop the moment cumulative LLM cost exceeds it.
+    "budget": {
+        "session_cap_usd": 3.00,        // hard cap per game/run
+        "monthly_cap_usd": 25.00,       // soft tracking only (not enforced)
+        "warning_threshold": 0.80       // warn at 80% of session cap
+    },
+
     // === GAME CLOCK ===
     // Controls the session duration and time warnings
     "game_clock": {
