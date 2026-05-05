@@ -11,6 +11,7 @@
 import { getGovernanceManager } from '../../governance/governance_manager.js';
 import { getNarrativeLogger } from '../../governance/narrative_logger.js';
 import { callGovernanceOnMindserver, queryGovernanceOnMindserver } from '../mindserver_proxy.js';
+import { broadcastAction } from '../witness.js';
 
 async function govAction(method, ...args) {
     const r = await callGovernanceOnMindserver(method, args);
@@ -43,6 +44,7 @@ export const anarchyActionsList = [
             agent.factionChat(`[RAID] ${agent.name} is raiding ${target}! Join the attack!`);
             await govAction('logEvent', 'raid_called', { raider: agent.name, target });
             getNarrativeLogger().logRaid(agent.name, target);
+            broadcastAction(agent, 'raid', { target });
             return `Raid on ${target} announced! Use !attack("${target}") to engage in combat.`;
         }
     },
@@ -57,6 +59,7 @@ export const anarchyActionsList = [
             agent.factionChat(`[SABOTAGE] ${agent.name} is going to sabotage ${target}'s structures!`);
             await govAction('logEvent', 'sabotage_called', { saboteur: agent.name, target });
             getNarrativeLogger().logSabotage(agent.name, target);
+            broadcastAction(agent, 'sabotage', { target });
             return `Sabotage mission against ${target} announced! Go to their location and break their blocks.`;
         }
     },

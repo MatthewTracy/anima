@@ -12,6 +12,7 @@ import { getGovernanceManager } from '../../governance/governance_manager.js';
 import { getGameLogger } from '../../governance/game_logger.js';
 import { getNarrativeLogger } from '../../governance/narrative_logger.js';
 import { callGovernanceOnMindserver, queryGovernanceOnMindserver } from '../mindserver_proxy.js';
+import { broadcastAction } from '../witness.js';
 
 // G1.5: route governance method calls through mindserver so all agents share
 // state. Falls back to local singleton if mindserver is unreachable.
@@ -246,6 +247,7 @@ export const governanceActionsList = [
             if (result.success) {
                 agent.factionChat(`[TREASURY] ${result.message}`);
                 getNarrativeLogger().logTaxPaid(agent.name, itemName, amount);
+                broadcastAction(agent, 'pay_tax', { item: itemName, count: amount });
             }
             return result.message;
         }
@@ -262,6 +264,7 @@ export const governanceActionsList = [
             const result = await govAction('distributeTreasury', agent.name, recipient, itemName, amount);
             if (result.success) {
                 agent.factionChat(`[TREASURY] ${result.message}`);
+                broadcastAction(agent, 'distribute_treasury', { recipient, item: itemName, count: amount });
             }
             return result.message;
         }
@@ -283,6 +286,7 @@ export const governanceActionsList = [
             if (result.success) {
                 agent.openChat(`[TRADE] ${result.message}`);
                 getNarrativeLogger().logTrade(agent.name, target, giveItem, giveCount, wantItem, wantCount);
+                broadcastAction(agent, 'offer_trade', { target, give: `${giveCount} ${giveItem}`, want: `${wantCount} ${wantItem}` });
             }
             return result.message;
         }
@@ -297,6 +301,7 @@ export const governanceActionsList = [
             const result = await govAction('acceptTrade', agent.name, tradeId);
             if (result.success) {
                 agent.openChat(`[TRADE] ${result.message}`);
+                broadcastAction(agent, 'accept_trade', { trade_id: tradeId });
             }
             return result.message;
         }

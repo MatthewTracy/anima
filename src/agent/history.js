@@ -32,15 +32,27 @@ export class History {
 
     async summarizeMemories(turns) {
         console.log("Storing memories...");
+        const prior = this.memory || '';
         const result = await this.agent.prompter.promptMemSaving(turns);
         // Defensive: promptMemSaving can return null on API error/budget exhaustion
-        this.memory = result || this.memory || '';
+        const fresh = (result || '').trim();
 
-        // v9: bumped 500 → 1500. Madison's memory used to truncate mid-sentence
-        // ("Distrust Fox/Wo..."). 1500 chars holds richer multi-event narratives.
-        if (this.memory && this.memory.length > 1500) {
-            this.memory = this.memory.slice(0, 1500);
-            this.memory += '...(Memory truncated to 1500 chars. Compress it more next time)';
+        // v11: append-rather-than-overwrite. The LLM's consolidated memory
+        // sometimes drops earlier detail (the "Distrust Fox/Wo..." pattern was
+        // partly LLM compression discarding context across compactions). If the
+        // new summary is markedly shorter than what we had, treat it as a delta
+        // and stitch onto the prior memory instead of replacing wholesale.
+        if (!fresh) {
+            this.memory = prior;
+        } else if (prior && fresh.length < prior.length * 0.8) {
+            this.memory = prior + ' || ' + fresh;
+        } else {
+            this.memory = fresh;
+        }
+
+        // v11: cap bumped 1500 → 2000 to hold richer multi-event narratives.
+        if (this.memory && this.memory.length > 2000) {
+            this.memory = this.memory.slice(this.memory.length - 2000); // keep most-recent end
         }
 
         console.log("Memory updated to: ", this.memory);

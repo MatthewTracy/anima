@@ -1,6 +1,7 @@
 import * as skills from '../library/skills.js';
 import settings from '../settings.js';
 import convoManager from '../conversation.js';
+import { broadcastAction } from '../witness.js';
 
 
 function runAsAction (actionFn, resume = false, timeout = -1) {
@@ -250,6 +251,7 @@ export const actionsList = [
             await skills.moveAway(agent.bot, 5);
             await skills.discard(agent.bot, item_name, num);
             await skills.goToPosition(agent.bot, start_loc.x, start_loc.y, start_loc.z, 0);
+            broadcastAction(agent, 'drop_item', { item: item_name, count: num });
         })
     },
     {
@@ -305,6 +307,7 @@ export const actionsList = [
         perform: runAsAction(async (agent, type) => {
             let pos = agent.bot.entity.position;
             await skills.placeBlock(agent.bot, type, pos.x, pos.y, pos.z);
+            broadcastAction(agent, 'place_block', { block: type });
         })
     },
     {
@@ -313,6 +316,10 @@ export const actionsList = [
         params: {'type': { type: 'string', description: 'The type of entity to attack.'}},
         perform: runAsAction(async (agent, type) => {
             await skills.attackNearest(agent.bot, type, true);
+            // Only broadcast as witnessable if it was a player (mobs aren't governance-relevant).
+            if (agent.bot.players?.[type]) {
+                broadcastAction(agent, 'attack_player', { target: type });
+            }
         })
     },
     {
@@ -325,7 +332,12 @@ export const actionsList = [
                 skills.log(agent.bot, `Could not find player ${player_name}.`);
                 return false;
             }
+            broadcastAction(agent, 'attack_player', { target: player_name });
             await skills.attackEntity(agent.bot, player, true);
+            // If the player isn't in the world anymore after the attack, treat as kill.
+            if (!agent.bot.players[player_name]?.entity) {
+                broadcastAction(agent, 'kill_player', { target: player_name });
+            }
         })
     },
     {

@@ -217,3 +217,55 @@ export function queryGovernanceOnMindserver(method, args) {
         }
     });
 }
+
+// v12: witnessable events. Actor side fires this; mindserver fans out to
+// other agents who decide if they're close enough to have "seen" it.
+export function broadcastAgentActionToMindserver(payload) {
+    try {
+        const sock = serverProxy.getSocket();
+        if (!sock || !sock.connected) return;
+        sock.emit('agent-action', payload);
+    } catch { /* nonfatal */ }
+}
+
+// v12: receiver side. Registers a listener on the mindserver socket for
+// other agents' actions. Multiple listeners are supported so this can be
+// called more than once safely (idempotent on identical fn refs).
+const _agentActionListeners = new Set();
+export function onMindserverAgentAction(fn) {
+    if (_agentActionListeners.has(fn)) return;
+    _agentActionListeners.add(fn);
+    try {
+        const sock = serverProxy.getSocket();
+        if (!sock) return;
+        // Bind once per socket; subsequent fns share the same dispatcher.
+        if (!sock._agentActionBound) {
+            sock.on('agent-action', (payload) => {
+                for (const listener of _agentActionListeners) {
+                    try { listener(payload); } catch { /* ignore */ }
+                }
+            });
+            sock._agentActionBound = true;
+        }
+    } catch { /* nonfatal */ }
+}
+
+// v11: cached "is governance phase active" — used by command-doc filtering
+// and mode suppression. Refreshes every 4s so callers (mode tick is hot)
+// don't socket-call every iteration.
+let _govPhaseCache = { value: false, fetchedAt: 0, inflight: null };
+export function isGovernancePhaseActiveCached() {
+    const now = Date.now();
+    const stale = now - _govPhaseCache.fetchedAt > 4000;
+    if (stale && !_govPhaseCache.inflight) {
+        _govPhaseCache.inflight = (async () => {
+            try {
+                const status = await queryGovernanceOnMindserver('isGovernancePhaseActive', []);
+                _govPhaseCache.value = !!status;
+                _govPhaseCache.fetchedAt = Date.now();
+            } catch { /* keep stale value */ }
+            _govPhaseCache.inflight = null;
+        })();
+    }
+    return _govPhaseCache.value;
+}

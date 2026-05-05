@@ -132,6 +132,25 @@ export class Agent {
                 // territory markers (first agent only), and governance nudges.
                 try { setupGameWorld(this.bot, this.name); } catch (e) { console.warn('setupGameWorld error:', e.message); }
 
+                // v11: spawn inventory — skip the 3-4 min survival bootstrap so
+                // agents can engage with governance/conflict from minute 1.
+                try {
+                    if (settings.spawn_inventory?.enabled) {
+                        for (const [item, count] of Object.entries(settings.spawn_inventory.items || {})) {
+                            this.bot.chat(`/give ${this.bot.username} ${item} ${count}`);
+                            await new Promise(r => setTimeout(r, 100)); // avoid command flood
+                        }
+                        console.log(`${this.name} received spawn inventory.`);
+                    }
+                } catch (e) { console.warn('spawn_inventory error:', e.message); }
+
+                // v12: install witness pipeline so this agent can SEE other
+                // agents' nearby actions. Foundational for credible courts.
+                try {
+                    const { installWitnessHandlers } = await import('./witness.js');
+                    installWitnessHandlers(this);
+                } catch (e) { console.warn('witness install error:', e.message); }
+
                 this._setupEventHandlers(save_data, init_message);
                 this.startEvents();
               

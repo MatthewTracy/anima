@@ -3,6 +3,7 @@ import * as world from './library/world.js';
 import * as mc from '../utils/mcdata.js';
 import settings from './settings.js'
 import convoManager from './conversation.js';
+import { isGovernancePhaseActiveCached } from './mindserver_proxy.js';
 
 async function say(agent, message) {
     agent.bot.modes.behavior_log += message + '\n';
@@ -516,7 +517,13 @@ class ModeController {
         if (_agent.isIdle()) {
             this.unPauseAll();
         }
+        // v11: when a vote/election is in flight, suppress chatty/non-survival
+        // modes so agents focus on governance instead of broadcasting "I placed
+        // a torch" mid-deliberation. Damage/defense/unstuck modes still run.
+        const govActive = isGovernancePhaseActiveCached();
+        const SUPPRESS_DURING_GOV = new Set(['torch_placing', 'idle_staring', 'item_collecting', 'elbow_room']);
         for (let mode of modes_list) {
+            if (govActive && SUPPRESS_DURING_GOV.has(mode.name)) continue;
             let interruptible = mode.interrupts.some(i => i === 'all') || mode.interrupts.some(i => i === _agent.actions.currentActionLabel);
             if (mode.on && !mode.paused && !mode.active && (_agent.isIdle() || interruptible)) {
                 await mode.update(_agent);

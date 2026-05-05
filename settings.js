@@ -83,7 +83,7 @@ const settings = {
     "code_timeout_mins": -1,
     "relevant_docs_count": 5,
 
-    "max_messages": 12,    // v10: trimmed 20→12 — saves ~30% prompt tokens with minimal quality loss
+    "max_messages": 20,    // v11: 12→20 — agents were forgetting recent vote context mid-decision
     "num_examples": 1,     // v10: trimmed 2→1 — examples were causing phantom "hunting disabled" noise
     "max_commands": -1,
     "show_command_syntax": "full",
@@ -126,10 +126,10 @@ const settings = {
         "president_term_ms": 600000,        // 10 minutes
         "judge_term_ms": 900000,            // 15 minutes
 
-        // Voting periods
-        "nomination_period_ms": 60000,      // 1 minute for nominations
-        "voting_period_ms": 90000,          // 90 seconds for election voting
-        "law_voting_period_ms": 120000,     // 2 minutes for law voting
+        // Voting periods (v11: tightened so 2-3 cycles fit in a 10-min game)
+        "nomination_period_ms": 30000,      // 30s for nominations (was 60s)
+        "voting_period_ms": 45000,          // 45s for election voting (was 90s)
+        "law_voting_period_ms": 60000,      // 60s for law voting (was 120s)
 
         // Economic parameters
         "tax_rate": 0.2,                    // 20% flat tax on valuable items
@@ -205,6 +205,22 @@ const settings = {
     "low_hp_broadcast": {
         "enabled": true,
         "threshold": 8           // HP at which to broadcast to faction
+    },
+
+    // === SPAWN INVENTORY (v11) ===
+    // Skip the 3-4 minute "punch trees, craft pickaxe, find food" survival
+    // overhead so agents can engage in governance/conflict from minute 1.
+    // Each agent gets these items via /give on spawn. Disable for purist
+    // emergent runs where you want to see if/how agents bootstrap themselves.
+    "spawn_inventory": {
+        "enabled": true,
+        "items": {
+            "wooden_pickaxe": 1,
+            "oak_planks": 32,
+            "stick": 16,
+            "bread": 8,
+            "torch": 8
+        }
     },
 }
 

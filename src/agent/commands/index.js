@@ -3,6 +3,7 @@ import { actionsList } from './actions.js';
 import { queryList } from './queries.js';
 import { governanceActionsList, governanceQueryList } from './governance.js';
 import { anarchyActionsList, anarchyQueryList } from './anarchy.js';
+import { isGovernancePhaseActiveCached } from '../mindserver_proxy.js';
 
 let suppressNoDomainWarning = true;
 
@@ -231,31 +232,81 @@ export async function executeCommand(agent, message) {
     }
 }
 
-export function getCommandDocs(agent) {
+// v11: tag commands by category so we can filter by game phase. Most commands
+// don't need to be in every prompt — filtering saves 50-80% of tokens.
+const COMBAT_CMDS = new Set(['!attack', '!attackPlayer', '!attackEntity', '!nearbyHostiles', '!defend']);
+const GOVERNANCE_CMDS = new Set([
+    '!callElection', '!nominateSelf', '!castVote', '!campaignSpeech',
+    '!proposeLaw', '!voteOnLaw', '!vetoLaw',
+    '!fileLawsuit', '!renderVerdict', '!completePunishment', '!reportNoncompliance',
+    '!payTax', '!distributeTreasury',
+    '!proposeAmendment', '!voteOnAmendment', '!impeach',
+    '!proposeTreaty', '!acceptTreaty', '!rejectTreaty', '!declareWar',
+    '!offerTrade', '!acceptTrade', '!rejectTrade'
+]);
+const ANARCHY_CMDS = new Set(['!raid', '!sabotage', '!placeBounty', '!claimBounty', '!anarchyChat']);
+const VIEW_CMDS = new Set([
+    '!viewConstitution', '!viewPending', '!viewTreasury', '!viewTaxStatus',
+    '!viewBounties', '!viewTreaties', '!viewActiveBounties', '!gameStatus'
+]);
+const COMM_CMDS = new Set(['!factionChat', '!whisperTo', '!startConversation', '!endConversation']);
+// Always-include: meta, queries, basic minecraft survival
+const ALWAYS_CMDS = new Set([
+    '!stop', '!stats', '!inventory', '!goal', '!entities', '!nearbyBlocks',
+    '!help', '!goToCoordinates', '!goToPlayer', '!collectBlocks', '!craftRecipe',
+    '!searchForBlock', '!placeBlock', '!breakBlock', '!setMode', '!stay'
+]);
+
+function _isCombatActive(agent) {
+    return !!(agent?.bot?.lastDamageTime && (Date.now() - agent.bot.lastDamageTime < 5000));
+}
+
+function _isGovernanceActive() {
+    // v11: cross-process safe — agent runs in a child process, so we can't
+    // use a local governance singleton. Read the cached flag fed by the
+    // mindserver socket query instead.
+    return isGovernancePhaseActiveCached();
+}
+
+export async function getCommandDocs(agent) {
     const typeTranslations = {
-        //This was added to keep the prompt the same as before type checks were implemented.
-        //If the language model is giving invalid inputs changing this might help.
-        'float':             'number',
-        'int':               'number',
-        'BlockName':         'string',
-        'ItemName':          'string',
-        'BlockOrItemName':   'string',
-        'boolean':           'bool'
-    }
-    let docs = `\n*COMMAND DOCS\n You can use the following commands to perform actions and get information about the world. 
-    Use the commands with the syntax: !commandName or !commandName("arg1", 1.2, ...) if the command takes arguments.\n
-    Do not use codeblocks. Use double quotes for strings. Only use one command in each response, trailing commands and comments will be ignored.\n`;
+        'float': 'number', 'int': 'number',
+        'BlockName': 'string', 'ItemName': 'string', 'BlockOrItemName': 'string',
+        'boolean': 'bool'
+    };
+
+    // v11: phase-aware filtering
+    const combat = _isCombatActive(agent);
+    const governance = _isGovernanceActive();
+
+    const shouldInclude = (cmdName) => {
+        if (agent.blocked_actions?.includes(cmdName)) return false;
+        if (ALWAYS_CMDS.has(cmdName)) return true;
+        if (combat) {
+            // In combat, only show combat + always commands
+            return COMBAT_CMDS.has(cmdName);
+        }
+        if (governance) {
+            // Governance phase — show governance + view + comm + always
+            return GOVERNANCE_CMDS.has(cmdName) || VIEW_CMDS.has(cmdName) || COMM_CMDS.has(cmdName) || ANARCHY_CMDS.has(cmdName);
+        }
+        // Default: include everything except blocked
+        return true;
+    };
+
+    let header = `\n*COMMANDS (use one per response, double quotes for strings, no codeblocks)\n`;
+    if (combat) header += `[COMBAT MODE — focus on survival]\n`;
+    else if (governance) header += `[GOVERNANCE PHASE — election/law in progress]\n`;
+
+    let docs = '';
     for (let command of commandList) {
-        if (agent.blocked_actions.includes(command.name)) {
-            continue;
-        }
-        docs += command.name + ': ' + command.description + '\n';
-        if (command.params) {
-            docs += 'Params:\n';
-            for (let param in command.params) {
-                docs += `${param}: (${typeTranslations[command.params[param].type]??command.params[param].type}) ${command.params[param].description}\n`;
-            }
-        }
+        if (!shouldInclude(command.name)) continue;
+        // v11: compact one-line format saves ~60% per command
+        const params = command.params
+            ? '(' + Object.entries(command.params).map(([k, v]) =>
+                `${k}:${typeTranslations[v.type] ?? v.type}`).join(', ') + ')'
+            : '';
+        docs += `${command.name}${params}: ${command.description}\n`;
     }
-    return docs + '*\n';
+    return header + docs + '*\n';
 }

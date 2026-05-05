@@ -216,6 +216,18 @@ class GameClock {
             console.warn('[POST-GAME] summary generation failed:', e.message);
         }
 
+        // v12: Per-agent first-person memoirs (best-effort).
+        try {
+            const { generateAutobiographies } = await import('./autobiographies.js');
+            const { CONSTITUTIONAL_MEMBERS, ANARCHY_MEMBERS } = await import('./governance_manager.js');
+            await generateAutobiographies(logger, finalScores, {
+                constitutional: CONSTITUTIONAL_MEMBERS,
+                anarchy: ANARCHY_MEMBERS
+            });
+        } catch (e) {
+            console.warn('[MEMOIR] generation failed:', e.message);
+        }
+
         if (this._onGameEnd) {
             this._onGameEnd(finalScores);
         }

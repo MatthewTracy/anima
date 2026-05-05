@@ -314,6 +314,19 @@ export function createMindServer(host_public = false, port = 8080) {
                 ack?.({ result: null, error: e.message });
             }
         });
+
+        // v12: witnessable events. An agent broadcasts an action; we relay
+        // it to every OTHER agent socket. Receivers filter by physical
+        // distance from the action location. Also forward to game logger
+        // for post-game analysis (autobiographies use these).
+        socket.on('agent-action', (payload) => {
+            try {
+                socket.broadcast.emit('agent-action', payload);
+                import('../governance/game_logger.js').then(({ getGameLogger }) => {
+                    try { getGameLogger().log('witness_action', payload); } catch { /* ignore */ }
+                }).catch(() => {});
+            } catch (e) { /* nonfatal */ }
+        });
     });
 
     // Stream governance events and narrative entries to UI

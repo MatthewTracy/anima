@@ -200,7 +200,7 @@ KEY COMMANDS: !collectBlocks, !craftRecipe, !goToCoordinates, !attack, !goToPlay
             prompt = prompt.replaceAll('$ACTION', this.agent.actions.currentActionLabel);
         }
         if (prompt.includes('$COMMAND_DOCS'))
-            prompt = prompt.replaceAll('$COMMAND_DOCS', getCommandDocs(this.agent));
+            prompt = prompt.replaceAll('$COMMAND_DOCS', await getCommandDocs(this.agent));
         if (prompt.includes('$CODE_DOCS')) {
             const code_task_content = messages.slice().reverse().find(msg =>
                 msg.role !== 'system' && msg.content.includes('!newAction(')
@@ -289,9 +289,14 @@ KEY COMMANDS: !collectBlocks, !craftRecipe, !goToCoordinates, !attack, !goToPlay
         return prompt;
     }
 
-    // A5: Detect combat context from recent messages so we can use a shorter cooldown
-    // when the agent needs to react quickly to threats.
+    // v11: stronger combat detection — bot.lastDamageTime is set on entityHurt
+    // (the actual mineflayer event) and is far more reliable than regex over
+    // chat. Falls back to keyword scan if no recent damage signal exists.
     _isCombatContext(messages) {
+        try {
+            const t = this.agent?.bot?.lastDamageTime;
+            if (t && Date.now() - t < 3000) return true;
+        } catch { /* no bot yet */ }
         if (!Array.isArray(messages) || messages.length === 0) return false;
         const recent = messages.slice(-3).map(m => (m.content || '').toLowerCase()).join(' ');
         return /(damage|attacked|hurt|enemy|hostile|dying|kill(?!ed by)|fight|help)/i.test(recent);
@@ -301,8 +306,17 @@ KEY COMMANDS: !collectBlocks, !craftRecipe, !goToCoordinates, !attack, !goToPlay
         // Allow per-profile combat_cooldown / idle_cooldown overrides; fall back to legacy `cooldown`.
         const idleCooldown = this.profile.idle_cooldown ?? this.cooldown;
         const combatCooldown = this.profile.combat_cooldown ?? Math.min(1500, this.cooldown);
-        const effective = urgency === 'combat' ? combatCooldown : idleCooldown;
+        const governanceCooldown = this.profile.governance_cooldown ?? Math.min(2000, this.cooldown);
 
+        let effective;
+        if (urgency === 'combat') effective = combatCooldown;
+        else if (urgency === 'governance') effective = governanceCooldown;
+        else effective = idleCooldown;
+
+        // v11: latency-aware — if the LLM round-trip already ate most of the
+        // cooldown window, don't sleep the *full* additional cooldown. The
+        // configured cooldown is a wall-time floor between calls, not an
+        // unconditional sleep on top of every request.
         let elapsed = Date.now() - this.last_prompt_time;
         if (elapsed < effective && effective > 0) {
             await new Promise(r => setTimeout(r, effective - elapsed));
@@ -313,7 +327,14 @@ KEY COMMANDS: !collectBlocks, !craftRecipe, !goToCoordinates, !attack, !goToPlay
     async promptConvo(messages) {
         this.most_recent_msg_time = Date.now();
         let current_msg_time = this.most_recent_msg_time;
-        const urgency = this._isCombatContext(messages) ? 'combat' : 'idle';
+        let urgency;
+        if (this._isCombatContext(messages)) urgency = 'combat';
+        else {
+            try {
+                const { isGovernancePhaseActiveCached } = await import('../agent/mindserver_proxy.js');
+                urgency = isGovernancePhaseActiveCached() ? 'governance' : 'idle';
+            } catch { urgency = 'idle'; }
+        }
 
         for (let i = 0; i < 3; i++) { // try 3 times to avoid hallucinations
             await this.checkCooldown(urgency);

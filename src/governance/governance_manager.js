@@ -9,6 +9,7 @@
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import settings from '../../settings.js';
+import { parseLawAsCode, formatMutationSummary } from './law_parser.js';
 
 // Read faction members from settings or use defaults
 const govConfig = settings.governance || {};
@@ -19,9 +20,9 @@ const ANARCHY_MEMBERS = govConfig.anarchy_members || ['Chaos', 'Wolf', 'Fox', 'B
 const GOV_PARAMS = {
     president_term_ms: govConfig.president_term_ms || 600000,         // 10 minutes
     judge_term_ms: govConfig.judge_term_ms || 900000,                 // 15 minutes
-    nomination_period_ms: govConfig.nomination_period_ms || 60000,    // 1 minute
-    voting_period_ms: govConfig.voting_period_ms || 90000,            // 90 seconds
-    law_voting_period_ms: govConfig.law_voting_period_ms || 120000,   // 2 minutes
+    nomination_period_ms: govConfig.nomination_period_ms || 30000,    // v11: 30s (was 60s)
+    voting_period_ms: govConfig.voting_period_ms || 45000,            // v11: 45s (was 90s)
+    law_voting_period_ms: govConfig.law_voting_period_ms || 60000,    // v11: 60s (was 120s)
     tax_rate: govConfig.tax_rate || 0.2,                              // 20%
     amendment_threshold: govConfig.amendment_threshold || 0.8,         // 80% supermajority
     veto_override_threshold: govConfig.veto_override_threshold || 0.67, // 2/3 to override veto
@@ -551,10 +552,16 @@ class GovernanceManager {
                 }
             }
 
-            this.logEvent('law_enacted', { law_id: law.id, text: law.text, yesVotes, noVotes });
+            // v12: constitution-as-code — parse the law's text for parseable
+            // directives that map to runtime parameter changes. The set of
+            // mutable params is small and capped (see law_parser.js), so a
+            // malformed law can't break the game.
+            const codeEffects = this._applyLawAsCode(law);
+
+            this.logEvent('law_enacted', { law_id: law.id, text: law.text, yesVotes, noVotes, codeEffects });
             return {
                 success: true,
-                message: `Law #${law.id} ENACTED: "${law.text}" (${yesVotes} yes, ${noVotes} no)`
+                message: `Law #${law.id} ENACTED: "${law.text}" (${yesVotes} yes, ${noVotes} no)${codeEffects.summary}`
             };
         } else {
             law.status = 'rejected';
@@ -563,6 +570,26 @@ class GovernanceManager {
                 success: true,
                 message: `Law #${law.id} REJECTED: "${law.text}" (${yesVotes} yes, ${noVotes} no)`
             };
+        }
+    }
+
+    // v12: parse and apply constitution-as-code mutations from an enacted law.
+    // The mutable param set is small and capped — see law_parser.js for the
+    // allowlist. Returns { mutations, notes, summary } where summary is a
+    // chat-friendly suffix appended to the enactment message.
+    _applyLawAsCode(law) {
+        try {
+            const { mutations, notes } = parseLawAsCode(law.text, GOV_PARAMS);
+            for (const m of mutations) {
+                GOV_PARAMS[m.param] = m.newValue;
+            }
+            const summary = formatMutationSummary(mutations, notes);
+            if (mutations.length > 0 || notes.length > 0) {
+                this.logEvent('law_as_code', { law_id: law.id, mutations, notes });
+            }
+            return { mutations, notes, summary };
+        } catch {
+            return { mutations: [], notes: [], summary: '' };
         }
     }
 
@@ -1301,10 +1328,24 @@ class GovernanceManager {
         return this.bounties.filter(b => b.status === 'active');
     }
 
+    // v11: tells callers (command-doc filter, mode suppressor) whether
+    // governance is in a "hot" state — active election, voting law, or
+    // vacant presidency. Used to filter prompt content and suppress noisy
+    // modes like torch_placing during deliberation.
+    isGovernancePhaseActive() {
+        const hasActiveElection = this.elections?.some(e => e.status !== 'completed');
+        const hasVotingLaw = this.laws?.some(l => l.status === 'voting');
+        const noPresident = !this.constitution?.offices?.president?.holder;
+        return !!(hasActiveElection || hasVotingLaw || noPresident);
+    }
+
     // ==================== GOVERNANCE CONTEXT FOR PROMPTS ====================
 
     getCompactStatus(agentName) {
         // #14: include past-session memory for both factions
+        // v11: also include a personal line so agents see their own track
+        // record across games — "You won president last game" etc. — instead
+        // of only faction-level outcomes. Builds reputation across runs.
         let pastHistory = '';
         try {
             const fp = './logs/sessions/journal.json';
@@ -1313,6 +1354,19 @@ class GovernanceManager {
                 if (data.length > 0) {
                     pastHistory = '\n--- RECENT GAMES ---\n' +
                         data.map(s => `[${s.date.slice(0,10)}] ${s.winner} won. Presidents: ${s.presidents?.join(', ') || 'none'}, Laws: ${s.lawsEnacted}`).join('\n') + '\n';
+
+                    // v11: personal hook
+                    const personal = [];
+                    for (let i = data.length - 1; i >= 0; i--) {
+                        const s = data[i];
+                        const ago = data.length - 1 - i;
+                        const label = ago === 0 ? 'last game' : `${ago + 1} games ago`;
+                        if (s.presidents?.includes(agentName)) personal.push(`You held president ${label}.`);
+                        else if (s.judges?.includes(agentName)) personal.push(`You held judge ${label}.`);
+                    }
+                    if (personal.length > 0) {
+                        pastHistory += `YOUR HISTORY: ${personal.join(' ')}\n`;
+                    }
                 }
             }
         } catch (e) { /* ignore */ }
