@@ -236,8 +236,17 @@ KEY COMMANDS: !collectBlocks, !craftRecipe, !goToCoordinates, !attack, !goToPlay
         }
         if (prompt.includes('$GOVERNANCE')) {
             try {
-                const gov = getGovernanceManager();
-                const govStatus = gov.getCompactStatus(this.agent.name);
+                // G2: query mindserver for canonical governance state. Falls
+                // back to local instance if mindserver unreachable (single-agent dev).
+                let govStatus = null;
+                try {
+                    const { queryGovernanceOnMindserver } = await import('../agent/mindserver_proxy.js');
+                    govStatus = await queryGovernanceOnMindserver('getCompactStatus', [this.agent.name]);
+                } catch (e) { /* not in agent process — fall through */ }
+                if (!govStatus) {
+                    const gov = getGovernanceManager();
+                    govStatus = gov.getCompactStatus(this.agent.name);
+                }
                 const clock = getGameClock();
                 const clockStatus = clock.isRunning ? `Game time: ${clock.getElapsedMinutes().toFixed(0)} min elapsed, ${clock.getRemainingMinutes().toFixed(0)} min remaining.\n` : '';
                 prompt = prompt.replaceAll('$GOVERNANCE', clockStatus + govStatus);
@@ -245,11 +254,18 @@ KEY COMMANDS: !collectBlocks, !craftRecipe, !goToCoordinates, !attack, !goToPlay
                 prompt = prompt.replaceAll('$GOVERNANCE', '');
             }
         }
-        // N2: $RELATIONSHIPS placeholder — per-agent trust ledger
+        // N2 + G2: $RELATIONSHIPS placeholder — query mindserver for canonical state
         if (prompt.includes('$RELATIONSHIPS')) {
             try {
-                const gov = getGovernanceManager();
-                const relText = gov.getRelationshipsText(this.agent.name);
+                let relText = null;
+                try {
+                    const { queryGovernanceOnMindserver } = await import('../agent/mindserver_proxy.js');
+                    relText = await queryGovernanceOnMindserver('getRelationshipsText', [this.agent.name]);
+                } catch (e) { /* not in agent process */ }
+                if (relText === null || relText === undefined) {
+                    const gov = getGovernanceManager();
+                    relText = gov.getRelationshipsText(this.agent.name);
+                }
                 prompt = prompt.replaceAll('$RELATIONSHIPS', relText);
             } catch (e) {
                 prompt = prompt.replaceAll('$RELATIONSHIPS', '');

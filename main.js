@@ -112,6 +112,12 @@ if (args.preset === 'experiment') {
 // guard now, BEFORE the first LLM call could possibly fire.
 refreshBudgetCapsFromSettings();
 
+// v8: emergent mode swaps init_message and disables scaffolding
+if (settings.emergent_mode && settings.init_message_emergent) {
+    console.log('[v8] EMERGENT MODE — using soft init message, no nudges, no auto-election');
+    settings.init_message = settings.init_message_emergent;
+}
+
 Mindcraft.init(true, settings.mindserver_port, settings.auto_open_ui);
 
 // C1: Eagerly initialize loggers so they exist on disk even if no
@@ -222,23 +228,26 @@ spawnAgents()
             });
 
             // G3: Auto-call election if no president by T+90s.
-            // Runs from main process. Forces the constitutional faction
-            // to actually have an active election so nominations work.
-            setTimeout(() => {
-                try {
-                    const gov = getGovernanceManager();
-                    if (!gov.constitution.offices.president.holder) {
-                        const active = gov.elections.find(e => e.office === 'president' && e.status !== 'completed');
-                        if (!active) {
-                            console.log('[G3] T+90s: No president, no active election — auto-calling.');
-                            const r = gov.callElection('system', 'president');
-                            console.log('[G3]', r.message);
+            // Skipped in emergent mode — let it fail organically if agents don't act.
+            if (!settings.emergent_mode) {
+                setTimeout(() => {
+                    try {
+                        const gov = getGovernanceManager();
+                        if (!gov.constitution.offices.president.holder) {
+                            const active = gov.elections.find(e => e.office === 'president' && e.status !== 'completed');
+                            if (!active) {
+                                console.log('[G3] T+90s: No president, no active election — auto-calling.');
+                                const r = gov.callElection('system', 'president');
+                                console.log('[G3]', r.message);
+                            }
                         }
+                    } catch (e) {
+                        console.warn('[G3] auto-election check failed:', e.message);
                     }
-                } catch (e) {
-                    console.warn('[G3] auto-election check failed:', e.message);
-                }
-            }, 90000);
+                }, 90000);
+            } else {
+                console.log('[v8 EMERGENT] Auto-election disabled — agents must organize on their own.');
+            }
         }
     })
     .catch(err => {

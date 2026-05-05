@@ -7,6 +7,7 @@ import * as mindcraft from './mindcraft.js';
 import { readFileSync } from 'fs';
 import { getGovernanceManager } from '../governance/governance_manager.js';
 import { getGameLogger } from '../governance/game_logger.js';
+import { getBudgetGuard } from '../governance/budget_guard.js';
 import { getNarrativeLogger } from '../governance/narrative_logger.js';
 import { getGameClock } from '../governance/game_clock.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -273,6 +274,24 @@ export function createMindServer(host_public = false, port = 8080) {
             } catch (e) {
                 console.warn('[mindserver] agent-gov-action error:', e.message);
                 ack?.({ success: false, message: e.message });
+            }
+        });
+
+        // G3: agents record LLM token usage against mindserver's budget so
+        // the cap is enforced across all 6 child processes, not per-process.
+        socket.on('agent-budget-record', (model, inputTokens, outputTokens, ack) => {
+            try {
+                const result = getBudgetGuard().recordUsage(model, inputTokens || 0, outputTokens || 0);
+                ack?.(result);
+            } catch (e) {
+                ack?.({ allowed: true, message: e.message });
+            }
+        });
+        socket.on('agent-budget-status', (ack) => {
+            try {
+                ack?.(getBudgetGuard().getStatus());
+            } catch (e) {
+                ack?.({ percentUsed: 0, sessionCost: 0, sessionCap: 0 });
             }
         });
 

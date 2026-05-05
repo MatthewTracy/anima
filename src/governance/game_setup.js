@@ -135,6 +135,11 @@ function placeTerritoryMarkers(bot, constSpawn, anarchySpawn) {
 
 function scheduleGovernanceNudges(bot) {
     if (!nudgeConfig.enabled) return;
+    // v8: emergent mode disables scripted nudges so agents organize on their own
+    if (settings.emergent_mode) {
+        console.log('[v8 EMERGENT] Skipping governance nudges — agents act on their own');
+        return;
+    }
     const schedule = nudgeConfig.schedule_seconds || [60, 180, 360, 600];
 
     const messages = {

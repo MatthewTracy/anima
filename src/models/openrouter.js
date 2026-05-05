@@ -2,6 +2,7 @@ import OpenAIApi from 'openai';
 import { getKey, hasKey } from '../utils/keys.js';
 import { strictFormat } from '../utils/text.js';
 import { getBudgetGuard } from '../governance/budget_guard.js';
+import { recordBudgetOnMindserver } from '../agent/mindserver_proxy.js';
 
 export class OpenRouter {
     static prefix = 'openrouter';
@@ -52,12 +53,15 @@ export class OpenRouter {
                 res = completion.choices[0].message.content;
 
                 if (completion.usage) {
-                    const budget = getBudgetGuard();
-                    const check = budget.recordUsage(
-                        this.model_name,
-                        completion.usage.prompt_tokens || 0,
-                        completion.usage.completion_tokens || 0
-                    );
+                    // G3: record against mindserver's canonical budget so the
+                    // session cap is shared across all child processes.
+                    const promptTokens = completion.usage.prompt_tokens || 0;
+                    const completionTokens = completion.usage.completion_tokens || 0;
+                    let check = await recordBudgetOnMindserver(this.model_name, promptTokens, completionTokens);
+                    // If mindserver unreachable, fall back to local guard
+                    if (check.message === 'no-mindserver' || check.message === 'timeout') {
+                        check = getBudgetGuard().recordUsage(this.model_name, promptTokens, completionTokens);
+                    }
                     if (!check.allowed) {
                         console.error(`[BUDGET GUARD] ${check.message}`);
                         process.exit(1);

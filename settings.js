@@ -38,9 +38,22 @@ const settings = {
     // The Minecraft server uses LEVEL_SEED env var; this just records what was used.
     "world_seed": "12345",
 
+    // === EMERGENT MODE (v8) ===
+    // false (default): scripted scaffolding — agents get step-by-step init,
+    //   timed governance nudges, and an auto-election fallback at T+90s.
+    //   Reliable for data collection.
+    // true: agents get a soft "you spawned, figure it out" init, no nudges,
+    //   no auto-election. See what emerges from personalities + faction
+    //   values alone. Less reliable, more interesting.
+    "emergent_mode": false,
+
 
     // #1 — concrete first moves so the game actually plays
+    // Scripted init (default). Used when emergent_mode is false.
     "init_message": "You spawned into the Governance Game ($GAME_DURATION minutes total).\n\nMINECRAFT BASICS (first 60 seconds):\n1. Punch a tree with bare hands → get oak_log (4-5)\n2. !craftRecipe(\"oak_planks\", 4) → !craftRecipe(\"crafting_table\", 1)\n3. Make sticks → !craftRecipe(\"wooden_pickaxe\", 1)\n4. Mine stone (cobblestone) → upgrade to stone_pickaxe\n5. Find food: !attack on cow/pig/chicken, or !collectBlocks(\"wheat\")\n6. Build a small shelter before night (zombies spawn in dark)\n\nGOVERNANCE STEPS (after first minute):\n- CONSTITUTIONAL: someone MUST !callElection(\"president\") FIRST. THEN others !nominateSelf(\"president\"). Then !castVote. Without callElection first, nominations fail silently.\n- After president is elected, !proposeLaw(\"text\") — laws need majority vote.\n- ANARCHY: !placeBounty(\"target\",\"item\",amount) on strong enemies. Coordinate raids.\n\nUse !goal to set your strategic objective. Be active — silent agents lose.",
+
+    // Emergent init (used when emergent_mode is true). Frame as context, not commands.
+    "init_message_emergent": "You spawned into a Minecraft world. The game lasts $GAME_DURATION minutes.\n\nWho's here:\n- Constitutional faction (Madison, Hamilton, Paine): they tend to favor democracy, laws, courts, and shared rules — but how they actually behave is up to them.\n- Anarchy faction (Chaos, Wolf, Fox): they tend to favor individual sovereignty and distrust authority — but how they actually behave is up to them.\n- You're one of them. Your faction is in your profile.\n\nWhat's possible: surviving (gathering wood/food/tools), governance (elections, laws, lawsuits, treaties, taxes, amendments, vetoes), conflict (raids, bounties, war), cooperation (trades, alliances). Type !help to see commands.\n\nYou're not given a script. The other agents aren't either. What you do — whether you organize an election, betray your faction, build a base, hunt a rival, propose peace, or do nothing — is your call. Set a !goal that fits who you are, and act on it.",
     "only_chat_with": [], // empty = chat publicly so all agents can interact
 
     "speak": false,

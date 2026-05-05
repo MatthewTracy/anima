@@ -166,6 +166,41 @@ export function callGovernanceOnMindserver(method, args) {
     });
 }
 
+// G3: record token usage against mindserver's canonical budget guard so the
+// session cap is enforced across all child processes, not per-process.
+// Returns { allowed: bool, message: string } — agent should stop on !allowed.
+export function recordBudgetOnMindserver(model, inputTokens, outputTokens) {
+    return new Promise((resolve) => {
+        try {
+            const sock = serverProxy.getSocket();
+            if (!sock || !sock.connected) return resolve({ allowed: true, message: 'no-mindserver' });
+            const timer = setTimeout(() => resolve({ allowed: true, message: 'timeout' }), 3000);
+            sock.emit('agent-budget-record', model, inputTokens, outputTokens, (result) => {
+                clearTimeout(timer);
+                resolve(result || { allowed: true, message: 'no-response' });
+            });
+        } catch (e) {
+            resolve({ allowed: true, message: e.message });
+        }
+    });
+}
+
+export function queryBudgetStatusOnMindserver() {
+    return new Promise((resolve) => {
+        try {
+            const sock = serverProxy.getSocket();
+            if (!sock || !sock.connected) return resolve(null);
+            const timer = setTimeout(() => resolve(null), 3000);
+            sock.emit('agent-budget-status', (status) => {
+                clearTimeout(timer);
+                resolve(status);
+            });
+        } catch (e) {
+            resolve(null);
+        }
+    });
+}
+
 // G1.5: read-only query
 export function queryGovernanceOnMindserver(method, args) {
     return new Promise((resolve) => {
