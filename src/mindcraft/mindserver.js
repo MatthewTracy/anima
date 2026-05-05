@@ -326,6 +326,21 @@ export function createMindServer(host_public = false, port = 8080) {
         const narrative = getNarrativeLogger();
         narrative.onEntry((entry) => {
             io.emit('narrative-entry', entry);
+            // v10: when the epilogue entry arrives (game ended), capture
+            // a final-state snapshot so the dashboard freezes and shows
+            // what actually happened instead of going blank when agents
+            // disconnect.
+            if (entry.category === 'epilogue') {
+                try {
+                    const finalState = {
+                        endTime: Date.now(),
+                        narrative: narrative.entries,
+                        governance: getGovernanceManager().getSerializableState(),
+                        scores: getGameLogger().calculateFinalScores(),
+                    };
+                    io.emit('game-final-state', finalState);
+                } catch (e) { /* optional */ }
+            }
         });
 
         // P3: rolling time-series of faction stats for live charts

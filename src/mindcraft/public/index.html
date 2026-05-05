@@ -1140,6 +1140,30 @@
             }
         });
 
+        // v10: when game ends, freeze a "GAME OVER" banner with the final scores
+        // at the top of the page so the user sees what happened even after agents disconnect.
+        let _gameEnded = false;
+        socket.on('game-final-state', (state) => {
+            if (_gameEnded) return;
+            _gameEnded = true;
+            const winner = state.scores?.winner || 'tie';
+            const cs = state.scores?.constitutional?.weightedTotal?.toFixed(1) || '?';
+            const as = state.scores?.anarchy?.weightedTotal?.toFixed(1) || '?';
+            const banner = document.createElement('div');
+            banner.style.cssText = `
+                position: sticky; top: 0; z-index: 999;
+                background: linear-gradient(90deg, #2196F3, #f44336);
+                color: white; padding: 18px 24px; margin-bottom: 12px;
+                border-radius: 8px; text-align: center;
+                font-size: 1.4em; font-weight: bold;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            `;
+            const winnerLabel = winner === 'tie' ? 'TIE' : winner.toUpperCase() + ' WINS';
+            banner.innerHTML = `🏁 GAME OVER — ${winnerLabel}<br>
+                <span style="font-size:0.85em; font-weight:normal;">Constitutional ${cs} • Anarchy ${as} • Final state frozen below</span>`;
+            document.body.insertBefore(banner, document.body.firstChild);
+        });
+
         // Narrative Feed
         socket.on('narrative-entry', (entry) => {
             const feed = document.getElementById('narrativeFeed');

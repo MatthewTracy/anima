@@ -49,7 +49,8 @@
         "convert-video": "node scripts/frames_to_video.js",
         "tournament": "node scripts/tournament.js",
         "sweep": "node scripts/sweep.js",
-        "highlights": "node scripts/highlights.js"
+        "highlights": "node scripts/highlights.js",
+        "clean-logs": "node scripts/clean_logs.js"
     },
     "devDependencies": {
         "@eslint/js": "^9.13.0",

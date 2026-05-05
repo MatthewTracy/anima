@@ -83,8 +83,8 @@ const settings = {
     "code_timeout_mins": -1,
     "relevant_docs_count": 5,
 
-    "max_messages": 20, // slightly higher for governance conversations
-    "num_examples": 2,
+    "max_messages": 12,    // v10: trimmed 20→12 — saves ~30% prompt tokens with minimal quality loss
+    "num_examples": 1,     // v10: trimmed 2→1 — examples were causing phantom "hunting disabled" noise
     "max_commands": -1,
     "show_command_syntax": "full",
     "narrate_behavior": true,

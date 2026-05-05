@@ -500,7 +500,10 @@ export class Agent {
             prev_health = this.bot.health;
         });
 
-        // G1: periodic inventory snapshots routed through mindserver
+        // G1 + v10: inventory snapshots every 60s and only when something CHANGED.
+        // Was 30s every-time = 125 events/game (48% of all events). Now writes
+        // only when contents differ from last snapshot.
+        let _lastInvSig = '';
         this._invSnapshotInterval = setInterval(() => {
             try {
                 if (!this.bot?.inventory) return;
@@ -508,9 +511,12 @@ export class Agent {
                 for (const item of this.bot.inventory.items()) {
                     counts[item.name] = (counts[item.name] || 0) + item.count;
                 }
+                const sig = Object.entries(counts).sort().map(([k, v]) => `${k}:${v}`).join(',');
+                if (sig === _lastInvSig) return; // no change, skip
+                _lastInvSig = sig;
                 logEventToMindserver('logInventorySnapshot', { args: [this.name, counts] });
             } catch (e) { /* optional */ }
-        }, 30000);
+        }, 60000);
         // Logging callbacks
         this.bot.on('error' , (err) => {
             console.error('Error event!', err);
