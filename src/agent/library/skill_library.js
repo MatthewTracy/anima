@@ -43,17 +43,29 @@ export class SkillLibrary {
         let skill_doc_similarities = [];
 
         if (select_num === -1) {
-            skill_doc_similarities = Object.keys(this.skill_docs_embeddings)
-            .map(doc_key => ({
+            // v1.1.54: when select_num=-1 means "everything", iterate the
+            // canonical skill_docs list rather than the embeddings map. The
+            // embeddings map is empty when no embedding model was ever
+            // provided, which would have collapsed the "everything" path
+            // to nothing.
+            skill_doc_similarities = (this.skill_docs || []).map(doc_key => ({
                 doc_key,
                 similarity_score: 0
             }));
         }
         else if (!this.embedding_model) {
-            skill_doc_similarities = Object.keys(this.skill_docs_embeddings)
+            // v1.1.54: two bugs in this fallback. (1) it iterated
+            // Object.keys(this.skill_docs_embeddings) which is empty when
+            // no embedding model was ever provided — so no relevant docs
+            // were ever returned, only the always-show set. (2) it passed
+            // \`this.skill_docs_embeddings[doc_key]\` (an embedding vector)
+            // as the second arg to wordOverlapScore which expects a STRING
+            // — \`vector.replace(...)\` throws TypeError. The right thing is
+            // to compare the message against the doc text itself.
+            skill_doc_similarities = (this.skill_docs || [])
                 .map(doc_key => ({
                     doc_key,
-                    similarity_score: wordOverlapScore(message, this.skill_docs_embeddings[doc_key])
+                    similarity_score: wordOverlapScore(message, doc_key)
                 }))
                 .sort((a, b) => b.similarity_score - a.similarity_score);
         }
