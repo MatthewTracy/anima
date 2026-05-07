@@ -85,21 +85,16 @@ export class StubLLM {
     async _create({ messages, max_tokens }) {
         const promptText = (messages?.[0]?.content || '').slice(0, 4000);
 
-        // Detect memoir prompt
-        if (/memoir/i.test(promptText) && /200-word/i.test(promptText)) {
-            const name = (messages[0].content.match(/You are (\w+)/) || [])[1] || 'Anonymous';
-            return this._wrap(this._stubMemoir(name));
-        }
+        // v0.37: more-robust prompt-category detection. Look at MULTIPLE
+        // signals so a small wording change doesn't break the stub.
+        const category = this._detectCategory(promptText);
+        const name = this._extractAgentName(promptText);
 
-        // Detect soul-evolution prompt
-        if (/REWRITE your soul/i.test(promptText) || /BEGIN NEW SOUL/i.test(promptText)) {
-            const name = (messages[0].content.match(/You are (\w+)/) || [])[1] || 'Anonymous';
-            return this._wrap(this._stubEvolvedSoul(name));
-        }
+        if (category === 'memoir') return this._wrap(this._stubMemoir(name));
+        if (category === 'evolution') return this._wrap(this._stubEvolvedSoul(name));
 
         // Default: turn-action JSON
-        const speakerName = (messages[0].content.match(/You are (\w+)/) || [])[1]
-            || (messages[0].content.match(/=== WHO YOU ARE THIS [\w]+ ===\s*\n[^\.]*?\b([A-Z][a-z]+)\b/) || [])[1]
+        const speakerName = name
             || this.roster[this._counter % this.roster.length]
             || 'Agent';
 
@@ -116,6 +111,56 @@ export class StubLLM {
             choices: [{ message: { content } }],
             usage: { prompt_tokens: 0, completion_tokens: 0 }
         };
+    }
+
+    /**
+     * v0.37: multi-signal prompt category detection.
+     *
+     * Returns one of: 'memoir' | 'evolution' | 'turn'.
+     * Uses several markers per category — single-marker false negatives
+     * caused brittleness in the prior version.
+     */
+    _detectCategory(text) {
+        const memoirMarkers = [
+            /\bmemoir\b/i,
+            /\b200-word\b/i,
+            /first-person.{0,40}reflection/i,
+            /End with.{0,50}motto/i
+        ];
+        const evolutionMarkers = [
+            /REWRITE your soul/i,
+            /BEGIN NEW SOUL/i,
+            /\[YOUR PRIOR SOUL\]/i,
+            /not the same person you were yesterday/i,
+            /Stay under \d{2,4} words.*soul/is
+        ];
+        const memoirHits = memoirMarkers.filter(r => r.test(text)).length;
+        const evolutionHits = evolutionMarkers.filter(r => r.test(text)).length;
+        if (evolutionHits >= 2) return 'evolution';
+        if (memoirHits >= 2) return 'memoir';
+        // Single-strong-signal fallbacks for evolution (it has the most
+        // distinctive markers); memoir requires 2 signals to avoid false
+        // positives from agents merely mentioning the word "memoir".
+        if (evolutionHits >= 1 && /soul/i.test(text)) return 'evolution';
+        return 'turn';
+    }
+
+    /**
+     * v0.37: extract the agent's name from a prompt. Tries several
+     * patterns in order — 'You are X', '### X', 'character X' etc.
+     */
+    _extractAgentName(text) {
+        const patterns = [
+            /You are (\w+)\b/,                        // canonical opener
+            /You are ([A-Z][a-z]+)[^,]*,/,            // "You are X, ..."
+            /^# (\w+)/m,                              // soul markdown header
+            /=== WHO YOU ARE THIS [\w]+ ===\s*\n.*?\b(?:You are )?(\w+)\b/m
+        ];
+        for (const re of patterns) {
+            const m = text.match(re);
+            if (m && m[1] && /^[A-Z]/.test(m[1])) return m[1];
+        }
+        return null;
     }
 
     _stubMemoir(name) {

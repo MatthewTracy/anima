@@ -28,12 +28,27 @@ const scenarioFlag = _flag(args, '--scenario');
 const manuscriptFlag = _flag(args, '--manuscript');
 const rosterFlag = _flag(args, '--roster');   // comma-separated override
 
-const ROSTERS = {
-    forum: ['Madison', 'Hamilton', 'Paine', 'Chaos', 'Wolf', 'Fox'],
-    cloister: ['Gregory', 'Anselm', 'Thomas', 'Bede', 'Lucian', 'Wolfram'],
-    outpost: ['Reyes', 'Voss', 'Kai', 'Iris', 'Hale', 'Theo'],
-    crew: ['Storm', 'Vex', 'Reef', 'Ash', 'Mara', 'Wren']
+// v0.37: roster discovery is now dynamic. We try in this order:
+//   1. --roster flag override
+//   2. scenarios/<scenario>/scenario.json's "roster" array
+//   3. legacy hardcoded fallback (kept for backward compat with Forum)
+const LEGACY_ROSTERS = {
+    forum: ['Madison', 'Hamilton', 'Paine', 'Chaos', 'Wolf', 'Fox']
 };
+
+function _discoverRoster(scenarioName) {
+    if (!scenarioName) return [];
+    const manifestPath = `./scenarios/${scenarioName}/scenario.json`;
+    if (existsSync(manifestPath)) {
+        try {
+            const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+            if (Array.isArray(manifest.roster) && manifest.roster.length > 0) {
+                return manifest.roster.slice();
+            }
+        } catch { /* fall through to legacy */ }
+    }
+    return LEGACY_ROSTERS[scenarioName] || [];
+}
 
 function _flag(arr, name) {
     const i = arr.indexOf(name);
@@ -258,7 +273,7 @@ function main() {
     const memoirs = readMemoirs(manuscript.scenario, manuscript.path);
     const roster = rosterFlag
         ? rosterFlag.split(',').map(s => s.trim()).filter(Boolean)
-        : (ROSTERS[manuscript.scenario] || []);
+        : _discoverRoster(manuscript.scenario);
     const souls = roster.map(name => {
         const snap = readSoulSnapshot(name);
         return snap ? { name, ...snap } : null;
