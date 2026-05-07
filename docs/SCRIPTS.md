@@ -12,6 +12,7 @@
 | **`substrate <agent>`** | Print every layer of one agent's cognitive state — identity, soul DNA, mood, allostatic load, beliefs, recursive beliefs, burden, persona mask, habituation curves, DMN rumination. |
 | **`substrate-diff <A> <B>`** | Side-by-side comparison of two agents' state. Identity / mood + load / top beliefs / felt moments / DMN voice. |
 | **`substrate-all [--living] [--names X,Y,Z]`** | Cohort-wide inspection — runs `substrate` for every agent in `bots/`. |
+| **`substrate-stats [--living] [--names X,Y,Z]`** | Aggregate stats across the cohort — distribution of allostatic levels, dissonance levels, mood labels; mean active beliefs; locked/masked counts. |
 | **`timescales`** | Print every substrate tuning constant (load rates, half-lives, thresholds, capacities) grouped by layer with citations. |
 | **`souls [name] [--full] [--history] [--last N]`** | Soul census: who's alive, who's locked, motto drift over time. |
 | **`feuds`** | Cross-game antagonism graph. |
