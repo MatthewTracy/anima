@@ -18,9 +18,13 @@ import { ruminate } from '../core/cognition/dmn.js';
 import { detectPride } from '../core/cognition/dissonance.js';
 
 const NAME = '_TestPride';
+const TARGET_NAMES = ['_TestPrideX', '_TestPrideY'];
 
 function clean() {
     if (existsSync(`./bots/${NAME}`)) rmSync(`./bots/${NAME}`, { recursive: true, force: true });
+    for (const n of TARGET_NAMES) {
+        if (existsSync(`./bots/${n}`)) rmSync(`./bots/${n}`, { recursive: true, force: true });
+    }
 }
 beforeEach(clean);
 afterEach(clean);
@@ -43,8 +47,8 @@ test('one strong positive actor entry → soft pride', () => {
 
 test('negative-valence actor entries do NOT trigger pride', () => {
     const log = new AffectLog(NAME);
-    log.record({ type: 'attack_player', actor: NAME, target: 'X' }, 'actor');
-    log.record({ type: 'attack_player', actor: NAME, target: 'Y' }, 'actor');
+    log.record({ type: 'attack_player', actor: NAME, target: '_TestPrideX' }, 'actor');
+    log.record({ type: 'attack_player', actor: NAME, target: '_TestPrideY' }, 'actor');
     const r = detectPride(NAME);
     assert.equal(r.level, 'none');
 });
@@ -71,8 +75,8 @@ test('DMN: dissonance takes precedence over pride when BOTH fire', () => {
     const log = new AffectLog(NAME);
     log.record({ type: 'repair', actor: NAME }, 'actor');
     log.record({ type: 'repair', actor: NAME }, 'actor');
-    log.record({ type: 'attack_player', actor: NAME, target: 'X' }, 'actor');
-    log.record({ type: 'attack_player', actor: NAME, target: 'Y' }, 'actor');
+    log.record({ type: 'attack_player', actor: NAME, target: '_TestPrideX' }, 'actor');
+    log.record({ type: 'attack_player', actor: NAME, target: '_TestPrideY' }, 'actor');
     new BeliefTable(NAME).set('SomeoneElse', +0.4, 'noted');
 
     const m = ruminate(NAME, { persist: false });

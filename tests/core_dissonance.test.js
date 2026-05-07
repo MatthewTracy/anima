@@ -16,16 +16,20 @@ import { BeliefTable } from '../core/beliefs/belief_table.js';
 import { ruminate } from '../core/cognition/dmn.js';
 
 const NAME = '_TestDissonance';
+const TARGET_NAMES = ['_TestDisX'];
 
 function clean() {
     if (existsSync(`./bots/${NAME}`)) rmSync(`./bots/${NAME}`, { recursive: true, force: true });
+    for (const n of TARGET_NAMES) {
+        if (existsSync(`./bots/${n}`)) rmSync(`./bots/${n}`, { recursive: true, force: true });
+    }
 }
 beforeEach(clean);
 afterEach(clean);
 
 test('two negative-valence self-actions trigger the loud dissonance line', () => {
     const log = new AffectLog(NAME);
-    log.record({ type: 'attack_player', actor: NAME, target: 'X' }, 'actor');
+    log.record({ type: 'attack_player', actor: NAME, target: '_TestDisX' }, 'actor');
     log.record({ type: 'attack_player', actor: NAME, target: 'Y' }, 'actor');
     new BeliefTable(NAME).set('X', -0.3, 'context');
 
@@ -35,7 +39,7 @@ test('two negative-valence self-actions trigger the loud dissonance line', () =>
 
 test('single strong negative self-action triggers the soft variant', () => {
     const log = new AffectLog(NAME);
-    log.record({ type: 'kill_player', actor: NAME, target: 'X' }, 'actor');
+    log.record({ type: 'kill_player', actor: NAME, target: '_TestDisX' }, 'actor');
     new BeliefTable(NAME).set('X', -0.5, 'reason');
 
     const m = ruminate(NAME, { persist: false });
@@ -68,7 +72,7 @@ test('victim entries (role=target) do not trigger dissonance', () => {
 
 test('one mild negative self-action does NOT trigger (insufficient evidence)', () => {
     const log = new AffectLog(NAME);
-    log.record({ type: 'flog', actor: NAME, target: 'X' }, 'actor');
+    log.record({ type: 'flog', actor: NAME, target: '_TestDisX' }, 'actor');
     new BeliefTable(NAME).set('X', -0.2, 'context');
 
     const m = ruminate(NAME, { persist: false });

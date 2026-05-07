@@ -14,9 +14,13 @@ import { AffectLog } from '../core/affect/affect.js';
 import { detectDissonance, _CONSTANTS } from '../core/cognition/dissonance.js';
 
 const NAME = '_TestDissonanceModule';
+const TARGET_NAMES = ['_TestDisModX', '_TestDisModY', '_TestDisModZ'];
 
 function clean() {
     if (existsSync(`./bots/${NAME}`)) rmSync(`./bots/${NAME}`, { recursive: true, force: true });
+    for (const n of TARGET_NAMES) {
+        if (existsSync(`./bots/${n}`)) rmSync(`./bots/${n}`, { recursive: true, force: true });
+    }
 }
 beforeEach(clean);
 afterEach(clean);
@@ -30,8 +34,8 @@ test('no agent → none', () => {
 
 test('two negative-valence actor entries → loud', () => {
     const log = new AffectLog(NAME);
-    log.record({ type: 'attack_player', actor: NAME, target: 'X' }, 'actor');
-    log.record({ type: 'attack_player', actor: NAME, target: 'Y' }, 'actor');
+    log.record({ type: 'attack_player', actor: NAME, target: '_TestDisModX' }, 'actor');
+    log.record({ type: 'attack_player', actor: NAME, target: '_TestDisModY' }, 'actor');
     const r = detectDissonance(NAME);
     assert.equal(r.level, 'loud');
     assert.equal(r.entries.length, 2);
@@ -40,14 +44,14 @@ test('two negative-valence actor entries → loud', () => {
 
 test('one strong negative-valence actor entry → soft', () => {
     const log = new AffectLog(NAME);
-    log.record({ type: 'kill_player', actor: NAME, target: 'X' }, 'actor');
+    log.record({ type: 'kill_player', actor: NAME, target: '_TestDisModX' }, 'actor');
     const r = detectDissonance(NAME);
     assert.equal(r.level, 'soft');
 });
 
 test('one mild negative actor entry → none', () => {
     const log = new AffectLog(NAME);
-    log.record({ type: 'flog', actor: NAME, target: 'X' }, 'actor');
+    log.record({ type: 'flog', actor: NAME, target: '_TestDisModX' }, 'actor');
     const r = detectDissonance(NAME);
     // flog magnitude (0.65 × 0.70 = 0.455) is below STRONG_MAGNITUDE 0.55
     assert.equal(r.level, 'none');
@@ -63,9 +67,9 @@ test('victim entries (role=target) ignored', () => {
 
 test('entries sorted by magnitude desc; strongest is first', () => {
     const log = new AffectLog(NAME);
-    log.record({ type: 'flog', actor: NAME, target: 'X' }, 'actor');         // mag ~0.45
-    log.record({ type: 'kill_player', actor: NAME, target: 'Y' }, 'actor');  // mag 1.0
-    log.record({ type: 'attack_player', actor: NAME, target: 'Z' }, 'actor'); // mag 0.48
+    log.record({ type: 'flog', actor: NAME, target: '_TestDisModX' }, 'actor');         // mag ~0.45
+    log.record({ type: 'kill_player', actor: NAME, target: '_TestDisModY' }, 'actor');  // mag 1.0
+    log.record({ type: 'attack_player', actor: NAME, target: '_TestDisModZ' }, 'actor'); // mag 0.48
     const r = detectDissonance(NAME);
     assert.equal(r.entries[0].type, 'kill_player');
     assert.ok(r.entries[0].magnitude >= r.entries[1].magnitude);

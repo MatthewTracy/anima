@@ -9,9 +9,13 @@ import { AffectLog } from '../core/affect/affect.js';
 import { consolidate, readConsolidatedMemory, asPromptText } from '../core/affect/consolidation.js';
 
 const NAME = '_TestConsolidate';
+const ACTOR_NAMES = ['_TestConsX', '_TestConsY'];
 
 function clean() {
     if (existsSync(`./bots/${NAME}`)) rmSync(`./bots/${NAME}`, { recursive: true, force: true });
+    for (const n of ACTOR_NAMES) {
+        if (existsSync(`./bots/${n}`)) rmSync(`./bots/${n}`, { recursive: true, force: true });
+    }
 }
 
 beforeEach(clean);
@@ -19,8 +23,8 @@ afterEach(clean);
 
 test('consolidate writes a markdown entry to consolidated_memory.md', () => {
     const log = new AffectLog(NAME);
-    log.record({ type: 'kill_player', actor: 'X', target: NAME }, 'target');
-    log.record({ type: 'flog', actor: 'Y', target: NAME }, 'target');
+    log.record({ type: 'kill_player', actor: '_TestConsX', target: NAME }, 'target');
+    log.record({ type: 'flog', actor: '_TestConsY', target: NAME }, 'target');
 
     consolidate(NAME, { scenario: 'forum-test', clearAffectLog: false });
     const memory = readConsolidatedMemory(NAME);
@@ -31,9 +35,9 @@ test('consolidate writes a markdown entry to consolidated_memory.md', () => {
 
 test('consolidate detects recurring themes', () => {
     const log = new AffectLog(NAME);
-    log.record({ type: 'flog', actor: 'X', target: NAME }, 'target');
-    log.record({ type: 'flog', actor: 'X', target: NAME }, 'target');
-    log.record({ type: 'flog', actor: 'X', target: NAME }, 'target');
+    log.record({ type: 'flog', actor: '_TestConsX', target: NAME }, 'target');
+    log.record({ type: 'flog', actor: '_TestConsX', target: NAME }, 'target');
+    log.record({ type: 'flog', actor: '_TestConsX', target: NAME }, 'target');
 
     const entry = consolidate(NAME, { scenario: 't', clearAffectLog: false });
     assert.ok(entry.themes.length > 0, 'expected theme detection');
@@ -44,17 +48,17 @@ test('consolidate detects recurring themes', () => {
 
 test('consolidate identifies recurring others', () => {
     const log = new AffectLog(NAME);
-    log.record({ type: 'flog', actor: 'X', target: NAME }, 'target');
-    log.record({ type: 'kill_player', actor: 'X', target: NAME }, 'target');
+    log.record({ type: 'flog', actor: '_TestConsX', target: NAME }, 'target');
+    log.record({ type: 'kill_player', actor: '_TestConsX', target: NAME }, 'target');
 
     const entry = consolidate(NAME, { scenario: 't', clearAffectLog: false });
-    const x = entry.recurring_others.find(o => o.agent === 'X');
-    assert.ok(x, 'X should be flagged as recurring antagonist');
+    const x = entry.recurring_others.find(o => o.agent === '_TestConsX');
+    assert.ok(x, '_TestConsX should be flagged as recurring antagonist');
 });
 
 test('consolidate clears AffectLog by default', () => {
     const log = new AffectLog(NAME);
-    log.record({ type: 'kill_player', actor: 'X', target: NAME }, 'target');
+    log.record({ type: 'kill_player', actor: '_TestConsX', target: NAME }, 'target');
     assert.ok(log.topMoments(1).length > 0);
 
     consolidate(NAME, { scenario: 't' });   // clearAffectLog defaults to true
@@ -77,10 +81,10 @@ test('asPromptText returns marker when no consolidation yet', () => {
 
 test('multiple consolidations append (cortical accumulation)', () => {
     const log = new AffectLog(NAME);
-    log.record({ type: 'kill_player', actor: 'X', target: NAME }, 'target');
+    log.record({ type: 'kill_player', actor: '_TestConsX', target: NAME }, 'target');
     consolidate(NAME, { scenario: 'g1', clearAffectLog: true });
 
-    log.record({ type: 'flog', actor: 'Y', target: NAME }, 'target');
+    log.record({ type: 'flog', actor: '_TestConsY', target: NAME }, 'target');
     consolidate(NAME, { scenario: 'g2', clearAffectLog: true });
 
     const memory = readConsolidatedMemory(NAME);
@@ -95,7 +99,7 @@ test('v1.1.4: header is written exactly once across many consolidations', () => 
     // both saw missing-file and both wrote the header.)
     const log = new AffectLog(NAME);
     for (let i = 0; i < 5; i++) {
-        log.record({ type: 'flog', actor: 'X', target: NAME }, 'target');
+        log.record({ type: 'flog', actor: '_TestConsX', target: NAME }, 'target');
         consolidate(NAME, { scenario: `g${i}`, clearAffectLog: true });
     }
     const memory = readConsolidatedMemory(NAME);

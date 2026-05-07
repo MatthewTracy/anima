@@ -8,9 +8,13 @@ import { existsSync, rmSync } from 'fs';
 import { tagEvent, tagEventForWitness, AffectLog } from '../core/affect/affect.js';
 
 const NAME = '_TestAffect';
+const ACTOR_NAMES = ['_TestAffectX', '_TestAffectY'];
 
 function clean() {
     if (existsSync(`./bots/${NAME}`)) rmSync(`./bots/${NAME}`, { recursive: true, force: true });
+    for (const n of ACTOR_NAMES) {
+        if (existsSync(`./bots/${n}`)) rmSync(`./bots/${n}`, { recursive: true, force: true });
+    }
 }
 
 beforeEach(clean);
@@ -44,7 +48,7 @@ test('tagEventForWitness scales arousal by role', () => {
 test('AffectLog.record + topMoments orders by magnitude', () => {
     const log = new AffectLog(NAME);
     log.record({ type: 'speak', actor: NAME, turn: 1 }, 'actor');
-    log.record({ type: 'kill_player', actor: 'X', target: NAME, turn: 2 }, 'target');
+    log.record({ type: 'kill_player', actor: '_TestAffectX', target: NAME, turn: 2 }, 'target');
     log.record({ type: 'lectio', actor: NAME, turn: 3 }, 'actor');
     const top = log.topMoments(3);
     // kill_player (target) should be first — highest magnitude
@@ -53,8 +57,8 @@ test('AffectLog.record + topMoments orders by magnitude', () => {
 
 test('AffectLog.currentMood produces a label', () => {
     const log = new AffectLog(NAME);
-    log.record({ type: 'kill_player', actor: 'X', target: NAME, turn: 1 }, 'target');
-    log.record({ type: 'flog', actor: 'X', target: NAME, turn: 2 }, 'target');
+    log.record({ type: 'kill_player', actor: '_TestAffectX', target: NAME, turn: 1 }, 'target');
+    log.record({ type: 'flog', actor: '_TestAffectX', target: NAME, turn: 2 }, 'target');
     const mood = log.currentMood();
     // After two devastating witnessed events, mood should be devastated/shaken
     assert.ok(['devastated', 'shaken', 'tense'].includes(mood.label),
@@ -63,7 +67,7 @@ test('AffectLog.currentMood produces a label', () => {
 
 test('AffectLog.decay reduces magnitudes', () => {
     const log = new AffectLog(NAME);
-    log.record({ type: 'kill_player', actor: 'X', target: NAME }, 'target');
+    log.record({ type: 'kill_player', actor: '_TestAffectX', target: NAME }, 'target');
     const before = log.topMoments(1)[0].magnitude;
     log.decay(0.20);
     const after = log.topMoments(1)[0].magnitude;
@@ -81,7 +85,7 @@ test('AffectLog filters out near-zero events', () => {
 
 test('AffectLog.asPromptText returns FELT STATE block when populated', () => {
     const log = new AffectLog(NAME);
-    log.record({ type: 'kill_player', actor: 'X', target: NAME }, 'target');
+    log.record({ type: 'kill_player', actor: '_TestAffectX', target: NAME }, 'target');
     const text = log.asPromptText();
     assert.match(text, /YOUR FELT STATE/);
     assert.match(text, /(devastated|shaken|tense)/);
@@ -103,7 +107,7 @@ test('v1.1.5: a stray .tmp from a prior crashed write does NOT poison the real f
 
     // Pre-seed a real, valid affect.json
     const log = new AffectLog(NAME);
-    log.record({ type: 'kill_player', actor: 'X', target: NAME }, 'target');
+    log.record({ type: 'kill_player', actor: '_TestAffectX', target: NAME }, 'target');
     const beforeTop = log.topMoments(1);
     assert.equal(beforeTop.length, 1);
 
@@ -118,7 +122,7 @@ test('v1.1.5: a stray .tmp from a prior crashed write does NOT poison the real f
 
     // Recording another event should atomically replace affect.json without
     // touching the corrupted tmp's contents (rename overwrites).
-    fresh.record({ type: 'flog', actor: 'Y', target: NAME }, 'target');
+    fresh.record({ type: 'flog', actor: '_TestAffectY', target: NAME }, 'target');
     const after = new AffectLog(NAME).topMoments(5);
     assert.equal(after.length, 2);
 

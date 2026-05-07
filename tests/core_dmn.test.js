@@ -19,10 +19,14 @@ import { setFaction, _resetFactionCache } from '../core/identity/faction.js';
 import { ruminate, readLatestMusings, asPromptText } from '../core/cognition/dmn.js';
 
 const NAME = '_TestDMN';
+const ACTOR_NAMES = ['_TestDmnX'];
 
 function clean() {
     _resetFactionCache();
     if (existsSync(`./bots/${NAME}`)) rmSync(`./bots/${NAME}`, { recursive: true, force: true });
+    for (const n of ACTOR_NAMES) {
+        if (existsSync(`./bots/${n}`)) rmSync(`./bots/${n}`, { recursive: true, force: true });
+    }
 }
 
 beforeEach(clean);
@@ -55,15 +59,15 @@ test('rich state yields multi-clause monologue with named characters', () => {
 
 test('faction is mentioned in the opener when known', () => {
     const log = new AffectLog(NAME);
-    log.record({ type: 'attack_player', actor: 'X', target: NAME }, 'target');
+    log.record({ type: 'attack_player', actor: '_TestDmnX', target: NAME }, 'target');
     setFaction(NAME, 'cell');
     const m = ruminate(NAME, { persist: false });
     assert.match(m, /cell/);
 });
 
 test('persistence writes a timestamped header and body', () => {
-    new AffectLog(NAME).record({ type: 'flog', actor: 'X', target: NAME }, 'target');
-    new BeliefTable(NAME).set('X', -0.5, 'flogged me');
+    new AffectLog(NAME).record({ type: 'flog', actor: '_TestDmnX', target: NAME }, 'target');
+    new BeliefTable(NAME).set('_TestDmnX', -0.5, 'flogged me');
 
     const m = ruminate(NAME);
     const path = join('./bots', NAME, 'musings.md');
@@ -93,8 +97,8 @@ test('asPromptText returns a marker when nothing has been ruminated', () => {
 });
 
 test('asPromptText returns the framed monologue when present', () => {
-    new AffectLog(NAME).record({ type: 'attack_player', actor: 'X', target: NAME }, 'target');
-    new BeliefTable(NAME).set('X', -0.4, 'hit me');
+    new AffectLog(NAME).record({ type: 'attack_player', actor: '_TestDmnX', target: NAME }, 'target');
+    new BeliefTable(NAME).set('_TestDmnX', -0.4, 'hit me');
     ruminate(NAME);
 
     const text = asPromptText(NAME);
@@ -113,8 +117,8 @@ test('musings.md is truncated when it grows past the byte cap', () => {
     }
     writeFileSync(path, big);
 
-    new AffectLog(NAME).record({ type: 'flog', actor: 'X', target: NAME }, 'target');
-    new BeliefTable(NAME).set('X', -0.5, 'flogged me');
+    new AffectLog(NAME).record({ type: 'flog', actor: '_TestDmnX', target: NAME }, 'target');
+    new BeliefTable(NAME).set('_TestDmnX', -0.5, 'flogged me');
     ruminate(NAME);
 
     const after = readFileSync(path, 'utf8');
@@ -126,8 +130,8 @@ test('musings.md is truncated when it grows past the byte cap', () => {
 });
 
 test('rumination is deterministic for fixed inputs', () => {
-    new AffectLog(NAME).record({ type: 'attack_player', actor: 'X', target: NAME }, 'target');
-    new BeliefTable(NAME).set('X', -0.5, 'hit me');
+    new AffectLog(NAME).record({ type: 'attack_player', actor: '_TestDmnX', target: NAME }, 'target');
+    new BeliefTable(NAME).set('_TestDmnX', -0.5, 'hit me');
     setFaction(NAME, 'crew');
 
     const a = ruminate(NAME, { persist: false });
