@@ -43,6 +43,17 @@ export async function createAgent(settings) {
     let load_memory = settings.load_memory || false;
     let init_message = settings.init_message || null;
 
+    // v0.43: expand a small set of placeholders in init_message before it
+    // hits the agent process. The per-turn prompt flow goes through
+    // replaceStrings() which expands $SOUL/$LINEAGE/etc., but init_message
+    // is added directly to history without that pass — so without this fix,
+    // agents see literal '$GAME_DURATION' in their first system message.
+    if (init_message && typeof init_message === 'string') {
+        const totalMin = settings.game_clock?.duration_minutes ?? 10;
+        init_message = init_message
+            .replaceAll('$GAME_DURATION', String(totalMin));
+    }
+
     try {
         try {
             const server = await getServer(settings.host, settings.port, settings.minecraft_version);
