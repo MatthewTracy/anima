@@ -1,0 +1,31 @@
+{
+    "name": "cloister",
+    "title": "The Cloister",
+    "description": "Six monks and an abbot. Doctrinal drift, schism, and an evolving canonical scripture. Pure text, no Minecraft. Proves Anima is scenario-agnostic.",
+    "embodiment": "text",
+    "duration_turns": 24,
+    "duration_minutes": null,
+    "roster": ["Gregory", "Anselm", "Thomas", "Bede", "Lucian", "Wolfram"],
+    "abbot": "Gregory",
+    "starting_doctrinal_alignment": {
+        "Gregory": 0.95,
+        "Anselm":  0.55,
+        "Thomas":  0.75,
+        "Bede":    0.40,
+        "Lucian":  0.80,
+        "Wolfram": 0.60
+    },
+    "starting_stress": {
+        "Gregory": 0.20,
+        "Anselm":  0.35,
+        "Thomas":  0.25,
+        "Bede":    0.45,
+        "Lucian":  0.65,
+        "Wolfram": 0.30
+    },
+    "model": "deepseek/deepseek-chat",
+    "outputs": {
+        "manuscript_dir": "./logs/cloister",
+        "scripture_path": "./scenarios/cloister/scripture.md"
+    }
+}

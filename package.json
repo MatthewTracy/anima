@@ -45,7 +45,7 @@
         "postinstall": "patch-package",
         "start": "node main.js",
         "forum": "node scripts/run_scenario.js forum",
-        "cloister": "node scripts/run_scenario.js cloister",
+        "cloister": "node scenarios/cloister/runner.js",
         "souls": "node scripts/soul_inspector.js",
         "test": "node --test tests/",
         "score": "node scripts/score_game.js",
