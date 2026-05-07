@@ -59,6 +59,7 @@ console.log('═'.repeat(70));
 console.log(`  ANIMA SUBSTRATE COHORT — ${names.length} agent${names.length === 1 ? '' : 's'}${livingOnly ? ' (living only)' : ''}`);
 console.log('═'.repeat(70));
 
+let failureCount = 0;
 for (const name of names.sort()) {
     // v1.1.20: process.execPath instead of bare 'node' for same-version
     // guarantee under nvm / multi-install setups.
@@ -68,4 +69,17 @@ for (const name of names.sort()) {
     });
     process.stdout.write(result.stdout || '');
     if (result.stderr) process.stderr.write(result.stderr);
+    // v1.1.21: surface spawn-level failures so the cohort report doesn't
+    // silently drop agents that failed.
+    if (result.error) {
+        console.error(`[substrate-all] spawn failed for "${name}": ${result.error.message}`);
+        failureCount++;
+    } else if (result.status !== 0 && result.status !== null) {
+        console.error(`[substrate-all] inspect_substrate exited ${result.status} for "${name}"`);
+        failureCount++;
+    }
+}
+if (failureCount > 0) {
+    console.error(`[substrate-all] ${failureCount}/${names.length} inspector calls failed.`);
+    process.exit(1);
 }

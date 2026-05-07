@@ -110,6 +110,14 @@ function inspect(agent) {
     });
     process.stdout.write(result.stdout || '');
     if (result.stderr) process.stderr.write(result.stderr);
+    // v1.1.21: surface spawn-level failures so a missing binary or a crashed
+    // child doesn't disappear silently. result.error is set when the spawn
+    // itself failed (e.g. ENOENT); status is the exit code of the child.
+    if (result.error) {
+        console.error(`[substrate_demo] spawn failed: ${result.error.message}`);
+    } else if (result.status !== 0 && result.status !== null) {
+        console.error(`[substrate_demo] inspect_substrate exited with code ${result.status} for "${agent}"`);
+    }
 }
 
 // ── Run the demo ─────────────────────────────────────────────────
@@ -157,6 +165,11 @@ const diffResult = spawnSync(process.execPath, ['scripts/substrate_diff.js', MOT
 });
 process.stdout.write(diffResult.stdout || '');
 if (diffResult.stderr) process.stderr.write(diffResult.stderr);
+if (diffResult.error) {
+    console.error(`[substrate_demo] substrate_diff spawn failed: ${diffResult.error.message}`);
+} else if (diffResult.status !== 0 && diffResult.status !== null) {
+    console.error(`[substrate_demo] substrate_diff exited with code ${diffResult.status}`);
+}
 
 console.log('');
 console.log('Demo complete. The three agents now diverge:');
