@@ -28,6 +28,7 @@ import { dnaOf } from '../core/dna/soul_dna.js';
 import { getStress, stressLevel } from '../core/cognition/allostatic_load.js';
 import { readLatestMusings } from '../core/cognition/dmn.js';
 import { exposureFactor, explainExposure } from '../core/cognition/habituation.js';
+import { detectDissonance, detectPride } from '../core/cognition/dissonance.js';
 import { OPTIMISM_THRESHOLD } from '../core/cognition/timescales.js';
 
 const args = process.argv.slice(2);
@@ -193,6 +194,22 @@ header('BURDEN (private hidden state — only you know this)');
 const burden = new Burden(agent);
 const burdenText = burden.asPromptText();
 console.log(burdenText || '  (none — clean slate)');
+
+// ── Self-narrative state (Festinger dissonance + pride) ─────────
+header('SELF-NARRATIVE (Festinger dissonance + symmetric pride)');
+const dis = detectDissonance(agent, { recentN: Infinity });
+const pride = detectPride(agent, { recentN: Infinity });
+console.log(`  Dissonance:        ${dis.level}${dis.entries.length ? ` (${dis.entries.length} self-actions felt bad)` : ''}`);
+if (dis.strongest) {
+    const t = dis.strongest;
+    console.log(`    strongest:       ${t.type}${t.target ? ' on ' + t.target : ''} [v${t.valence.toFixed(2)}/mag ${t.magnitude.toFixed(2)}]`);
+}
+console.log(`  Pride:             ${pride.level}${pride.entries.length ? ` (${pride.entries.length} self-actions felt right)` : ''}`);
+if (pride.strongest) {
+    const t = pride.strongest;
+    const sign = t.valence > 0 ? '+' : '';
+    console.log(`    strongest:       ${t.type}${t.target ? ' on ' + t.target : ''} [v${sign}${t.valence.toFixed(2)}/mag ${t.magnitude.toFixed(2)}]`);
+}
 
 // ── Persona (active mask, if any) ────────────────────────────────
 header('PERSONA (active mask)');
