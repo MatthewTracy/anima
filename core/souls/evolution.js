@@ -22,6 +22,7 @@ import { BeliefTable } from '../beliefs/belief_table.js';
 import { RecursiveBeliefTable } from '../beliefs/recursive_belief.js';
 import { Burden } from '../burdens/burden.js';
 import { AffectLog } from '../affect/affect.js';
+import { consolidate, asPromptText as consolidatedAsPromptText } from '../affect/consolidation.js';
 import { getKey, hasKey } from '../../src/utils/keys.js';
 import { getBudgetGuard } from '../../src/governance/budget_guard.js';
 import OpenAIApi from 'openai';
@@ -242,6 +243,27 @@ async function _evolveOne(agentName, events, openai, gameId = null) {
     const memoir = _formatMemoirForPrompt(agentName);
     const affect = _formatAffectForPrompt(agentName);   // v0.45
 
+    // v0.46: hippocampus → cortex consolidation. Runs BEFORE evolution.
+    // Extracts the most-charged moments, detects recurring themes,
+    // composes a deterministic narrative, and appends to the agent's
+    // consolidated_memory.md (cortical store). Then clears AffectLog
+    // (hippocampal store resets).
+    //
+    // The evolution prompt now sees BOTH: the freshly-consolidated
+    // entry (specific to this game) AND the full consolidated_memory.md
+    // (everything that's ever been kept).
+    let consolidationEntry = null;
+    try {
+        consolidationEntry = consolidate(agentName, {
+            scenario: gameId || 'unknown',
+            clearAffectLog: false   // we read affect AFTER this; don't clear yet
+        });
+    } catch (e) {
+        console.warn(`[EVOLVE] Consolidation skipped for ${agentName}: ${e.message}`);
+    }
+    const consolidatedHistory = consolidatedAsPromptText(agentName);
+    const justConsolidated = consolidationEntry ? consolidationEntry.narrative : '(no consolidation this game)';
+
     const promptTemplate = readFileSync(PROMPT_PATH, 'utf8');
     const prompt = promptTemplate
         .replaceAll('{{name}}', agentName)
@@ -252,7 +274,9 @@ async function _evolveOne(agentName, events, openai, gameId = null) {
         .replaceAll('{{burden}}', burden)
         .replaceAll('{{commitments}}', commitments)
         .replaceAll('{{memoir}}', memoir)
-        .replaceAll('{{affect}}', affect);
+        .replaceAll('{{affect}}', affect)
+        .replaceAll('{{just_consolidated}}', justConsolidated)        // v0.46
+        .replaceAll('{{consolidated_history}}', consolidatedHistory); // v0.46
 
     try {
         const completion = await openai.chat.completions.create({
