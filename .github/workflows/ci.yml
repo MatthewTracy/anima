@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  syntax-check:
+    name: Syntax check core + scenarios + scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      # No npm install — syntax-check doesn't need dependencies. The
+      # full Forum scenario depends on mineflayer + canvas, which require
+      # native build tools. Core / Cloister / Outpost / Crew are
+      # dependency-free for parsing.
+      - name: node --check core/
+        run: |
+          for f in $(find core -name '*.js'); do
+            node --check "$f"
+          done
+      - name: node --check scripts/
+        run: |
+          for f in $(find scripts -name '*.js'); do
+            node --check "$f"
+          done
+      - name: node --check scenarios/cloister + outpost + crew
+        run: |
+          for f in $(find scenarios/cloister scenarios/outpost scenarios/crew -name '*.js'); do
+            node --check "$f"
+          done
+      - name: Validate scenario JSONs
+        run: |
+          for f in $(find scenarios -name '*.json'); do
+            node -e "JSON.parse(require('fs').readFileSync('$f','utf8'))"
+          done
+      - name: Validate burden bank JSONs
+        run: |
+          for f in $(find core/burdens/banks -name '*.json'); do
+            node -e "JSON.parse(require('fs').readFileSync('$f','utf8'))"
+          done
+
+  test:
+    name: Unit tests for core/
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run core tests
+        run: |
+          node --test tests/core_souls.test.js tests/core_beliefs.test.js tests/core_burdens.test.js tests/core_feuds.test.js
