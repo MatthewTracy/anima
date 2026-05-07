@@ -26,6 +26,7 @@ import { surpriseScale } from '../affect/predictive.js';
 import { ingroupBias } from '../identity/faction.js';
 import { recordExposure } from '../cognition/habituation.js';
 import { somaticAmplify } from '../affect/somatic.js';
+import { optimismBias } from '../cognition/optimism.js';
 import { recordStress } from '../cognition/allostatic_load.js';
 
 /**
@@ -114,9 +115,13 @@ export const DEFAULT_DELTAS = {
 function _scaleByWitness(witnessName, subjectName, baseDelta, eventValence, priorTrust, habit, somatic) {
     const surprise = surpriseScale(priorTrust, eventValence);
     const ingroup  = ingroupBias(witnessName, subjectName, baseDelta);
+    // v0.93: optimism/pessimism bias — direction-specific asymmetric
+    // updating from soul DNA's trust axis. Computed against the
+    // already-scaled delta direction so signs propagate correctly.
+    const optimism = optimismBias(witnessName, baseDelta * surprise * ingroup * habit * somatic);
     return {
-        scaledDelta: baseDelta * surprise * ingroup * habit * somatic,
-        surprise, ingroup, habit, somatic
+        scaledDelta: baseDelta * surprise * ingroup * habit * somatic * optimism,
+        surprise, ingroup, habit, somatic, optimism
     };
 }
 
@@ -240,7 +245,7 @@ export function applyEventToBeliefs(event, witnesses, overrides = {}) {
             if (!witnessName || witnessName === actor) continue;
             try {
                 const beliefs = new BeliefTable(witnessName);
-                const { scaledDelta, surprise, ingroup, habit, somatic } = _scaleByWitness(
+                const { scaledDelta, surprise, ingroup, habit, somatic, optimism } = _scaleByWitness(
                     witnessName, actor, baseDelta, affect.valence,
                     beliefs.get(actor)?.trust ?? 0,
                     habitByWitness.get(witnessName) ?? 1.0,
@@ -251,6 +256,7 @@ export function applyEventToBeliefs(event, witnesses, overrides = {}) {
                 if (ingroup !== 1.0)  tags.push(`ingroup ×${ingroup.toFixed(2)}`);
                 if (Math.abs(habit - 1.0) > 0.05) tags.push(`habit ×${habit.toFixed(2)}`);
                 if (somatic > 1.05) tags.push(`somatic ×${somatic.toFixed(2)}`);
+                if (optimism !== 1.0) tags.push(`optimism ×${optimism.toFixed(2)}`);
                 const why = tags.length
                     ? `witnessed: ${event.type}${target ? ' against ' + target : ''} [${tags.join(', ')}]`
                     : `witnessed: ${event.type}${target ? ' against ' + target : ''}`;
