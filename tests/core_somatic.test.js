@@ -19,7 +19,7 @@ import { BeliefTable } from '../core/beliefs/belief_table.js';
 import { applyEventToBeliefs } from '../core/beliefs/auto_update.js';
 import { _resetFactionCache } from '../core/identity/faction.js';
 
-const NAMES = ['_TestSomA', '_TestSomB', '_TestSomC'];
+const NAMES = ['_TestSomA', '_TestSomB', '_TestSomC', '_TestSomTarget'];
 
 function clean() {
     _resetFactionCache();
@@ -107,7 +107,7 @@ test('integration: pacifist trust drops harder than warrior on identical attack'
     pacifistSoul('_TestSomA');
     warriorSoul('_TestSomB');
     const actor = '_TestSomC';
-    const target = 'irrelevant';
+    const target = '_TestSomTarget';
 
     // Witness lists deliberately each contain ONLY one of the two so they
     // don't influence each other's faction or empathy paths. Both also
@@ -127,7 +127,7 @@ test('integration: warrior trust unchanged-relative to baseline on identical att
     warriorSoul('_TestSomA');
     // _TestSomB has NO soul → no DNA → no somatic effect. Acts as baseline.
     const actor = '_TestSomC';
-    const target = 'irrelevant';
+    const target = '_TestSomTarget';
 
     applyEventToBeliefs({ type: 'attack_player', actor, target }, ['_TestSomA']);
     applyEventToBeliefs({ type: 'attack_player', actor, target }, ['_TestSomB']);

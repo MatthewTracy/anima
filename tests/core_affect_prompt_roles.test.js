@@ -17,7 +17,7 @@ import { BeliefTable } from '../core/beliefs/belief_table.js';
 import { applyEventToBeliefs } from '../core/beliefs/auto_update.js';
 import { _resetFactionCache } from '../core/identity/faction.js';
 
-const NAMES = ['_TestRoleA', '_TestRoleB', '_TestRoleC'];
+const NAMES = ['_TestRoleA', '_TestRoleB', '_TestRoleC', '_TestRoleX', '_TestRoleY'];
 
 function clean() {
     _resetFactionCache();
@@ -31,7 +31,7 @@ afterEach(clean);
 test('target entry gets "(to me)" prefix', () => {
     const me = '_TestRoleA';
     const log = new AffectLog(me);
-    log.record({ type: 'attack_player', actor: 'X', target: me }, 'target');
+    log.record({ type: 'attack_player', actor: '_TestRoleX', target: me }, 'target');
     const text = log.asPromptText();
     assert.match(text, /\(to me\) attack_player/);
 });
@@ -59,7 +59,7 @@ test('vicarious positive-valence entry gets "(felt against)" prefix (Schadenfreu
 test('actor self-entry gets "(my hand)" prefix', () => {
     const me = '_TestRoleA';
     const log = new AffectLog(me);
-    log.record({ type: 'attack_player', actor: me, target: 'X' }, 'actor');
+    log.record({ type: 'attack_player', actor: me, target: '_TestRoleX' }, 'actor');
     const text = log.asPromptText();
     assert.match(text, /\(my hand\) attack_player/);
 });
@@ -67,7 +67,7 @@ test('actor self-entry gets "(my hand)" prefix', () => {
 test('plain witness entry has no role prefix', () => {
     const me = '_TestRoleA';
     const log = new AffectLog(me);
-    log.record({ type: 'attack_player', actor: 'X', target: 'Y' }, 'witness');
+    log.record({ type: 'attack_player', actor: '_TestRoleX', target: '_TestRoleY' }, 'witness');
     const text = log.asPromptText();
     // No prefix should appear — no parentheses immediately before attack_player
     assert.match(text, /\] attack_player/);
