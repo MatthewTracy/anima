@@ -129,13 +129,17 @@ export const actionsList = [
         description: 'Find and go to the nearest block of a given type in a given range.',
         params: {
             'type': { type: 'BlockName', description: 'The block type to go to.' },
-            'search_range': { type: 'float', description: 'The range to search for the block. Minimum 32.', domain: [10, 512] }
+            // v1.1.55: align domain with the description's stated minimum
+            // (32) and with the matching !searchForEntity domain. Pre-fix
+            // the domain was [10, 512] but the description said "Minimum 32"
+            // and the perform body silently bumped any value < 32 up to 32
+            // — so an LLM passing 20 got no domain-check rejection and a
+            // post-hoc "Minimum search range is 32" log buried in action
+            // output. Tighten domain so parseCommandMessage rejects the
+            // out-of-range value at parse time with a clear message.
+            'search_range': { type: 'float', description: 'The range to search for the block. Minimum 32.', domain: [32, 512] }
         },
         perform: runAsAction(async (agent, block_type, range) => {
-            if (range < 32) {
-                log(agent.bot, `Minimum search range is 32.`);
-                range = 32;
-            }
             await skills.goToNearestBlock(agent.bot, block_type, 4, range);
         })
     },
