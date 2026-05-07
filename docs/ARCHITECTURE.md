@@ -48,6 +48,9 @@ Endgame first-person reflection. Lighter touch than soul evolution; produces sha
 ### `core/runtime/`
 Scenario-agnostic infrastructure: budget guard, scenario API, event bus.
 
+### `core/affect/`, `core/identity/`, `core/cognition/`
+The cognitive substrate. Six neuroscience-grounded layers (amygdala, consolidation, predictive coding, in-group bias, DMN, habituation) that turn a uniform belief table into a textured set of minds. See [COGNITIVE_SUBSTRATE.md](COGNITIVE_SUBSTRATE.md) for citations and the composition order.
+
 ### `scenarios/forum/`
 The Minecraft governance simulation. Inherits the v11+v12 work from `governance-game`.
 
