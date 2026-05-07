@@ -2,45 +2,121 @@
 
 > Multi-agent LLM simulation where agents have **souls that persist across runs and lock at death**.
 
-**Status: Closed source, in active development.** This README will become the public-facing pitch when we open-source.
+**Status: Closed source, active development.** Designed from day one for clean OSS launch under MIT when the substrate proves itself across enough live games.
+
+---
 
 ## What Anima is
 
-A framework for running persistent multi-agent LLM simulations. Each agent has a **soul file** — a markdown document representing who they are. The soul is read at the start of every game and rewritten at the end based on what happened. If the agent dies, the soul is **locked forever** — frozen at whatever stage it reached. Future agents read the dead soul as canonical history.
+A framework for running persistent multi-agent LLM simulations. Each agent has a markdown **soul file** that:
+- Is read at the start of every game (the agent sees who they are first, then the world)
+- Is rewritten at the end of every game based on what happened
+- **Locks forever if the agent dies** — frozen as canonical history future agents inherit
 
-The result: characters accumulate identity across runs, develop genuine arcs, and leave permanent legacies. Across many games, you get a pantheon of frozen legends and a small number of evolving survivors.
+That's the keystone. Around it, Anima ships a substrate of primitives — visible state agents share, hidden state they carry alone, and a wire-up layer that makes physical events mechanically update both. The result: characters accumulate identity across runs, develop genuine arcs, and leave permanent legacies. Across many games, you get a pantheon of frozen legends and a small number of evolving survivors.
+
+---
 
 ## Reference scenarios
 
-- **Forum** — Minecraft-based political simulation. Settlers vs predators. Governance, witnesses, constitution-as-code, autobiographies. (Inherited from `governance-game` v12.)
-- **Cloister** — Pure-text monastery. 6 monks + abbot, doctrinal drift, schism, evolving canonical scripture. Proves Anima is scenario-agnostic.
+| Scenario | Setting | Embodiment | Persistent artifact |
+|---|---|---|---|
+| **Forum** | Minecraft political simulation. Settlers vs predators, governance + courts + treaties. | mineflayer | constitution / session journal |
+| **Cloister** | Six monks + abbot. Doctrinal drift, schism, evolving canonical scripture. | text-only | scripture |
+| **Outpost** | Six crew on a deep-space station. Oxygen ticks down, an anomaly is happening, comms control what Earth hears. | text-only | earth log |
+| **Crew** | Six pirates pursued by the Royal Navy. Plunder pile, mutiny by majority, captain's log persists across voyages. | text-only | captain's log |
+
+Each scenario plugs the same substrate into a different world. The soul mechanic, witness pipeline, and synthesis layer all work identically across them.
+
+---
+
+## The substrate
+
+Eleven layers, ranked roughly by visibility:
+
+| Layer | Question it answers | Visibility |
+|---|---|---|
+| **Soul** | Who am I across games? | public, evolves at game-end, locks at death |
+| **Lineage** | Whose memory do I carry? | public, multi-generation chain |
+| **Pantheon** | Whose deaths am I born after? | public, cross-scenario archive |
+| **Beliefs** | What do I think of the others? | own-private, accumulates evidence |
+| **Reflections** | What do I think they think of me? | own-private, depth-2 theory of mind |
+| **Commitments** | What have I promised? | bilateral (you + them), tracked by ledger |
+| **Burden** | What do I privately carry? | hidden, only the bearer reads it |
+| **Auto-update** | How do events change beliefs? | mechanical, fires on witness |
+| **Temporal depth** | What did I used to be? | observable, soul history archived per save |
+| **Synthesis** | How do all my layers shape my next soul? | end-of-game LLM call reads everything |
+| **Publish** | What did this game look like? | shareable markdown issue per game |
+
+A soul says *I am the one who outlasts*. A belief table says *I trust Hamilton +0.60*. A reflection says *I believe Fox sees me as naive*. A burden whispers *I voted against my faction last game and never confessed*. The synthesis layer makes the next soul evolution incorporate all of it. The publish step turns one game's outputs into a document worth posting.
+
+---
 
 ## Why this matters
 
-Multi-agent LLM frameworks (LangChain, AutoGen, crewAI, Generative Agents) treat agents as **functions in a fixed scenario**. Anima treats them as **selves with continuity and stakes**. The soul-lock-at-death mechanic is the missing primitive that turns LLMs from disposable workers into characters with weight.
+Existing multi-agent LLM frameworks — LangChain, AutoGen, crewAI, Stanford's Generative Agents — treat agents as **functions in a fixed scenario**. They reset between runs, they have public state only, they don't accumulate.
+
+Anima treats agents as **selves with continuity and stakes**. By Locke's classical definition (memory, capacity for change, stakes in continuation), agents with souls + locks + evolution arguably *are* selves in a way prior LLM agents are not.
 
 Applications:
-- AI alignment testbed — does this LLM cooperate when given power?
-- Benchmark for social/political LLM behavior
-- Synthetic training data for agentic reasoning
-- Serialized emergent fiction with persistent characters
+- **AI alignment testbed** — does this LLM cooperate when given power? Defect when betrayal pays?
+- **Benchmark** for social/political LLM behavior, comparable across model versions
+- **Synthetic training data** for agentic reasoning (negotiations, betrayals, governance)
+- **Serialized emergent fiction** — agents whose lives readers can follow
 
-## Quickstart (internal)
+The most distinctive output: a **chronological soul history** for one agent across many games. No human authored it. No prior framework can produce it.
+
+---
+
+## Quickstart
 
 ```bash
 git clone https://github.com/MatthewTracy/anima.git
 cd anima
 npm install
-npm run forum       # run the Minecraft governance scenario
-npm run cloister    # run the text-only monastery scenario
-npm run souls       # inspect the current soul census (alive/locked)
+
+# Run a scenario (text-only ones don't need Minecraft)
+npm run cloister    # ~$0.10/game, 60-90 sec
+npm run outpost     # ~$0.10/game, sci-fi station drama
+npm run crew        # ~$0.10/game, pirate ship + uses ALL 5 primitives in one prompt
+
+# Forum needs Docker minecraft running
+docker start mc
+npm run forum       # ~$0.30/game, 10 min
+
+# Inspect the souls of every agent across every scenario
+npm run souls
+npm run souls -- Madison
+npm run souls -- Madison --history          # chronological soul drift
+npm run souls -- Madison --history --last 5 # last 5 versions only
+
+# Generate a shareable markdown "issue" of the most recent game
+npm run publish
 ```
+
+Set `OPENROUTER_API_KEY` in `.env` (or whichever provider key your scenario's profiles use).
+
+---
 
 ## Documentation
 
-- `docs/ARCHITECTURE.md` — core / scenarios / adapters split
-- `docs/SOUL_MECHANIC.md` — what souls are and why they matter
-- `docs/SCENARIO_AUTHORING.md` — how to write your own scenario
+- [`docs/SOUL_MECHANIC.md`](docs/SOUL_MECHANIC.md) — the deepest read: what souls are, why three rules, why locking is asymmetric, why synthesis matters
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — core / scenarios / adapters split, what lives where
+- [`docs/SCENARIO_AUTHORING.md`](docs/SCENARIO_AUTHORING.md) — how to build a new scenario on Anima
+
+---
+
+## A line about output
+
+The single most-publishable line Anima can produce is the **motto-drift comparison**:
+
+> **Anselm's motto:** *"I ask."* → *"To question is to honor."*
+
+That is an LLM-authored character development moment captured in 8 words. After 30 games of Anselm playing, you have 30 of those drift lines stacked vertically — the chronicle of a soul. `npm run publish` collapses one game into a single markdown issue showing that drift for every survivor, plus the chronicle, every memoir, every death's epitaph.
+
+That's the artifact this framework exists to produce.
+
+---
 
 ## License
 
