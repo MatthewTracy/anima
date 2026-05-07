@@ -103,8 +103,13 @@ export class SelfPrompter {
             }
             else {
                 no_command_count = 0;
-                await new Promise(r => setTimeout(r, this.cooldown));
             }
+            // v1.1.42: cooldown applies to BOTH branches. Pre-fix, the
+            // no-command path looped back without sleeping, firing
+            // back-to-back LLM calls during failure mode — costing tokens
+            // and risking rate limits during the very moments the agent
+            // was already flailing. Cooldown now fires every iteration.
+            await new Promise(r => setTimeout(r, this.cooldown));
         }
         console.log('self prompt loop stopped')
         this.loop_active = false;
