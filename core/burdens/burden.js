@@ -107,6 +107,61 @@ export class Burden {
     }
 
     /**
+     * v0.22: confession — the bearer publicly reveals their burden.
+     * Returns the burden record (so callers can broadcast / log it),
+     * marks it as confessed in a persistent record at bots/<name>/confessed.json
+     * so soul evolution can read it as a "What I have learned" candidate,
+     * then clears the active burden (it is no longer hidden).
+     *
+     * Future agents reading this agent's history will see the confession
+     * as a finished chapter rather than an unspoken sin.
+     *
+     * @param {object} [opts]
+     * @param {string} [opts.toAudience] - 'public' (default), 'private', or a specific name
+     * @param {string} [opts.context] - free-form context for memoir/soul
+     * @returns {object|null} the burden record + confession metadata, or null if no burden
+     */
+    confess({ toAudience = 'public', context = '' } = {}) {
+        const b = this.read();
+        if (!b) return null;
+        try {
+            // Append to a confessed-history file the bearer's soul evolution can read
+            const confessedPath = join(this.dir, 'confessed.json');
+            let history = [];
+            if (existsSync(confessedPath)) {
+                try { history = JSON.parse(readFileSync(confessedPath, 'utf8')); } catch { /* fresh */ }
+            }
+            const record = {
+                ...b,
+                confessedAt: new Date().toISOString(),
+                toAudience,
+                context: (context || '').slice(0, 500)
+            };
+            history.push(record);
+            writeFileSync(confessedPath, JSON.stringify(history, null, 2));
+
+            // Clear the active burden — it is no longer hidden
+            this.clear();
+
+            return record;
+        } catch (e) {
+            console.warn(`[BURDEN] Failed to confess for ${this.name}: ${e.message}`);
+            return null;
+        }
+    }
+
+    /**
+     * Read the bearer's confession history (zero or more past confessions).
+     * Used by soul evolution to fold confessed burdens into "What I have learned."
+     */
+    confessions() {
+        const path = join(this.dir, 'confessed.json');
+        if (!existsSync(path)) return [];
+        try { return JSON.parse(readFileSync(path, 'utf8')); }
+        catch { return []; }
+    }
+
+    /**
      * Format for $BURDEN prompt placeholder. ONLY include the burden in
      * prompts for the carrier — caller must guarantee this is not
      * substituted into shared/cross-agent prompts.

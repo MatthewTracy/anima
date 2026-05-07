@@ -109,9 +109,21 @@ function _formatReflectionsForPrompt(agentName) {
  */
 function _formatBurdenForPrompt(agentName) {
     try {
-        const b = new Burden(agentName).read();
-        if (!b) return '(no burden carried)';
-        return `[${b.kind?.toUpperCase() || 'SECRET'}] ${b.text}`;
+        const burdenObj = new Burden(agentName);
+        const active = burdenObj.read();
+        const confessions = burdenObj.confessions();
+        const lines = [];
+        if (active) {
+            lines.push(`Active (still hidden): [${active.kind?.toUpperCase() || 'SECRET'}] ${active.text}`);
+        }
+        if (confessions.length > 0) {
+            lines.push(`Past confessions (now known to others — fold into "What I have learned"):`);
+            for (const c of confessions.slice(-3)) {
+                lines.push(`  - ${c.confessedAt?.slice(0, 10)}: [${c.kind?.toUpperCase()}] "${c.text}" — confessed ${c.toAudience}`);
+            }
+        }
+        if (lines.length === 0) return '(no burden carried, no past confessions)';
+        return lines.join('\n');
     } catch {
         return '(no burden carried)';
     }
