@@ -277,11 +277,17 @@ export class AffectLog {
      * This is the classic mechanism behind depression's self-reinforcing
      * loop and mania's confidence spiral.
      *
+     * v0.76: flashbulb-memory override (Brown & Kulik 1977). Memories of
+     * unusual magnitude — the moment your hands stopped shaking when the
+     * news came in — have privileged retrieval access that BYPASSES mood
+     * congruency. Above FLASHBULB_THRESHOLD, the dissonance discount is
+     * progressively cancelled so that flashbulb-grade entries surface
+     * regardless of current mood.
+     *
      * Implementation: rank by  magnitude × congruence, where
      *   congruence = 1.0 if event.valence and mood.valence share sign
-     *                0.4 otherwise (dissonant memories are still accessible
-     *                but less salient — never zero, so the agent isn't fully
-     *                cocooned by mood).
+     *                otherwise blended toward 1.0 by flashbulb factor:
+     *                  base 0.4, lifted toward 1.0 as magnitude > 0.7.
      *
      * If the current mood's |valence| is below NEUTRAL_BAND, fall back to
      * raw topMoments() — a settled / numb agent has no mood-congruency lens
@@ -296,10 +302,23 @@ export class AffectLog {
             return data.log.slice().sort((a, b) => b.magnitude - a.magnitude).slice(0, n);
         }
         const moodSign = Math.sign(mood.valence);
-        const DISSONANT = 0.4;
+        const DISSONANT_BASE = 0.4;
+        const FLASHBULB_THRESHOLD = 0.7;
         const ranked = data.log.slice().map(e => {
             const eSign = Math.sign(e.valence);
-            const congruent = (eSign === 0) ? 0.7 : (eSign === moodSign ? 1.0 : DISSONANT);
+            let congruent;
+            if (eSign === 0) {
+                congruent = 0.7;
+            } else if (eSign === moodSign) {
+                congruent = 1.0;
+            } else {
+                // Dissonant memory. Apply flashbulb override — the higher
+                // the magnitude, the more it escapes the dissonance discount.
+                // mag = 0.7 → 0% override; mag = 1.0 → 100% override (back to 1.0)
+                const overshoot = Math.max(0, e.magnitude - FLASHBULB_THRESHOLD);
+                const flashbulb = Math.min(1, overshoot / (1 - FLASHBULB_THRESHOLD));
+                congruent = DISSONANT_BASE + (1 - DISSONANT_BASE) * flashbulb;
+            }
             return { e, score: e.magnitude * congruent };
         }).sort((a, b) => b.score - a.score);
         return ranked.slice(0, n).map(r => r.e);
