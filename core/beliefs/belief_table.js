@@ -30,6 +30,7 @@
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
+import { getStress, stressLevel } from '../cognition/allostatic_load.js';
 
 const BOTS_DIR = './bots';
 const TRUST_MIN = -1.0;
@@ -41,7 +42,19 @@ const EVIDENCE_TEXT_MAX = 120;      // chars per evidence line
 // most-charged (|trust|-ranked) relationships; the rest become a one-line
 // "background" footer so the LLM knows there are weaker ties without
 // reading them. Mirrors how working memory privileges the loudest signals.
-const ACTIVE_BELIEFS_CAP = 9;
+//
+// v0.73: stress-induced narrowing (Easterbrook 1959; Kahneman 1973). Under
+// high allostatic load, working-memory capacity contracts — peripheral
+// relationships fall out of attention as the nervous system narrows onto
+// the loudest threat-relevant signals. The cap shrinks with load:
+//   baseline (load < 0.35)   → 9 active beliefs
+//   elevated (< 0.55)        → 7 active
+//   allostatic (< 0.7)       → 5 active
+//   overloaded (≥ 0.7)       → 3 active
+const ACTIVE_BELIEFS_CAP_BASELINE   = 9;
+const ACTIVE_BELIEFS_CAP_ELEVATED   = 7;
+const ACTIVE_BELIEFS_CAP_ALLOSTATIC = 5;
+const ACTIVE_BELIEFS_CAP_OVERLOADED = 3;
 
 export class BeliefTable {
     /**
@@ -168,20 +181,33 @@ export class BeliefTable {
      * Returns a compact string the agent reads at every prompt cycle.
      *
      * v0.67: Miller's 7±2 working-memory cap. We sort by |trust| descending
-     * (loudest signals first) and render the top ACTIVE_BELIEFS_CAP. If
-     * there are weaker relationships, append a one-line footer naming them
-     * so the LLM knows they exist without re-reading them at full weight.
+     * (loudest signals first) and render the top cap. The rest become a
+     * one-line "background" footer so the LLM knows they exist.
+     *
+     * v0.73: cap shrinks under allostatic load (Easterbrook 1959). When
+     * overloaded, only the 3 loudest signals remain visible — your
+     * narrowed nervous system has dropped the peripherals. A header
+     * note flags this so the LLM understands the contraction is real,
+     * not a coincidence.
      */
     asPromptText() {
         const ranked = this.rankedTargets();
         if (ranked.length === 0) {
             return `=== YOUR BELIEFS ===\n(No beliefs yet — you have not formed an opinion of anyone you have met.)\n=== END BELIEFS ===`;
         }
+        const level = stressLevel(getStress(this.owner));
+        const cap = level === 'overloaded' ? ACTIVE_BELIEFS_CAP_OVERLOADED
+                  : level === 'allostatic' ? ACTIVE_BELIEFS_CAP_ALLOSTATIC
+                  : level === 'elevated'   ? ACTIVE_BELIEFS_CAP_ELEVATED
+                  : ACTIVE_BELIEFS_CAP_BASELINE;
         const byChargeDesc = ranked.slice().sort((a, b) => Math.abs(b.trust) - Math.abs(a.trust));
-        const active = byChargeDesc.slice(0, ACTIVE_BELIEFS_CAP);
-        const backgrounded = byChargeDesc.slice(ACTIVE_BELIEFS_CAP);
+        const active = byChargeDesc.slice(0, cap);
+        const backgrounded = byChargeDesc.slice(cap);
 
         const lines = ['=== YOUR BELIEFS — your private read on the others ==='];
+        if (level === 'overloaded' || level === 'allostatic') {
+            lines.push(`(${level} load — your attention has narrowed to only the loudest signals)`);
+        }
         for (const t of active) {
             const label = _trustLabel(t.trust);
             const trustStr = t.trust > 0 ? `+${t.trust.toFixed(2)}` : t.trust.toFixed(2);
