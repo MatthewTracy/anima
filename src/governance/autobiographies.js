@@ -11,7 +11,6 @@ import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { getKey, hasKey } from '../utils/keys.js';
 import { getBudgetGuard } from './budget_guard.js';
-import OpenAIApi from 'openai';
 
 const MEMOIR_MODEL = 'deepseek/deepseek-chat';
 const MEMOIR_WORDS = 200;
@@ -94,6 +93,18 @@ export async function generateAutobiographies(gameLogger, finalScores, factionRo
     const dir = `./logs/narratives/${gameLogger.sessionId}_memoirs`;
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 
+    // v1.1.45: dynamic import — same pattern as v1.1.35's director.js fix.
+    // Pre-fix, importing autobiographies.js (e.g. for testing or any future
+    // utility) crashed hard if the npm 'openai' package wasn't installed,
+    // even when the actual call site is the only code that needs it. Defer.
+    let OpenAIApi;
+    try {
+        const mod = await import('openai');
+        OpenAIApi = mod.default || mod;
+    } catch (e) {
+        console.warn(`[MEMOIR] 'openai' package not installed — cannot generate memoirs (${e.message})`);
+        return null;
+    }
     const openai = new OpenAIApi({
         baseURL: 'https://openrouter.ai/api/v1',
         apiKey: getKey('OPENROUTER_API_KEY')

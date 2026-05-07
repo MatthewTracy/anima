@@ -128,3 +128,15 @@ test('v1.1.35: core/director/director.js imports cleanly even without openai', a
     assert.ok(typeof mod.maybeFireDirector === 'function',
         'maybeFireDirector must be exported');
 });
+
+test('v1.1.45: src/governance/autobiographies.js imports cleanly even without openai', async () => {
+    // Same dynamic-import contract as director.js. Pre-fix, the eager
+    // `import OpenAIApi from 'openai'` at the top of autobiographies.js
+    // crashed any consumer when the npm package was absent. v1.1.45
+    // deferred the import to the call site of generateAutobiographies.
+    const { pathToFileURL } = await import('url');
+    const url = pathToFileURL(join(repoRoot, 'src/governance/autobiographies.js')).href;
+    const mod = await import(url);
+    assert.ok(typeof mod.generateAutobiographies === 'function',
+        'generateAutobiographies must be exported');
+});
