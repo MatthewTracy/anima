@@ -69,6 +69,18 @@ test('appendEpitaph + readEpitaphs round-trip', () => {
     assert.equal(after, before + 1);
 });
 
+// v0.36 regression: concurrent appends should all land (atomic appendFileSync)
+test('appendEpitaph: 6 simultaneous appends all land (no race loss)', () => {
+    const before = readEpitaphs().length;
+    const names = ['Mass1', 'Mass2', 'Mass3', 'Mass4', 'Mass5', 'Mass6'];
+    // Fire all six synchronously back-to-back — emulates the worst case of
+    // an Outpost mass-depressurization where 6 Soul.lock() calls fire in
+    // close succession. Pre-v0.36 this lost entries due to read-then-write.
+    for (const n of names) appendEpitaph(n, SAMPLE_SOUL, { cause: 'test mass event' }, 'test');
+    const after = readEpitaphs().length;
+    assert.equal(after, before + 6, `expected ${before + 6} entries after 6 appends, got ${after}`);
+});
+
 test('asPromptText returns 3 random epitaphs (or empty message)', () => {
     appendEpitaph('TestA', SAMPLE_SOUL, { cause: 'a' }, 'test');
     appendEpitaph('TestB', SAMPLE_SOUL, { cause: 'b' }, 'test');

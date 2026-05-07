@@ -15,7 +15,7 @@
  * works offline, and the soul's motto already carries the voice.
  */
 
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, appendFileSync } from 'fs';
 
 const PANTHEON_PATH = './pantheon.md';
 const PANTHEON_HEADER = `# The Pantheon
@@ -49,6 +49,13 @@ export function generateEpitaph(name, soulContent, deathInfo, scenario) {
 
 /**
  * Append an epitaph to ./pantheon.md. Best-effort — never throws.
+ *
+ * v0.36: uses appendFileSync (atomic at OS level) instead of
+ * read-modify-write. This eliminates the race where N concurrent
+ * Soul.lock() calls (e.g. mass depressurization in Outpost killing
+ * 6 simultaneously) could lose entries. With append-only writes,
+ * even truly-concurrent appends are serialized by the kernel and
+ * all entries land.
  */
 export function appendEpitaph(name, soulContent, deathInfo, scenario) {
     try {
@@ -56,11 +63,14 @@ export function appendEpitaph(name, soulContent, deathInfo, scenario) {
         const stamp = new Date().toISOString().slice(0, 10);
         const block = `\n\n## ${name} (${stamp})\n\n${epitaph}\n`;
         if (!existsSync(PANTHEON_PATH)) {
+            // First write — establish the header. This is the only
+            // non-append path; subsequent locks all use appendFileSync.
             writeFileSync(PANTHEON_PATH, PANTHEON_HEADER + block);
         } else {
-            // Append. Read first to keep file legible across many runs.
-            const existing = readFileSync(PANTHEON_PATH, 'utf8');
-            writeFileSync(PANTHEON_PATH, existing + block);
+            // ATOMIC append (POSIX guarantees; Windows append is also
+            // atomic for small writes through the OS write cache).
+            // No read-then-write means no lost entries under concurrency.
+            appendFileSync(PANTHEON_PATH, block);
         }
         return true;
     } catch (e) {
@@ -68,6 +78,7 @@ export function appendEpitaph(name, soulContent, deathInfo, scenario) {
         return false;
     }
 }
+
 
 /**
  * Read the pantheon and return all individual epitaph blocks (each a
