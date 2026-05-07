@@ -170,6 +170,7 @@ async function runOneTurn(openai, ship, profiles, model) {
             }
             for (const w of witnesses) {
                 try { ruminate(w); } catch { /* nonfatal */ }
+                try { new AffectLog(w).decay(0.05); } catch { /* nonfatal */ }
             }
             try { tickRecovery(witnesses); } catch { /* nonfatal */ }
         }

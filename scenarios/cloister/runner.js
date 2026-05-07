@@ -186,6 +186,8 @@ async function runOneTurn(openai, monastery, profiles, model) {
             // so stress doesn't accumulate without bound.
             for (const w of witnesses) {
                 try { ruminate(w); } catch { /* nonfatal */ }
+                // v1.0: per-turn affect decay (Ebbinghaus). Memories fade 5% per turn.
+                try { new AffectLog(w).decay(0.05); } catch { /* nonfatal */ }
             }
             try { tickRecovery(witnesses); } catch { /* nonfatal */ }
         }
