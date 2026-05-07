@@ -47,6 +47,7 @@
         "forum": "node scripts/run_scenario.js forum",
         "cloister": "node scenarios/cloister/runner.js",
         "outpost": "node scenarios/outpost/runner.js",
+        "crew": "node scenarios/crew/runner.js",
         "souls": "node scripts/soul_inspector.js",
         "test": "node --test tests/",
         "score": "node scripts/score_game.js",

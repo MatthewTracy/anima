@@ -1,0 +1,35 @@
+{
+    "name": "crew",
+    "title": "The Crew",
+    "description": "Six pirates on a ship, pursued by the Royal Navy. Plunder pile, mutiny by majority, Captain's Log persists across games. The first scenario to demonstrate all five Anima primitives in concert.",
+    "embodiment": "text",
+    "duration_turns": 26,
+    "duration_minutes": null,
+    "roster": ["Storm", "Vex", "Reef", "Ash", "Mara", "Wren"],
+    "captain": "Storm",
+    "starting_plunder": 40,
+    "plunder_per_lucky_turn": 8,
+    "lucky_turn_chance": 0.30,
+    "starting_threat": 1,
+    "threat_grows_per_turn": 0.15,
+    "starting_loyalty": {
+        "Storm": 0.95,
+        "Vex":   0.65,
+        "Reef":  0.80,
+        "Ash":   0.55,
+        "Mara":  0.55,
+        "Wren":  0.40
+    },
+    "model": "deepseek/deepseek-chat",
+    "outputs": {
+        "manuscript_dir": "./logs/crew",
+        "captains_log_path": "./scenarios/crew/captains_log.md"
+    },
+    "navy_threat_levels": [
+        "Distant sails on the horizon — could be merchant or warship.",
+        "Royal Navy frigate confirmed, two days behind us.",
+        "The frigate is gaining. We've cut our wake but they read it.",
+        "They're within cannon range by sunrise. Decide now."
+    ],
+    "victory_treasure_threshold": 200
+}
