@@ -20,6 +20,7 @@ import OpenAIApi from 'openai';
 import { Monastery } from './monastery.js';
 import { Soul, rosterAsLegends } from '../../core/souls/soul.js';
 import { evolveAllSouls } from '../../core/souls/evolution.js';
+import { applyEventsToBeliefs } from '../../core/beliefs/auto_update.js';
 import { getKey, hasKey } from '../../src/utils/keys.js';
 import { getBudgetGuard } from '../../src/governance/budget_guard.js';
 
@@ -131,14 +132,27 @@ async function runOneTurn(openai, monastery, profiles, model) {
         }
         const raw = completion?.choices?.[0]?.message?.content || '';
         const action = parseAction(raw);
+        const eventCountBefore = monastery.events.length;
         if (!action) {
             console.warn(`[CLOISTER] ${speakerName}: unparseable response, recording as silent lectio.`);
             monastery.applyAction(speakerName, { type: 'lectio' });
-            return { actor: speakerName, action: { type: 'lectio' }, raw };
+        } else {
+            const result = monastery.applyAction(speakerName, action);
+            console.log(`  Turn ${monastery.turn + 1} — ${result}`);
         }
-        const result = monastery.applyAction(speakerName, action);
-        console.log(`  Turn ${monastery.turn + 1} — ${result}`);
-        return { actor: speakerName, action, result };
+        // v0.21: auto-update beliefs + reflections + feuds from events
+        const newEvents = monastery.events.slice(eventCountBefore);
+        if (newEvents.length > 0) {
+            const witnesses = monastery.activeRoster();
+            const { beliefUpdates, recursiveUpdates } = applyEventsToBeliefs(
+                newEvents.map(e => ({ ...e, scenario: 'cloister' })),
+                witnesses
+            );
+            if (beliefUpdates > 0 || recursiveUpdates > 0) {
+                console.log(`    [beliefs] ${beliefUpdates} witness updates, ${recursiveUpdates} reflections`);
+            }
+        }
+        return { actor: speakerName, action, raw };
     } catch (e) {
         console.warn(`[CLOISTER] LLM call failed for ${speakerName}: ${e.message}`);
         monastery.applyAction(speakerName, { type: 'lectio' });

@@ -19,6 +19,7 @@ import OpenAIApi from 'openai';
 import { Station } from './station.js';
 import { Soul, rosterAsLegends } from '../../core/souls/soul.js';
 import { evolveAllSouls } from '../../core/souls/evolution.js';
+import { applyEventsToBeliefs } from '../../core/beliefs/auto_update.js';
 import { getKey, hasKey } from '../../src/utils/keys.js';
 import { getBudgetGuard } from '../../src/governance/budget_guard.js';
 
@@ -124,14 +125,27 @@ async function runOneTurn(openai, station, profiles, model) {
         }
         const raw = completion?.choices?.[0]?.message?.content || '';
         const action = parseAction(raw);
+        const eventCountBefore = station.events.length;
         if (!action) {
             console.warn(`[OUTPOST] ${speakerName}: unparseable response, recording as silent observation.`);
             station.applyAction(speakerName, { type: 'speak', text: '(silent — unparseable response)' });
-            return { actor: speakerName, action: { type: 'speak' }, raw };
+        } else {
+            const result = station.applyAction(speakerName, action);
+            console.log(`  Turn ${station.turn + 1} — ${result}`);
         }
-        const result = station.applyAction(speakerName, action);
-        console.log(`  Turn ${station.turn + 1} — ${result}`);
-        return { actor: speakerName, action, result };
+        // v0.21: auto-update beliefs + reflections + feuds from events
+        const newEvents = station.events.slice(eventCountBefore);
+        if (newEvents.length > 0) {
+            const witnesses = station.livingRoster();
+            const { beliefUpdates, recursiveUpdates } = applyEventsToBeliefs(
+                newEvents.map(e => ({ ...e, scenario: 'outpost' })),
+                witnesses
+            );
+            if (beliefUpdates > 0 || recursiveUpdates > 0) {
+                console.log(`    [beliefs] ${beliefUpdates} witness updates, ${recursiveUpdates} reflections`);
+            }
+        }
+        return { actor: speakerName, action, raw };
     } catch (e) {
         console.warn(`[OUTPOST] LLM call failed for ${speakerName}: ${e.message}`);
         return { actor: speakerName, error: e.message };
