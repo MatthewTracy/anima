@@ -9,6 +9,7 @@
 
 import { readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
+import { fileURLToPath } from 'url';
 
 const CATEGORY_COLORS = {
     election_called: '\x1b[36m',      // Cyan
@@ -125,7 +126,14 @@ async function replay(filepath, speed) {
     }
 }
 
-// Main
-const logFile = process.argv[2] || findLatestLog();
-const speed = parseInt(process.argv[3]) || 10;
-replay(logFile, speed);
+// v1.1.11: gate top-level execution on isMainModule. Pre-fix, importing
+// replay.js (e.g. for testing or wrapping) eagerly called findLatestLog()
+// and crashed when ./logs/games/ didn't exist yet — even though the
+// caller never asked for replay logic. ESM standard pattern: only run
+// the script body when this file is the actual entry point.
+const isMainModule = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+if (isMainModule) {
+    const logFile = process.argv[2] || findLatestLog();
+    const speed = parseInt(process.argv[3]) || 10;
+    replay(logFile, speed);
+}

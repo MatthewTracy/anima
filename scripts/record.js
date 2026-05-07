@@ -18,9 +18,15 @@
  *   ...
  */
 
-import puppeteer from 'puppeteer';
+// v1.1.11: dynamic puppeteer import. puppeteer is optional and not in
+// package.json — declaring it as a top-level import meant any code that
+// did `import './scripts/record.js'` (e.g. for testing or hygiene checks)
+// crashed with "Cannot find package 'puppeteer'". Loading dynamically
+// inside main() means the script only fails when the user actually runs
+// it, with a clearer error message if puppeteer is missing.
 import { mkdirSync, existsSync, createWriteStream } from 'fs';
 import { join } from 'path';
+import { fileURLToPath } from 'url';
 import settings from '../settings.js';
 
 const AGENTS = [
@@ -94,7 +100,23 @@ async function recordTarget(target, sessionDir, durationMs) {
     return { agent: target.name, frames: frameCount, output: outputFile };
 }
 
+// v1.1.11: dynamic puppeteer load + clear error if missing.
+let puppeteer;
+async function loadPuppeteer() {
+    if (puppeteer) return puppeteer;
+    try {
+        ({ default: puppeteer } = await import('puppeteer'));
+        return puppeteer;
+    } catch (e) {
+        console.error('[RECORD] puppeteer is not installed. Install it with:');
+        console.error('  npm install puppeteer');
+        console.error('Then re-run npm run record.');
+        process.exit(2);
+    }
+}
+
 async function main() {
+    await loadPuppeteer();
     const duration = parseFloat(process.argv[2]) || (settings.game_clock?.duration_minutes || 30);
     const durationMs = duration * 60 * 1000;
 
@@ -128,7 +150,13 @@ async function main() {
     console.log(`[RECORD] To convert to MP4, run: node scripts/frames_to_video.js ${sessionDir}`);
 }
 
-main().catch(err => {
-    console.error('[RECORD] Error:', err);
-    process.exit(1);
-});
+// v1.1.11: gate top-level execution on isMainModule (same pattern as
+// scripts/replay.js) so importing this file (e.g. for the package-
+// scripts hygiene test) does not actually run main().
+const isMainModule = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+if (isMainModule) {
+    main().catch(err => {
+        console.error('[RECORD] Error:', err);
+        process.exit(1);
+    });
+}

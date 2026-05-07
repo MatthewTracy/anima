@@ -38,3 +38,23 @@ test('every node-script referenced from package.json scripts exists', () => {
     }
     assert.deepEqual(missing, [], `npm scripts reference missing files:\n  ${missing.join('\n  ')}`);
 });
+
+test('v1.1.11: replay.js and record.js import cleanly (no eager side effects)', async () => {
+    // v1.1.11 specifically gated these two on isMainModule because
+    // they were eagerly executing scandir / requiring an unbundled
+    // puppeteer at import time. This test pins those fixes; broader
+    // "every script imports cleanly" coverage would require gating
+    // all scripts (substrate_demo, soul_inspector, etc.) which is
+    // a future cleanup pass.
+    const { pathToFileURL } = await import('url');
+    const failures = [];
+    for (const rel of ['scripts/replay.js', 'scripts/record.js']) {
+        try {
+            await import(pathToFileURL(join(repoRoot, rel)).href);
+        } catch (e) {
+            failures.push(`${rel}: ${e.message}`);
+        }
+    }
+    assert.deepEqual(failures, [],
+        `scripts that fail to import:\n  ${failures.join('\n  ')}`);
+});
