@@ -35,20 +35,20 @@ test('empty agent yields empty monologue (DMN does not invent content)', () => {
 
 test('rich state yields multi-clause monologue with named characters', () => {
     const log = new AffectLog(NAME);
-    log.record({ type: 'attack_player', actor: 'Brutus', target: NAME }, 'target');
-    log.record({ type: 'repair', actor: 'Octavia' }, 'witness');
+    log.record({ type: 'attack_player', actor: '_TestDMNActor', target: NAME }, 'target');
+    log.record({ type: 'repair', actor: '_TestDMNAlly' }, 'witness');
 
     const beliefs = new BeliefTable(NAME);
-    beliefs.set('Octavia', +0.6, 'fixed the engine');
-    beliefs.set('Brutus', -0.7, 'attacked me');
+    beliefs.set('_TestDMNAlly', +0.6, 'fixed the engine');
+    beliefs.set('_TestDMNActor', -0.7, 'attacked me');
 
     setFaction(NAME, 'crew');
 
     const m = ruminate(NAME, { persist: false });
 
     assert.ok(m.length > 60, `expected substantive monologue, got: ${m}`);
-    assert.match(m, /Octavia/);
-    assert.match(m, /Brutus/);
+    assert.match(m, /_TestDMNAlly/);
+    assert.match(m, /_TestDMNActor/);
     // mood-anchored opener should reflect the negative valence of attack
     assert.match(m, /sinking|steady|coming|sideways/);
 });

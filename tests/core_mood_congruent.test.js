@@ -117,16 +117,16 @@ test('integration: DMN replay surfaces a mood-congruent moment', () => {
     // Bias mood negative; ensure a positive moment is present but doesn't dominate.
     const log = new AffectLog(NAME);
     for (let i = 0; i < 6; i++) {
-        log.record({ type: 'attack_player', actor: 'Brutus', target: NAME }, 'target');
+        log.record({ type: 'attack_player', actor: '_TestMoodActor', target: NAME }, 'target');
     }
-    log.record({ type: 'repair', actor: 'Octavia' }, 'witness');
+    log.record({ type: 'repair', actor: '_TestMoodAlly' }, 'witness');
 
     const beliefs = new BeliefTable(NAME);
-    beliefs.set('Brutus', -0.7, 'attacked me');
-    beliefs.set('Octavia', +0.3, 'fixed something');
+    beliefs.set('_TestMoodActor', -0.7, 'attacked me');
+    beliefs.set('_TestMoodAlly', +0.3, 'fixed something');
 
     const monologue = ruminate(NAME, { persist: false });
     // The mood-congruent (negative) memory of Brutus should surface in
     // the replay line, since the current mood is sour.
-    assert.match(monologue, /Brutus/, `expected Brutus replay: ${monologue}`);
+    assert.match(monologue, /_TestMoodActor/, `expected Brutus replay: ${monologue}`);
 });

@@ -17,7 +17,10 @@ import { surpriseScale, surpriseLabel, explainSurprise } from '../core/affect/pr
 import { BeliefTable } from '../core/beliefs/belief_table.js';
 import { applyEventToBeliefs } from '../core/beliefs/auto_update.js';
 
-const NAMES = ['_TestPredA', '_TestPredB', '_TestPredC', '_TestPredD'];
+const NAMES = [
+    '_TestPredA', '_TestPredB', '_TestPredC', '_TestPredD',
+    '_TestPredActor', '_TestPredVillain', '_TestPredOutsider'
+];
 
 function clean() {
     for (const n of NAMES) {
@@ -106,7 +109,7 @@ test('integration: betrayal by trusted ally moves trust harder than from neutral
     // After a hostile act, A's drop should be larger in magnitude than B's.
     const witnessA = '_TestPredA';
     const witnessB = '_TestPredB';
-    const actor = 'Brutus';
+    const actor = '_TestPredActor';
     const target = '_TestPredC';
 
     new BeliefTable(witnessA).set(actor, +0.9, 'long history of loyalty');
@@ -132,7 +135,7 @@ test('integration: confirmatory act (distrusted other behaves badly) gets no boo
     // The drop should equal the no-surprise baseline (no extra boost).
     const witnessA = '_TestPredA';   // distrusts actor
     const witnessB = '_TestPredB';   // neutral
-    const actor = 'Iago';
+    const actor = '_TestPredVillain';
     const target = '_TestPredC';
 
     // Use a moderate prior so the clamp at -1.0 doesn't truncate the delta
@@ -158,7 +161,7 @@ test('integration: unexpected grace from feared rival lifts trust harder than fr
     // Mirror image: distrusted other does something positive.
     const witnessA = '_TestPredA';   // distrusts actor strongly
     const witnessB = '_TestPredB';   // neutral
-    const actor = 'Saul';
+    const actor = '_TestPredOutsider';
     const target = '_TestPredC';
 
     new BeliefTable(witnessA).set(actor, -0.8, 'long-standing fear');
