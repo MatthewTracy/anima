@@ -1,6 +1,6 @@
 # Cognitive Substrate
 
-> Eleven neuroscience-grounded layers that turn a uniform belief table into a textured set of minds.
+> Twelve neuroscience-grounded layers that turn a uniform belief table into a textured set of minds.
 
 This document maps each module under `core/affect/`, `core/identity/`, and `core/cognition/` onto the brain region or learning system it models, and explains how the layers compose when an event is witnessed.
 
@@ -26,8 +26,9 @@ Around that per-event pipeline, several layers run *between* events or *between*
 - **v0.53** — vicarious affect: harm to a beloved registers as your own pain (mirror neurons).
 - **v0.54** — DMN narrative integration of empathy: vicarious entries get distinct phrasing.
 - **v0.56** — allostatic load: a slow-moving stress reservoir; overloads change DMN voice.
+- **v0.67** — working-memory cap on $BELIEFS: top-9 active, the rest backgrounded.
 
-Eleven distinct mechanisms. None of them touch any LLM prompt directly. The LLM still reads a soul.md, a mood line, a beliefs table — but what those READ LIKE has been shaped by all eleven.
+Twelve distinct mechanisms. None of them touch any LLM prompt directly. The LLM still reads a soul.md, a mood line, a beliefs table — but what those READ LIKE has been shaped by all twelve.
 
 ## Per-event layers
 
@@ -123,6 +124,21 @@ After the main belief-update pass, each witness with `|trust|` > 0.4 in target/a
 
 Crucial detail: prior trust is snapshotted **before** step 1 mutates beliefs, so empathy reflects the relationship the witness had coming INTO the moment. The vicarious entry **replaces** the bystander entry for that witness — neuroscientifically, an empathic registration is one registration, not two.
 
+### v0.67 — Working memory cap on visible beliefs
+**Module:** [`core/beliefs/belief_table.js`](../core/beliefs/belief_table.js) (`asPromptText()`)
+**Brain analog:** Miller's "magical number 7±2" (Miller 1956); Cowan (2001) on capacity-limited focus of attention.
+
+`BeliefTable.asPromptText()` now sorts by `|trust|` descending and shows only the top **9** as full lines (the upper end of 7±2). If more relationships exist, a footer line lists the weaker ones by name without trust values:
+
+```
+- LoudPos1: TRUSTED ally (trust +0.95) — recent: "..."
+- LoudNeg1: ENEMY        (trust -0.95) — recent: "..."
+... (up to 9 active lines)
+(also in your awareness, but not loud right now: Quiet1, Quiet2, Quiet3)
+```
+
+Charge-ranking is on absolute trust, so a strong enemy (-0.9) outranks a faintly cordial acquaintance (+0.1). For most reference scenarios (6-character casts) this is a no-op; for longer-running games and Forum scenarios with growing rosters, it collapses prompt bloat AND matches the cognitive constraint the LLM is implicitly trying to model.
+
 ### v0.56 — Allostatic load
 **Module:** [`core/cognition/allostatic_load.js`](../core/cognition/allostatic_load.js)
 **Brain analog:** Bruce McEwen's allostatic-load framework (McEwen 1998; McEwen & Gianaros 2010); Sapolsky 2004.
@@ -167,3 +183,5 @@ The point isn't the exact numbers — it's that the same nominal event produces 
 - Damasio (1994) *Descartes' Error*; Bechara & Damasio (2005) "The somatic-marker hypothesis"
 - McEwen (1998) "Stress, adaptation, and disease"; Sapolsky (2004) *Why Zebras Don't Get Ulcers*
 - Juster, McEwen & Lupien (2010) on allostatic load + cognitive decline
+- Miller (1956) "The magical number seven, plus or minus two"
+- Cowan (2001) "The magical number 4 in short-term memory"

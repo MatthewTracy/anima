@@ -4,12 +4,15 @@
 
 ---
 
-## v0.45 – v0.65 — The cognitive substrate (eleven layers)
+## v0.45 – v0.68 — The cognitive substrate (twelve layers)
 
 A dense run of neuroscience-grounded primitives that turn a uniform belief table into a textured set of minds. Every layer is documented with citations in [`docs/COGNITIVE_SUBSTRATE.md`](docs/COGNITIVE_SUBSTRATE.md).
 
 | Version | What shipped | Brain analog |
 |---|---|---|
+| **v0.68** | Sync README, COGNITIVE_SUBSTRATE.md, CHANGELOG to reflect v0.66/v0.67 | — (docs) |
+| **v0.67** | Working memory cap on `$BELIEFS`: top-9 by `\|trust\|` visible, rest backgrounded | Miller 1956 |
+| **v0.66** | `CHANGELOG.md` — version cadence at a glance | — (docs) |
 | **v0.65** | `run_tests.js` sweeps stray bot dirs after the suite | — (test hygiene) |
 | **v0.64** | Renamed Brutus / Iago / Saul / Octavia in tests to `_Test`-prefixed names | — (test hygiene) |
 | **v0.63** | `scripts/inspect_substrate.js` + `npm run substrate` — one-shot read-only report covering all 11 substrate layers | — (debug tool) |
