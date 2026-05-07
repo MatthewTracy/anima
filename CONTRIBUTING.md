@@ -56,6 +56,19 @@ If you're adding a primitive that produces a `$PLACEHOLDER` for prompts:
 
 If your primitive holds **hidden** state (only visible to one agent), follow the `Burden` pattern for privacy by construction.
 
+## Adding a new cognitive substrate layer (v0.45+ pattern)
+
+The cognitive substrate (see [`docs/COGNITIVE_SUBSTRATE.md`](docs/COGNITIVE_SUBSTRATE.md)) sits under the visible primitives — neuroscience-grounded mechanisms that shape *how* belief deltas land, *what* gets remembered, *how* the body wears, and *what voice* the agent carries forward. Adding a new layer requires updating SIX surfaces in lockstep, otherwise some part of the substrate will silently lag the new mechanic:
+
+1. **Implementation** — your module lives under `core/affect/`, `core/cognition/`, or `core/identity/` depending on its primary responsibility. Export `_CONSTANTS` for any tunable thresholds so future tuning passes can find them.
+2. **Wiring** — if your layer is a per-event factor in the multiplicative chain, hook into `_scaleByWitness` in `core/beliefs/auto_update.js` and add an evidence tag (`name ×N.NN`) when the factor is non-trivial.
+3. **Tests** — `tests/core_<name>.test.js` for the primitive itself; if it composes with the per-event chain, also extend `tests/substrate_composition.test.js` to include your factor.
+4. **Timescales** — add re-exports in `core/cognition/timescales.js` and update `asReport()` so `npm run timescales` shows your constants alongside the others.
+5. **Inspector** — `scripts/inspect_substrate.js` should surface your layer's state. If your layer aggregates well across a roster, also extend `scripts/substrate_stats.js`.
+6. **Docs** — update `docs/COGNITIVE_SUBSTRATE.md` (pipeline diagram + new section), `docs/CITATIONS.md` (your paper), `README.md`'s substrate-layer table, and `CHANGELOG.md`.
+
+The `v0.93 → v0.94 → v0.95 → v0.96 → v0.97 → v0.98 → v0.99` retrofit chain (optimism bias) demonstrates this workflow end-to-end.
+
 ## Style
 
 - **JS, ESM**, 4-space indent, single quotes
