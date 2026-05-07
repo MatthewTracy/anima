@@ -91,3 +91,38 @@ test('AffectLog.asPromptText empty when no events recorded', () => {
     const log = new AffectLog(NAME);
     assert.equal(log.asPromptText(), '');
 });
+
+test('v1.1.5: a stray .tmp from a prior crashed write does NOT poison the real file', async () => {
+    // Simulate a crash mid-write: a prior process wrote affect.json.tmp
+    // but never renamed it. The current process should ignore the tmp
+    // and read the real affect.json, then on next save, atomically
+    // overwrite both via the rename.
+    const { writeFileSync, mkdirSync, readFileSync } = await import('fs');
+    const dir = `./bots/${NAME}`;
+    mkdirSync(dir, { recursive: true });
+
+    // Pre-seed a real, valid affect.json
+    const log = new AffectLog(NAME);
+    log.record({ type: 'kill_player', actor: 'X', target: NAME }, 'target');
+    const beforeTop = log.topMoments(1);
+    assert.equal(beforeTop.length, 1);
+
+    // Now plant a corrupted .tmp file as if a prior write crashed
+    writeFileSync(`${dir}/affect.json.tmp`, '{"corrupt":');
+
+    // Open a fresh log instance (forces re-read from disk)
+    const fresh = new AffectLog(NAME);
+    const refreshedTop = fresh.topMoments(1);
+    // We should still see the original entry — the tmp is irrelevant to load.
+    assert.equal(refreshedTop.length, 1, 'real affect.json must survive a stray .tmp');
+
+    // Recording another event should atomically replace affect.json without
+    // touching the corrupted tmp's contents (rename overwrites).
+    fresh.record({ type: 'flog', actor: 'Y', target: NAME }, 'target');
+    const after = new AffectLog(NAME).topMoments(5);
+    assert.equal(after.length, 2);
+
+    // affect.json must be valid JSON
+    const raw = readFileSync(`${dir}/affect.json`, 'utf8');
+    assert.doesNotThrow(() => JSON.parse(raw));
+});
