@@ -233,7 +233,14 @@ class ConversationManager {
     endConversation(sender) {
         if (this.convos[sender]) {
             this.convos[sender].end();
-            if (this.activeConversation.name === sender) {
+            // v1.1.44: guard against null activeConversation. endAllConversations
+            // iterates this method per sender; the first call nulls
+            // activeConversation, then the second call would have crashed
+            // on `this.activeConversation.name === sender` with
+            // TypeError: Cannot read properties of null. Optional chaining
+            // makes the second branch a no-op once activeConversation
+            // has already been cleared.
+            if (this.activeConversation?.name === sender) {
                 this._stopMonitor();
                 this.activeConversation = null;
                 if (agent.self_prompter.isPaused() && !this.inConversation()) {
