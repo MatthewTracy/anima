@@ -169,16 +169,28 @@ function _appendToCortex(agentName, entry) {
             ``
         ].join('\n');
 
-        if (!existsSync(path)) {
-            writeFileSync(path,
-                `# ${agentName} — Consolidated Memory\n\n` +
-                `> *Cortical store. Each entry is the residue of one game's emotional ` +
-                `arc, after the hippocampal AffectLog has been replayed and decayed. ` +
-                `Survives across runs. Read by soul evolution as the long-term ` +
-                `semantic layer beneath the prior soul.*\n` + block);
-        } else {
-            // v0.36-style atomic append — race-safe under concurrent writes
-            appendFileSync(path, block);
+        // v1.1.4: TOCTOU-safe initialization. The previous existsSync + write
+        // pattern had a race where two processes both saw the missing file
+        // and both wrote the header, the second truncating the first. Now
+        // the header write uses the 'wx' flag — atomic create-fail-if-exists
+        // at the OS level. On EEXIST we fall through to plain append; the
+        // header is already there.
+        const header =
+            `# ${agentName} — Consolidated Memory\n\n` +
+            `> *Cortical store. Each entry is the residue of one game's emotional ` +
+            `arc, after the hippocampal AffectLog has been replayed and decayed. ` +
+            `Survives across runs. Read by soul evolution as the long-term ` +
+            `semantic layer beneath the prior soul.*\n`;
+        try {
+            writeFileSync(path, header + block, { flag: 'wx' });
+            // wx succeeded — we created the file with header + first block.
+        } catch (e) {
+            if (e && e.code === 'EEXIST') {
+                // Another writer already created the header. Just append our block.
+                appendFileSync(path, block);
+            } else {
+                throw e;
+            }
         }
     } catch (e) {
         console.warn(`[CONSOLIDATION] Failed to append for ${agentName}: ${e.message}`);

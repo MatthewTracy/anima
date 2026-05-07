@@ -87,3 +87,22 @@ test('multiple consolidations append (cortical accumulation)', () => {
     assert.match(memory, /g1/);
     assert.match(memory, /g2/);
 });
+
+test('v1.1.4: header is written exactly once across many consolidations', () => {
+    // The TOCTOU fix should mean the "Consolidated Memory" header
+    // appears exactly once in the file, regardless of how many times
+    // we consolidate. (The pre-fix bug was that under racing writers
+    // both saw missing-file and both wrote the header.)
+    const log = new AffectLog(NAME);
+    for (let i = 0; i < 5; i++) {
+        log.record({ type: 'flog', actor: 'X', target: NAME }, 'target');
+        consolidate(NAME, { scenario: `g${i}`, clearAffectLog: true });
+    }
+    const memory = readConsolidatedMemory(NAME);
+    const headerCount = (memory.match(/Consolidated Memory/g) || []).length;
+    assert.equal(headerCount, 1, `expected exactly one header, got ${headerCount}`);
+    // All five game tags must be in the appended blocks.
+    for (let i = 0; i < 5; i++) {
+        assert.match(memory, new RegExp(`g${i}`));
+    }
+});
