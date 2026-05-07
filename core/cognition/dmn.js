@@ -36,6 +36,7 @@ import { AffectLog } from '../affect/affect.js';
 import { BeliefTable } from '../beliefs/belief_table.js';
 import { getFaction } from '../identity/faction.js';
 import { getStress, stressLevel } from './allostatic_load.js';
+import { detectDissonance } from './dissonance.js';
 
 const BOTS_DIR = './bots';
 const MUSINGS_FILE = 'musings.md';
@@ -89,13 +90,14 @@ export function ruminate(agentName, opts = {}) {
         }
     }
 
-    // v0.74: cognitive dissonance (Festinger 1957). If the agent has
-    // recent role='actor' entries with negative valence — i.e. they
-    // themselves did something that felt bad to do — the DMN voice
-    // acknowledges it before talking about anyone else. This is the
-    // substrate of "what have I become" rumination.
-    const dissonanceLine = _dissonanceLine(log);
-    if (dissonanceLine) lines.push(dissonanceLine);
+    // v0.74: cognitive dissonance (Festinger 1957). v0.78: now shares the
+    // detection with soul evolution via core/cognition/dissonance.js.
+    const dis = detectDissonance(agentName, { recentN: 10 });
+    if (dis.level === 'loud') {
+        lines.push(`I have lately done things I cannot reconcile with who I thought I was.`);
+    } else if (dis.level === 'soft') {
+        lines.push(`One thing I did sits in me wrong.`);
+    }
 
     // Beliefs — who I trust, who I distrust (only mention each if signal-bearing)
     const beliefLine = _beliefLine(ally, enemy);
@@ -200,37 +202,6 @@ function _moodOpener(mood, faction) {
         case 'settled':
         default:
             return `The world is quiet right now, and I am letting it be quiet.${factionRef}`;
-    }
-}
-
-/**
- * v0.74: cognitive dissonance line. Scans the agent's recent affect log
- * for self-actions (role='actor') with strongly negative valence — the
- * fingerprint of "I did something that felt wrong to do." When two or
- * more such entries are present in the recent log, the dissonance is
- * loud enough to surface as a Festinger-style self-confrontation.
- *
- * Stays SILENT when:
- *   - No actor entries (agent hasn't done anything recently)
- *   - Actor entries are positive-valence (acted in line with values)
- *   - Only one mildly-negative actor entry (insufficient evidence)
- */
-function _dissonanceLine(log) {
-    try {
-        const data = log._load();
-        const recent = data.log.slice(-10);
-        const dissonant = recent.filter(e =>
-            e.role === 'actor' && typeof e.valence === 'number' && e.valence < -0.3
-        );
-        if (dissonant.length >= 2) {
-            return `I have lately done things I cannot reconcile with who I thought I was.`;
-        }
-        if (dissonant.length === 1 && dissonant[0].magnitude > 0.55) {
-            return `One thing I did sits in me wrong.`;
-        }
-        return '';
-    } catch {
-        return '';
     }
 }
 

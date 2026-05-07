@@ -24,6 +24,7 @@ import { Burden } from '../burdens/burden.js';
 import { AffectLog } from '../affect/affect.js';
 import { consolidate, asPromptText as consolidatedAsPromptText } from '../affect/consolidation.js';
 import { asPromptText as stressAsPromptText } from '../cognition/allostatic_load.js';
+import { detectDissonance } from '../cognition/dissonance.js';
 import { getKey, hasKey } from '../../src/utils/keys.js';
 import { getBudgetGuard } from '../../src/governance/budget_guard.js';
 import OpenAIApi from 'openai';
@@ -142,27 +143,20 @@ function _formatAffectForPrompt(agentName) {
  * compatibility with values.
  */
 function _formatDissonanceForPrompt(agentName) {
-    try {
-        const log = new AffectLog(agentName);
-        const data = log._load();
-        const dissonant = data.log.filter(e =>
-            e.role === 'actor' && typeof e.valence === 'number' && e.valence < -0.3
-        );
-        if (dissonant.length === 0) {
-            return '(no significant dissonance — your actions sat comfortably with who you took yourself to be)';
-        }
-        const lines = [];
-        lines.push(`You took ${dissonant.length} action${dissonant.length === 1 ? '' : 's'} that felt bad to take. The body remembers them. Festinger's choice now: revise who you are to fit what you did, or revise what you did to fit who you are.`);
-        const top = dissonant.slice().sort((a, b) => b.magnitude - a.magnitude).slice(0, 3);
-        lines.push('Most-dissonant moments:');
-        for (const m of top) {
-            lines.push(`  - [v${m.valence.toFixed(2)}/a${m.arousal.toFixed(2)}] ${m.type}${m.target ? ' on ' + m.target : ''}`);
-        }
-        lines.push('In this rewrite, surface the contradiction explicitly — either as a new lesson learned, a new scar, or a recasting of who you understand yourself to be. Do not silently ignore it.');
-        return lines.join('\n');
-    } catch {
-        return '(dissonance unavailable)';
+    // v0.78: shared detector with DMN (recentN=Infinity here so the
+    // whole game is scanned, not just the last working-memory window).
+    const dis = detectDissonance(agentName, { recentN: Infinity });
+    if (dis.entries.length === 0) {
+        return '(no significant dissonance — your actions sat comfortably with who you took yourself to be)';
     }
+    const lines = [];
+    lines.push(`You took ${dis.entries.length} action${dis.entries.length === 1 ? '' : 's'} that felt bad to take. The body remembers them. Festinger's choice now: revise who you are to fit what you did, or revise what you did to fit who you are.`);
+    lines.push('Most-dissonant moments:');
+    for (const m of dis.entries.slice(0, 3)) {
+        lines.push(`  - [v${m.valence.toFixed(2)}/a${m.arousal.toFixed(2)}] ${m.type}${m.target ? ' on ' + m.target : ''}`);
+    }
+    lines.push('In this rewrite, surface the contradiction explicitly — either as a new lesson learned, a new scar, or a recasting of who you understand yourself to be. Do not silently ignore it.');
+    return lines.join('\n');
 }
 
 function _formatBurdenForPrompt(agentName) {
