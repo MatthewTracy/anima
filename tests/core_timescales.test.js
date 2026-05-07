@@ -19,11 +19,13 @@ import {
     MOOD_NEUTRAL_BAND, MOOD_DISSONANT_DISCOUNT, FLASHBULB_OVERRIDE_THRESHOLD,
     DISSONANCE_NEGATIVE_THRESHOLD, DISSONANCE_STRONG_MAGNITUDE,
     VICARIOUS_TRUST_THRESHOLD,
+    OPTIMISM_THRESHOLD, OPTIMISM_BONUS, OPTIMISM_DAMP,
     DMN_MUSINGS_BYTE_CAP,
     asReport
 } from '../core/cognition/timescales.js';
 import { _THRESHOLDS as ALLO } from '../core/cognition/allostatic_load.js';
 import { _CONSTANTS as DIS } from '../core/cognition/dissonance.js';
+import { _CONSTANTS as OPT } from '../core/cognition/optimism.js';
 
 test('allostatic constants re-exported match the source module', () => {
     assert.equal(ALLOSTATIC_LOAD_RATE, ALLO.LOAD_RATE);
@@ -33,6 +35,12 @@ test('allostatic constants re-exported match the source module', () => {
 test('dissonance constants re-exported match the source module', () => {
     assert.equal(DISSONANCE_NEGATIVE_THRESHOLD, DIS.NEGATIVE_THRESHOLD);
     assert.equal(DISSONANCE_STRONG_MAGNITUDE, DIS.STRONG_MAGNITUDE);
+});
+
+test('optimism constants re-exported match the source module', () => {
+    assert.equal(OPTIMISM_THRESHOLD, OPT.OPTIMISM_THRESHOLD);
+    assert.equal(OPTIMISM_BONUS, OPT.ASYMMETRY_BONUS);
+    assert.equal(OPTIMISM_DAMP, OPT.ASYMMETRY_DAMP);
 });
 
 test('working-memory caps are monotonically descending', () => {
@@ -65,6 +73,7 @@ test('asReport renders a non-empty report mentioning each layer', () => {
     assert.match(r, /dissonance/i);
     assert.match(r, /DMN/);
     assert.match(r, /flashbulb/);
+    assert.match(r, /Optimism/i);
 });
 
 test('all referenced constants are numeric', () => {

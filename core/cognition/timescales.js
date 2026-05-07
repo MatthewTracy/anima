@@ -31,6 +31,7 @@
 
 import { _THRESHOLDS as ALLO_THRESHOLDS } from './allostatic_load.js';
 import { _CONSTANTS as DISSONANCE_CONSTANTS } from './dissonance.js';
+import { _CONSTANTS as OPTIMISM_CONSTANTS } from './optimism.js';
 
 // ── Allostatic load (v0.56) ──────────────────────────────────────
 export const ALLOSTATIC_LOAD_RATE       = ALLO_THRESHOLDS.LOAD_RATE;       // per-event additive
@@ -67,6 +68,11 @@ export const FLASHBULB_OVERRIDE_THRESHOLD = 0.70;
 // ── Dissonance (v0.74 / v0.78) ───────────────────────────────────
 export const DISSONANCE_NEGATIVE_THRESHOLD = DISSONANCE_CONSTANTS.NEGATIVE_THRESHOLD;  // -0.30
 export const DISSONANCE_STRONG_MAGNITUDE   = DISSONANCE_CONSTANTS.STRONG_MAGNITUDE;    //  0.55
+
+// ── Optimism / pessimism bias (v0.93) ────────────────────────────
+export const OPTIMISM_THRESHOLD = OPTIMISM_CONSTANTS.OPTIMISM_THRESHOLD;
+export const OPTIMISM_BONUS     = OPTIMISM_CONSTANTS.ASYMMETRY_BONUS;
+export const OPTIMISM_DAMP      = OPTIMISM_CONSTANTS.ASYMMETRY_DAMP;
 
 // ── Vicarious affect (v0.53) ─────────────────────────────────────
 export const VICARIOUS_TRUST_THRESHOLD = 0.4;
@@ -108,6 +114,9 @@ export function asReport() {
         '',
         '— Vicarious affect (Preston & de Waal 2002)',
         `  trust gate:    |${VICARIOUS_TRUST_THRESHOLD}|   target-scale: ${VICARIOUS_TARGET_SCALE}   actor-scale: ${VICARIOUS_ACTOR_SCALE}   arousal-damp: ${VICARIOUS_AROUSAL_DAMP}`,
+        '',
+        '— Optimism / pessimism (Sharot 2011)',
+        `  trust-axis cut: |${OPTIMISM_THRESHOLD}|   bonus on favored direction: ${OPTIMISM_BONUS}   damp on disfavored: ${OPTIMISM_DAMP}`,
         '',
         '— DMN (Raichle 2001)',
         `  musings file:  ≤ ${DMN_MUSINGS_BYTE_CAP} bytes`,
