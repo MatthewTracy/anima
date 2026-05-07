@@ -37,6 +37,12 @@ const TRUST_MAX = 1.0;
 const MAX_EVIDENCE_ENTRIES = 6;     // per target — keep recent only
 const EVIDENCE_TEXT_MAX = 120;      // chars per evidence line
 
+// v0.67: Miller's 7±2 cap. The prompt-visible belief list shows only the
+// most-charged (|trust|-ranked) relationships; the rest become a one-line
+// "background" footer so the LLM knows there are weaker ties without
+// reading them. Mirrors how working memory privileges the loudest signals.
+const ACTIVE_BELIEFS_CAP = 9;
+
 export class BeliefTable {
     /**
      * @param {string} owner - the agent whose mind this is (the believer)
@@ -160,20 +166,33 @@ export class BeliefTable {
     /**
      * Format the table for prompt injection ($BELIEFS placeholder).
      * Returns a compact string the agent reads at every prompt cycle.
+     *
+     * v0.67: Miller's 7±2 working-memory cap. We sort by |trust| descending
+     * (loudest signals first) and render the top ACTIVE_BELIEFS_CAP. If
+     * there are weaker relationships, append a one-line footer naming them
+     * so the LLM knows they exist without re-reading them at full weight.
      */
     asPromptText() {
         const ranked = this.rankedTargets();
         if (ranked.length === 0) {
             return `=== YOUR BELIEFS ===\n(No beliefs yet — you have not formed an opinion of anyone you have met.)\n=== END BELIEFS ===`;
         }
+        const byChargeDesc = ranked.slice().sort((a, b) => Math.abs(b.trust) - Math.abs(a.trust));
+        const active = byChargeDesc.slice(0, ACTIVE_BELIEFS_CAP);
+        const backgrounded = byChargeDesc.slice(ACTIVE_BELIEFS_CAP);
+
         const lines = ['=== YOUR BELIEFS — your private read on the others ==='];
-        for (const t of ranked) {
+        for (const t of active) {
             const label = _trustLabel(t.trust);
             const trustStr = t.trust > 0 ? `+${t.trust.toFixed(2)}` : t.trust.toFixed(2);
             const recent = t.evidence.length > 0
                 ? ` — recent: "${t.evidence[t.evidence.length - 1].reason}"`
                 : '';
             lines.push(`- ${t.name}: ${label} (trust ${trustStr})${recent}`);
+        }
+        if (backgrounded.length > 0) {
+            const names = backgrounded.map(t => t.name).join(', ');
+            lines.push(`(also in your awareness, but not loud right now: ${names})`);
         }
         lines.push('=== END BELIEFS ===');
         return lines.join('\n');
