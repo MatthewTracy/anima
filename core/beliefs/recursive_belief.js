@@ -30,7 +30,7 @@
  * beliefs.json so the two tables stay legible).
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, existsSync, mkdirSync } from 'fs';
 import { atomicWriteFileSync } from '../runtime/atomic_io.js';
 import { join } from 'path';
 

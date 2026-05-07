@@ -25,7 +25,7 @@
  * performative.
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from 'fs';
+import { readFileSync, existsSync, mkdirSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { getStress, stressLevel } from '../cognition/allostatic_load.js';
 import { atomicWriteFileSync } from '../runtime/atomic_io.js';

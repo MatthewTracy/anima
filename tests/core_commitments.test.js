@@ -89,3 +89,27 @@ test('CommitmentLedger.summary computes kept_rate', () => {
     assert.equal(s.broken, 1);
     assert.ok(Math.abs(s.kept_rate - (2/3)) < 0.01);
 });
+
+test('v1.1.8: kept_rate is null when only pending commitments exist', () => {
+    // Pre-fix bug: a roster with only pending or withdrawn commitments
+    // returned kept_rate=0, which read as "0% kept" — a false signal.
+    // Fix: kept_rate should be null until there are resolved (fulfilled
+    // or broken) commitments to compute against.
+    const l = new CommitmentLedger(TEST_GAME);
+    l.create({ by: 'A', to: 'B', condition: 'x', consequence: 'y', deadline_ms: Date.now() + 60000 });
+    l.create({ by: 'A', to: 'C', condition: 'x', consequence: 'y', deadline_ms: Date.now() + 60000 });
+    const s = l.summary();
+    assert.equal(s.pending, 2);
+    assert.equal(s.fulfilled, 0);
+    assert.equal(s.broken, 0);
+    assert.equal(s.kept_rate, null, 'kept_rate must be null when no commitments are resolved');
+});
+
+test('v1.1.8: kept_rate is null when commitments exist but only withdrawn', () => {
+    const l = new CommitmentLedger(TEST_GAME);
+    const a = l.create({ by: 'A', to: 'B', condition: 'x', consequence: 'y', deadline_ms: Date.now() + 60000 });
+    l.withdraw(a.id, 'A', '');
+    const s = l.summary();
+    assert.equal(s.withdrawn, 1);
+    assert.equal(s.kept_rate, null);
+});

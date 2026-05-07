@@ -33,7 +33,7 @@
  * record "owes Hamilton 3 iron" in the soul instead.
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, existsSync, mkdirSync } from 'fs';
 import { atomicWriteFileSync } from '../runtime/atomic_io.js';
 import { join } from 'path';
 
@@ -279,12 +279,16 @@ export class CommitmentLedger {
         const data = this._load();
         const counts = { pending: 0, fulfilled: 0, broken: 0, withdrawn: 0 };
         for (const c of data.commitments) counts[c.status]++;
+        // v1.1.8: kept_rate is meaningful only over RESOLVED commitments.
+        // Pre-fix the guard checked total commitments, so a roster with
+        // only pending/withdrawn returned kept_rate=0 — a false "0% kept"
+        // signal that misled both inspectors and prompts. Return null when
+        // there are no resolved commitments yet; null = "not enough data."
+        const resolved = counts.fulfilled + counts.broken;
         return {
             total: data.commitments.length,
             ...counts,
-            kept_rate: data.commitments.length > 0
-                ? counts.fulfilled / (counts.fulfilled + counts.broken || 1)
-                : null
+            kept_rate: resolved > 0 ? counts.fulfilled / resolved : null
         };
     }
 }

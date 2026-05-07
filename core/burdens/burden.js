@@ -27,7 +27,7 @@
  *     evolved soul kept a trace before locking
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from 'fs';
+import { readFileSync, existsSync, mkdirSync, unlinkSync } from 'fs';
 import { atomicWriteFileSync } from '../runtime/atomic_io.js';
 import { join } from 'path';
 
