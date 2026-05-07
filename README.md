@@ -126,6 +126,7 @@ Set `OPENROUTER_API_KEY` in `.env` (or whichever provider key your scenario's pr
 - [`docs/COGNITIVE_SUBSTRATE.md`](docs/COGNITIVE_SUBSTRATE.md) — the eleven neuroscience-grounded layers that shape how events land, with citations
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — core / scenarios / adapters split, what lives where
 - [`docs/SCENARIO_AUTHORING.md`](docs/SCENARIO_AUTHORING.md) — how to build a new scenario on Anima
+- [`CHANGELOG.md`](CHANGELOG.md) — version history at a glance
 
 ---
 
