@@ -62,15 +62,21 @@ export function appendEpitaph(name, soulContent, deathInfo, scenario) {
         const epitaph = generateEpitaph(name, soulContent, deathInfo, scenario);
         const stamp = new Date().toISOString().slice(0, 10);
         const block = `\n\n## ${name} (${stamp})\n\n${epitaph}\n`;
-        if (!existsSync(PANTHEON_PATH)) {
-            // First write — establish the header. This is the only
-            // non-append path; subsequent locks all use appendFileSync.
-            writeFileSync(PANTHEON_PATH, PANTHEON_HEADER + block);
-        } else {
-            // ATOMIC append (POSIX guarantees; Windows append is also
-            // atomic for small writes through the OS write cache).
-            // No read-then-write means no lost entries under concurrency.
-            appendFileSync(PANTHEON_PATH, block);
+        // v1.1.18: TOCTOU-safe header write, mirroring the v1.1.4 fix in
+        // consolidation.js. Pre-fix, two simultaneous Soul.lock() calls
+        // (e.g. mass depressurization killing 6 simultaneously) could
+        // both see !existsSync, both writeFileSync the header, and the
+        // second would truncate the first. The 'wx' flag makes header
+        // creation atomic at the OS level; on EEXIST we fall through to
+        // plain append (which IS atomic for small writes).
+        try {
+            writeFileSync(PANTHEON_PATH, PANTHEON_HEADER + block, { flag: 'wx' });
+        } catch (e) {
+            if (e && e.code === 'EEXIST') {
+                appendFileSync(PANTHEON_PATH, block);
+            } else {
+                throw e;
+            }
         }
         return true;
     } catch (e) {

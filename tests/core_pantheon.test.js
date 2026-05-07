@@ -9,7 +9,7 @@
 
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'fs';
 import { generateEpitaph, appendEpitaph, readEpitaphs, asPromptText } from '../core/souls/pantheon.js';
 
 const PANTHEON_PATH = './pantheon.md';
@@ -79,6 +79,24 @@ test('appendEpitaph: 6 simultaneous appends all land (no race loss)', () => {
     for (const n of names) appendEpitaph(n, SAMPLE_SOUL, { cause: 'test mass event' }, 'test');
     const after = readEpitaphs().length;
     assert.equal(after, before + 6, `expected ${before + 6} entries after 6 appends, got ${after}`);
+});
+
+test('v1.1.18: pantheon header is written exactly once across many appends', () => {
+    // Same TOCTOU-safety guarantee as the v1.1.4 fix in consolidation.
+    // Pre-fix, two simultaneous appendEpitaph calls into a missing
+    // pantheon.md could both writeFileSync the header, the second
+    // clobbering the first. After v1.1.18, the 'wx' flag makes the
+    // header create atomic; subsequent calls fall through to plain append.
+    // We delete the pantheon, append several epitaphs serially and
+    // back-to-back (which is the realistic worst case in a single-
+    // process scenario), and assert the file has exactly ONE header.
+    if (existsSync(PANTHEON_PATH)) unlinkSync(PANTHEON_PATH);
+    for (const n of ['HeaderA', 'HeaderB', 'HeaderC']) {
+        appendEpitaph(n, SAMPLE_SOUL, { cause: 'header race test' }, 'test');
+    }
+    const text = readFileSync(PANTHEON_PATH, 'utf8');
+    const headerCount = (text.match(/^# The Pantheon\b/gm) || []).length;
+    assert.equal(headerCount, 1, `expected exactly one Pantheon header, got ${headerCount}`);
 });
 
 test('asPromptText returns 3 random epitaphs (or empty message)', () => {
