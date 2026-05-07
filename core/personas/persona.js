@@ -28,6 +28,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { getStress, stressLevel } from '../cognition/allostatic_load.js';
+import { atomicWriteFileSync } from '../runtime/atomic_io.js';
 
 const BOTS_DIR = './bots';
 
@@ -80,7 +81,7 @@ export class Persona {
                 motive: motive.trim().slice(0, 500),
                 adoptedAt: new Date().toISOString()
             };
-            writeFileSync(this.path, JSON.stringify(record, null, 2));
+            atomicWriteFileSync(this.path, JSON.stringify(record, null, 2));
             return record;
         } catch (e) {
             console.warn(`[PERSONA] Failed to adopt for ${this.name}: ${e.message}`);
@@ -148,8 +149,7 @@ export class Persona {
         catch { return []; }
     }
     _saveHistory(arr) {
-        if (!existsSync(this.dir)) mkdirSync(this.dir, { recursive: true });
-        writeFileSync(this.historyPath, JSON.stringify(arr, null, 2));
+        atomicWriteFileSync(this.historyPath, JSON.stringify(arr, null, 2));
     }
 
     /**

@@ -22,6 +22,7 @@
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { dirname } from 'path';
+import { atomicWriteFileSync } from '../runtime/atomic_io.js';
 
 const FEUDS_PATH = './logs/feuds.json';
 const RECENT_DISPLAY_CAP = 5;            // most recent entries shown per edge in $FEUDS
@@ -78,9 +79,7 @@ export class FeudTracker {
     _save() {
         if (!this._cache) return;
         try {
-            const dir = dirname(this.path);
-            if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-            writeFileSync(this.path, JSON.stringify(this._cache, null, 2));
+            atomicWriteFileSync(this.path, JSON.stringify(this._cache, null, 2));
         } catch (e) {
             console.warn(`[FEUDS] Failed to save ${this.path}: ${e.message}`);
         }

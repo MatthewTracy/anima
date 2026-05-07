@@ -37,6 +37,7 @@
  */
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { atomicWriteFileSync } from '../runtime/atomic_io.js';
 import { join } from 'path';
 
 const BOTS_DIR = './bots';
@@ -177,9 +178,7 @@ function _load(witness) {
 
 function _save(witness, data) {
     try {
-        const dir = join(BOTS_DIR, witness);
-        if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-        writeFileSync(_path(witness), JSON.stringify(data, null, 2));
+        atomicWriteFileSync(_path(witness), JSON.stringify(data, null, 2));
     } catch (e) {
         console.warn(`[HABITUATION] Failed to save for ${witness}: ${e.message}`);
     }

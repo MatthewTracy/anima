@@ -31,6 +31,7 @@
  */
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { atomicWriteFileSync } from '../runtime/atomic_io.js';
 import { join } from 'path';
 
 const BOTS_DIR = './bots';
@@ -73,8 +74,7 @@ export class RecursiveBeliefTable {
     _save() {
         if (!this._cache) return;
         try {
-            if (!existsSync(this.dir)) mkdirSync(this.dir, { recursive: true });
-            writeFileSync(this.path, JSON.stringify(this._cache, null, 2));
+            atomicWriteFileSync(this.path, JSON.stringify(this._cache, null, 2));
         } catch (e) {
             console.warn(`[RECURSIVE] Failed to save ${this.path}: ${e.message}`);
         }

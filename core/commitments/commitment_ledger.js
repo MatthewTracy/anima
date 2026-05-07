@@ -34,6 +34,7 @@
  */
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { atomicWriteFileSync } from '../runtime/atomic_io.js';
 import { join } from 'path';
 
 const LEDGER_DIR = './logs/commitments';
@@ -87,8 +88,7 @@ export class CommitmentLedger {
     _save() {
         if (!this._cache) return;
         try {
-            if (!existsSync(LEDGER_DIR)) mkdirSync(LEDGER_DIR, { recursive: true });
-            writeFileSync(this.path, JSON.stringify(this._cache, null, 2));
+            atomicWriteFileSync(this.path, JSON.stringify(this._cache, null, 2));
         } catch (e) {
             console.warn(`[COMMIT] Failed to save ${this.path}: ${e.message}`);
         }

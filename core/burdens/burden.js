@@ -28,6 +28,7 @@
  */
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from 'fs';
+import { atomicWriteFileSync } from '../runtime/atomic_io.js';
 import { join } from 'path';
 
 const BOTS_DIR = './bots';
@@ -84,7 +85,7 @@ export class Burden {
                 source,
                 assignedAt: new Date().toISOString()
             };
-            writeFileSync(this.path, JSON.stringify(record, null, 2));
+            atomicWriteFileSync(this.path, JSON.stringify(record, null, 2));
             return record;
         } catch (e) {
             console.warn(`[BURDEN] Failed to assign for ${this.name}: ${e.message}`);
@@ -138,7 +139,7 @@ export class Burden {
                 context: (context || '').slice(0, 500)
             };
             history.push(record);
-            writeFileSync(confessedPath, JSON.stringify(history, null, 2));
+            atomicWriteFileSync(confessedPath, JSON.stringify(history, null, 2));
 
             // Clear the active burden — it is no longer hidden
             this.clear();
