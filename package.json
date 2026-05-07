@@ -44,7 +44,7 @@
     "scripts": {
         "postinstall": "patch-package",
         "start": "node main.js",
-        "forum": "node scripts/run_scenario.js forum",
+        "forum": "node main.js",
         "cloister": "node scenarios/cloister/runner.js",
         "outpost": "node scenarios/outpost/runner.js",
         "crew": "node scenarios/crew/runner.js",
