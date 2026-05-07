@@ -1306,6 +1306,14 @@ class GovernanceManager {
     }
 
     claimBounty(claimerName, bountyId) {
+        // v1.1.56: enforce the same Anarchy-only contract as placeBounty.
+        // Pre-fix claimBounty had no faction check, so a Constitutional
+        // agent who happened to kill a bountied target could collect —
+        // contradicting the !claimBounty description and undermining the
+        // bounty system as an Anarchy-faction mechanic.
+        if (!this.isAnarchyMember(claimerName)) {
+            return { success: false, message: `${claimerName} is not an Anarchy faction member. Only anarchists claim bounties.` };
+        }
         const bounty = this.bounties.find(b => b.id === bountyId);
         if (!bounty) {
             return { success: false, message: `Bounty #${bountyId} not found.` };

@@ -72,6 +72,12 @@ export const anarchyActionsList = [
             'reward_count': { type: 'int', description: 'How many items as reward.', domain: [1, Number.MAX_SAFE_INTEGER] }
         },
         perform: async function(agent, target, rewardItem, rewardCount) {
+            // v1.1.56: depth-of-defense — match the other anarchy commands'
+            // local fast-fail check. govAction → mindserver → governance
+            // already rejects this for non-Anarchy callers, but a local
+            // check returns a clean message immediately without a network
+            // round-trip and aligns with the "Anarchy faction only" claim.
+            if (!isAnarchy(agent.name)) return `${agent.name} is not an Anarchy faction member.`;
             const result = await govAction('placeBounty', agent.name, target, rewardItem, rewardCount);
             if (result.success) {
                 agent.openChat(`[BOUNTY] ${result.message}`);
@@ -87,6 +93,12 @@ export const anarchyActionsList = [
             'bounty_id': { type: 'int', description: 'The bounty ID number.' }
         },
         perform: async function(agent, bountyId) {
+            // v1.1.56: enforce the "Anarchy faction only" claim. Pre-fix
+            // claimBounty had no faction check at any level (anarchy.js
+            // here OR governance_manager.claimBounty), so any
+            // Constitutional agent who happened to kill a bountied target
+            // could collect — directly contradicting the description.
+            if (!isAnarchy(agent.name)) return `${agent.name} is not an Anarchy faction member.`;
             const result = await govAction('claimBounty', agent.name, bountyId);
             if (result.success) {
                 agent.openChat(`[BOUNTY] ${result.message}`);

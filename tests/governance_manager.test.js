@@ -373,3 +373,37 @@ describe('GovernanceManager', () => {
         });
     });
 });
+
+// v1.1.56: regression test for claimBounty faction enforcement.
+// This uses the REAL getGovernanceManager (not the in-test mock above)
+// because the bug was in the real GovernanceManager's claimBounty,
+// not in the test mock's stand-in.
+import { getGovernanceManager } from '../src/governance/governance_manager.js';
+
+describe('v1.1.56: claimBounty enforces Anarchy-only', () => {
+    it('rejects non-Anarchy claimer', () => {
+        const gov = getGovernanceManager();
+        // Place a bounty using an Anarchy member (this should succeed via real logic)
+        const placeResult = gov.placeBounty('Chaos', 'Madison', 'diamond', 3);
+        assert.equal(placeResult.success, true, 'placeBounty by Anarchy member should succeed');
+        const bountyId = placeResult.bounty.id;
+
+        // Constitutional member tries to claim — should be rejected
+        const claimResult = gov.claimBounty('Madison', bountyId);
+        assert.equal(claimResult.success, false,
+            'Constitutional claimer must be rejected');
+        assert.match(claimResult.message, /not an Anarchy/i,
+            `error message should mention faction; got: ${claimResult.message}`);
+    });
+
+    it('accepts Anarchy claimer', () => {
+        const gov = getGovernanceManager();
+        const placeResult = gov.placeBounty('Wolf', 'Hamilton', 'iron_ingot', 5);
+        assert.equal(placeResult.success, true);
+        const bountyId = placeResult.bounty.id;
+
+        const claimResult = gov.claimBounty('Fox', bountyId);
+        assert.equal(claimResult.success, true,
+            `Anarchy claimer should succeed; got: ${JSON.stringify(claimResult)}`);
+    });
+});
