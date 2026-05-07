@@ -54,5 +54,4 @@ jobs:
         with:
           node-version: '20'
       - name: Run core tests
-        run: |
-          node --test tests/core_souls.test.js tests/core_beliefs.test.js tests/core_burdens.test.js tests/core_feuds.test.js
+        run: npm test
