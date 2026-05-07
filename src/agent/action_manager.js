@@ -48,7 +48,15 @@ export class ActionManager {
         const new_resume = actionFn != null;
         if (new_resume) { // start new resume
             this.resume_func = actionFn;
-            assert(actionLabel != null, 'actionLabel is required for new resume');
+            // v1.1.43: was `assert(...)` — but `assert` was never imported,
+            // so the line would have thrown ReferenceError if hit. The
+            // current call paths never trigger it (new_resume implies
+            // actionFn was passed, and runAction always passes actionLabel
+            // alongside), but leaving the dead reference is a trap for
+            // any future caller. Use a real Error throw.
+            if (actionLabel == null) {
+                throw new Error('actionLabel is required when starting a new resume');
+            }
             this.resume_name = actionLabel;
         }
         if (this.resume_func != null && (this.agent.isIdle() || new_resume) && (!this.agent.self_prompter.isActive() || new_resume)) {
@@ -150,12 +158,18 @@ export class ActionManager {
             // Log the full stack trace
             console.error(err.stack);
             await this.stop();
-            err = err.toString();
+            // v1.1.43: capture the stack BEFORE coercing err to string.
+            // Pre-fix, `err = err.toString()` overwrote the Error object
+            // with its message string, then `err.stack` (read on a string)
+            // was always undefined — every error message returned to the
+            // agent claimed "Stack trace: undefined".
+            const stack = err?.stack || '(no stack available)';
+            const errStr = err.toString();
 
             let message = this.getBotOutputSummary() +
                 '!!Code threw exception!!\n' +
-                'Error: ' + err + '\n' +
-                'Stack trace:\n' + err.stack+'\n';
+                'Error: ' + errStr + '\n' +
+                'Stack trace:\n' + stack + '\n';
 
             let interrupted = this.agent.bot.interrupt_code;
             this.agent.clearBotLogs();
