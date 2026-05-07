@@ -76,6 +76,8 @@ If souls could evolve after death, death would have no stakes. The whole point o
 | **Recursive theory of mind (v0.8)** | Reflections track what others *think of you*; unlocks 2nd-order strategy |
 | **Lineage (v0.9)** | Successors inherit from locked souls; multi-generation drama across runs |
 | **Auto-update (v0.11)** | Events automatically update witnesses' BeliefTable + RecursiveBeliefTable |
+| **Temporal depth (v0.12)** | Soul evolutions archive prior versions; readers trace character arcs |
+| **The Pantheon (v0.13)** | Cross-scenario shared mythology — every locked soul appends an epitaph |
 
 ### How auto-update closes the loop
 

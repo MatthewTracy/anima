@@ -226,6 +226,18 @@ KEY COMMANDS: !collectBlocks, !craftRecipe, !goToCoordinates, !attack, !goToPlay
             }
         }
 
+        // ANIMA: $PANTHEON — three random epitaphs from the cross-scenario
+        // archive of every soul ever locked. Forum's dead inspire Outpost's
+        // living. The dead of one world become legend in the next.
+        if (prompt.includes('$PANTHEON')) {
+            try {
+                const { asPromptText } = await import('../../core/souls/pantheon.js');
+                prompt = prompt.replaceAll('$PANTHEON', asPromptText(3));
+            } catch (e) {
+                prompt = prompt.replaceAll('$PANTHEON', '');
+            }
+        }
+
         // V3: $GAME_DURATION placeholder — accurate per-run, not hardcoded text
         if (prompt.includes('$GAME_DURATION')) {
             try {
