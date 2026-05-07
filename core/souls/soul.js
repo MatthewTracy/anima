@@ -14,6 +14,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, chmodSync, statSync, readdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { atomicWriteFileSync } from '../runtime/atomic_io.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_PATH = join(__dirname, 'templates', 'default_soul.md');
@@ -80,13 +81,13 @@ export class Soul {
                 .replaceAll('{{starting_motto}}', starting_motto || 'I was born today.')
                 .replaceAll('{{faction}}', faction)
                 .replaceAll('{{date}}', new Date().toISOString().slice(0, 10));
-            writeFileSync(this.soulPath, filled);
+            atomicWriteFileSync(this.soulPath, filled);
             // v0.48: also write a fast-readable faction.txt so the in-group
             // bias layer can read it without re-parsing soul markdown each
             // time. Best-effort — soul is the source of truth.
             try {
                 if (faction && faction !== 'unknown') {
-                    writeFileSync(join(this.dir, 'faction.txt'), String(faction).trim().toLowerCase());
+                    atomicWriteFileSync(join(this.dir, 'faction.txt'), String(faction).trim().toLowerCase());
                 }
             } catch { /* nonfatal */ }
             return filled;
@@ -129,13 +130,13 @@ export class Soul {
                         path = join(histDir, `${baseStamp}-${counter}.md`);
                         counter++;
                     }
-                    writeFileSync(path, prior);
+                    atomicWriteFileSync(path, prior);
                 } catch (e) {
                     console.warn(`[SOUL] History archive failed for ${this.name}: ${e.message}. Continuing with save.`);
                 }
             }
 
-            writeFileSync(this.soulPath, content);
+            atomicWriteFileSync(this.soulPath, content);
             return true;
         } catch (e) {
             console.warn(`[SOUL] Failed to save ${this.name}: ${e.message}`);
@@ -186,7 +187,7 @@ export class Soul {
                 by ? `By: ${by}` : null,
                 scenario ? `Scenario: ${scenario}` : null,
             ].filter(Boolean).join('\n') + '\n';
-            writeFileSync(this.diedMarkerPath, marker);
+            atomicWriteFileSync(this.diedMarkerPath, marker);
             // Best-effort chmod read-only. On Windows this clears the write bit.
             if (this.exists()) {
                 try { chmodSync(this.soulPath, 0o444); } catch { /* nonfatal on some FS */ }

@@ -26,10 +26,11 @@
  * and any analysis script.
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { Soul } from './soul.js';
+import { atomicWriteFileSync } from '../runtime/atomic_io.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_PATH = join(__dirname, 'templates', 'default_soul.md');
@@ -103,7 +104,7 @@ export function createSuccessor(ancestorName, successorName, {
     const dir = join(BOTS_DIR, successorName);
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     const soulPath = join(dir, 'soul.md');
-    writeFileSync(soulPath, filledFresh + ancestralBlock);
+    atomicWriteFileSync(soulPath, filledFresh + ancestralBlock);
 
     // Persist lineage metadata.
     const lineagePath = join(dir, 'lineage.json');
@@ -115,7 +116,7 @@ export function createSuccessor(ancestorName, successorName, {
         depth,
         inheritedAt: new Date().toISOString()
     };
-    writeFileSync(lineagePath, JSON.stringify(lineageData, null, 2));
+    atomicWriteFileSync(lineagePath, JSON.stringify(lineageData, null, 2));
 
     return { soulPath, lineagePath, ancestor: ancestorName, depth };
 }

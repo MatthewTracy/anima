@@ -24,8 +24,9 @@
  * & Smith on coalition psychology.
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
+import { atomicWriteFileSync } from '../runtime/atomic_io.js';
 
 const BOTS_DIR = './bots';
 const FACTION_FILE = 'faction.txt';
@@ -86,10 +87,8 @@ export function setFaction(agentName, faction) {
     const normalized = String(faction).trim().toLowerCase();
     if (!normalized) return;
 
-    const dir = join(BOTS_DIR, agentName);
     try {
-        if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-        writeFileSync(join(dir, FACTION_FILE), normalized);
+        atomicWriteFileSync(join(BOTS_DIR, agentName, FACTION_FILE), normalized);
         _cache.set(agentName, normalized);
     } catch (e) {
         console.warn(`[FACTION] Failed to set faction for ${agentName}: ${e.message}`);

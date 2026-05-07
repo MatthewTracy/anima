@@ -28,10 +28,11 @@
  * Default: not used. Use it when you want a soul to RETURN.
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { Soul } from '../souls/soul.js';
+import { atomicWriteFileSync } from '../runtime/atomic_io.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const BOTS_DIR = './bots';
@@ -89,11 +90,11 @@ I lived as **${ancestorName}**. I remember. The full text of who I was follows. 
         .replace(new RegExp(`^# ${ancestorName}`, 'm'), `# ${reincarnatedName}`)
         + pastLifeBlock;
 
-    // Write new soul
+    // Write new soul (atomic — Soul is the highest-value persistent state)
     const dir = join(BOTS_DIR, reincarnatedName);
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     const soulPath = join(dir, 'soul.md');
-    writeFileSync(soulPath, newSoulText);
+    atomicWriteFileSync(soulPath, newSoulText);
 
     // Write reincarnation record
     const recordPath = join(dir, 'reincarnation.json');
@@ -104,7 +105,7 @@ I lived as **${ancestorName}**. I remember. The full text of who I was follows. 
         hazy,
         reincarnatedAt: new Date().toISOString()
     };
-    writeFileSync(recordPath, JSON.stringify(record, null, 2));
+    atomicWriteFileSync(recordPath, JSON.stringify(record, null, 2));
 
     return { soulPath, recordPath, ancestor: ancestorName };
 }
