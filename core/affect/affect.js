@@ -33,8 +33,9 @@
  * memory distinction; Barrett's constructed emotion theory.
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync, unlinkSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
+import { atomicWriteFileSync } from '../runtime/atomic_io.js';
 
 const BOTS_DIR = './bots';
 
@@ -177,21 +178,13 @@ export class AffectLog {
     _save() {
         if (!this._cache) return;
         try {
-            if (!existsSync(this.dir)) mkdirSync(this.dir, { recursive: true });
-            // v1.1.5: atomic write via tmp + rename. Without this, a process
-            // crash mid-write corrupts affect.json — the next _load() hits a
-            // JSON parse error and silently resets the agent's affect log to
-            // empty (catch in _load returns a fresh structure). That loses
-            // cross-game affective memory. Write-to-tmp + rename is atomic at
-            // the filesystem level: either the new content is fully there or
-            // the old content is fully there, never a partial byte stream.
-            const tmp = this.path + '.tmp';
-            writeFileSync(tmp, JSON.stringify(this._cache, null, 2));
-            renameSync(tmp, this.path);
+            // v1.1.5/v1.1.6: atomic write via tmp + rename, factored into
+            // core/runtime/atomic_io.js. Without this, a crash mid-write
+            // corrupts affect.json and the next _load silently resets the
+            // agent's affective memory.
+            atomicWriteFileSync(this.path, JSON.stringify(this._cache, null, 2));
         } catch (e) {
             console.warn(`[AFFECT] Failed to save ${this.path}: ${e.message}`);
-            // Best-effort cleanup of stray tmp on failure
-            try { unlinkSync(this.path + '.tmp'); } catch { /* ok if absent */ }
         }
     }
 

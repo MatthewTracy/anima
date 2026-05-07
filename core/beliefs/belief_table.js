@@ -31,6 +31,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { getStress, stressLevel } from '../cognition/allostatic_load.js';
+import { atomicWriteFileSync } from '../runtime/atomic_io.js';
 
 const BOTS_DIR = './bots';
 const TRUST_MIN = -1.0;
@@ -95,8 +96,11 @@ export class BeliefTable {
     _save() {
         if (!this._cache) return;
         try {
-            if (!existsSync(this.dir)) mkdirSync(this.dir, { recursive: true });
-            writeFileSync(this.path, JSON.stringify(this._cache, null, 2));
+            // v1.1.6: atomic write — same crash-durability rationale as
+            // AffectLog. BeliefTable rewrites this file on every update()
+            // and set(), so a crash mid-write would corrupt the JSON and
+            // the next _load silently resets the witness's beliefs.
+            atomicWriteFileSync(this.path, JSON.stringify(this._cache, null, 2));
         } catch (e) {
             console.warn(`[BELIEFS] Failed to save ${this.path}: ${e.message}`);
         }
