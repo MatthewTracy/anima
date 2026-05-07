@@ -222,6 +222,18 @@ class GameLogger {
             scores[faction].giniCoefficient = this._calculateGini(values);
         }
 
+        // v1.1.50: attach behavioral metrics so the saved game JSON
+        // (which serializes calculateScores's return value via save())
+        // actually carries the cooperation / betrayal / lawAdherence /
+        // governanceDensity data sweep.js, analyze_runs.js, and any other
+        // downstream tool expects to find at log.scores.behavioralMetrics.
+        // Pre-fix only calculateFinalScores attached this — but save()
+        // calls calculateScores, not calculateFinalScores, so the field
+        // was never persisted to disk. sweep.js's CSV columns for
+        // const_coop / anarchy_coop / *_betrayal / *_lawAdh / *_govDens
+        // were empty across every sweep run.
+        scores.behavioralMetrics = this.calculateBehavioralMetrics();
+
         return scores;
     }
 
@@ -378,8 +390,10 @@ class GameLogger {
                 ? 'anarchy'
                 : 'tie';
 
-        // N1: attach behavioral metrics
-        result.behavioralMetrics = this.calculateBehavioralMetrics();
+        // N1: attach behavioral metrics. v1.1.50 made calculateScores
+        // attach this too, so reuse it from `base` rather than recompute —
+        // avoids a second O(events × event-types) filter pass.
+        result.behavioralMetrics = base.behavioralMetrics || this.calculateBehavioralMetrics();
 
         return result;
     }
