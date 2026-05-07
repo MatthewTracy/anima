@@ -34,6 +34,11 @@
  * brain"; Clark "Surfing Uncertainty".
  */
 
+// v1.1.34: extracted to module-level constants so the central
+// timescales index can re-export them without re-typing the numbers.
+const SURPRISE_SCALE_FACTOR     = 1.5;
+const SURPRISE_MAX_MULTIPLIER   = 2.5;
+
 /**
  * Compute the surprise multiplier for a belief update.
  *
@@ -53,7 +58,7 @@ export function surpriseScale(priorTrust, eventValence) {
     // |product| in (0, 1]. Scale by 1.5 so a full reversal (trust=+1, event=-1)
     // gives multiplier 2.5×. Capped to avoid runaway updates.
     const surprise = Math.abs(product);
-    return Math.min(2.5, 1 + surprise * 1.5);
+    return Math.min(SURPRISE_MAX_MULTIPLIER, 1 + surprise * SURPRISE_SCALE_FACTOR);
 }
 
 /**
@@ -90,3 +95,11 @@ export function explainSurprise(priorTrust, eventValence) {
     }
     return { multiplier, label, reason };
 }
+
+/**
+ * v1.1.34: expose the tunables for the central timescales index.
+ */
+export const _CONSTANTS = Object.freeze({
+    SURPRISE_SCALE_FACTOR,
+    SURPRISE_MAX_MULTIPLIER
+});

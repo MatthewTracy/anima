@@ -240,3 +240,11 @@ export function explainSomatic(agentName, eventType) {
  * Test-only: expose the table for verification.
  */
 export const _COLLISIONS = EVENT_AXIS_COLLISIONS;
+
+/**
+ * v1.1.34: expose the tunables for the central timescales index.
+ */
+export const _CONSTANTS = Object.freeze({
+    SOMATIC_AMPLIFICATION_CAP,
+    COLLISION_WEIGHT
+});

@@ -18,6 +18,9 @@ import {
     CONSOLIDATION_TOP_N,
     MOOD_NEUTRAL_BAND, MOOD_DISSONANT_DISCOUNT, FLASHBULB_OVERRIDE_THRESHOLD,
     DISSONANCE_NEGATIVE_THRESHOLD, DISSONANCE_STRONG_MAGNITUDE,
+    PRIDE_POSITIVE_THRESHOLD, PRIDE_STRONG_MAGNITUDE,
+    SOMATIC_AMPLIFICATION_CAP, SOMATIC_COLLISION_WEIGHT,
+    SURPRISE_SCALE_FACTOR, SURPRISE_MAX_MULTIPLIER,
     VICARIOUS_TRUST_THRESHOLD,
     OPTIMISM_THRESHOLD, OPTIMISM_BONUS, OPTIMISM_DAMP,
     DMN_MUSINGS_BYTE_CAP,
@@ -26,6 +29,8 @@ import {
 import { _THRESHOLDS as ALLO } from '../core/cognition/allostatic_load.js';
 import { _CONSTANTS as DIS } from '../core/cognition/dissonance.js';
 import { _CONSTANTS as OPT } from '../core/cognition/optimism.js';
+import { _CONSTANTS as SOMATIC } from '../core/affect/somatic.js';
+import { _CONSTANTS as SURPRISE } from '../core/affect/predictive.js';
 
 test('allostatic constants re-exported match the source module', () => {
     assert.equal(ALLOSTATIC_LOAD_RATE, ALLO.LOAD_RATE);
@@ -35,6 +40,21 @@ test('allostatic constants re-exported match the source module', () => {
 test('dissonance constants re-exported match the source module', () => {
     assert.equal(DISSONANCE_NEGATIVE_THRESHOLD, DIS.NEGATIVE_THRESHOLD);
     assert.equal(DISSONANCE_STRONG_MAGNITUDE, DIS.STRONG_MAGNITUDE);
+});
+
+test('v1.1.34: pride constants re-exported match the source module', () => {
+    assert.equal(PRIDE_POSITIVE_THRESHOLD, DIS.POSITIVE_THRESHOLD);
+    assert.equal(PRIDE_STRONG_MAGNITUDE, DIS.PRIDE_STRONG_MAGNITUDE);
+});
+
+test('v1.1.34: somatic constants re-exported match the source module', () => {
+    assert.equal(SOMATIC_AMPLIFICATION_CAP, SOMATIC.SOMATIC_AMPLIFICATION_CAP);
+    assert.equal(SOMATIC_COLLISION_WEIGHT, SOMATIC.COLLISION_WEIGHT);
+});
+
+test('v1.1.34: surprise constants re-exported match the source module', () => {
+    assert.equal(SURPRISE_SCALE_FACTOR, SURPRISE.SURPRISE_SCALE_FACTOR);
+    assert.equal(SURPRISE_MAX_MULTIPLIER, SURPRISE.SURPRISE_MAX_MULTIPLIER);
 });
 
 test('optimism constants re-exported match the source module', () => {
@@ -74,6 +94,10 @@ test('asReport renders a non-empty report mentioning each layer', () => {
     assert.match(r, /DMN/);
     assert.match(r, /flashbulb/);
     assert.match(r, /Optimism/i);
+    // v1.1.34: pride, somatic, surprise must also appear
+    assert.match(r, /pride/i);
+    assert.match(r, /Somatic/i);
+    assert.match(r, /surprise/i);
 });
 
 test('all referenced constants are numeric', () => {
@@ -83,6 +107,9 @@ test('all referenced constants are numeric', () => {
         MOOD_WINDOW_LAST_N, CONSOLIDATION_TOP_N, MOOD_NEUTRAL_BAND,
         MOOD_DISSONANT_DISCOUNT, FLASHBULB_OVERRIDE_THRESHOLD,
         DISSONANCE_NEGATIVE_THRESHOLD, DISSONANCE_STRONG_MAGNITUDE,
+        PRIDE_POSITIVE_THRESHOLD, PRIDE_STRONG_MAGNITUDE,
+        SOMATIC_AMPLIFICATION_CAP, SOMATIC_COLLISION_WEIGHT,
+        SURPRISE_SCALE_FACTOR, SURPRISE_MAX_MULTIPLIER,
         VICARIOUS_TRUST_THRESHOLD, DMN_MUSINGS_BYTE_CAP
     ]) {
         assert.equal(typeof v, 'number');
