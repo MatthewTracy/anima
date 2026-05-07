@@ -23,6 +23,7 @@ import { RecursiveBeliefTable } from '../beliefs/recursive_belief.js';
 import { Burden } from '../burdens/burden.js';
 import { AffectLog } from '../affect/affect.js';
 import { consolidate, asPromptText as consolidatedAsPromptText } from '../affect/consolidation.js';
+import { asPromptText as stressAsPromptText } from '../cognition/allostatic_load.js';
 import { getKey, hasKey } from '../../src/utils/keys.js';
 import { getBudgetGuard } from '../../src/governance/budget_guard.js';
 import OpenAIApi from 'openai';
@@ -276,7 +277,8 @@ async function _evolveOne(agentName, events, openai, gameId = null) {
         .replaceAll('{{memoir}}', memoir)
         .replaceAll('{{affect}}', affect)
         .replaceAll('{{just_consolidated}}', justConsolidated)        // v0.46
-        .replaceAll('{{consolidated_history}}', consolidatedHistory); // v0.46
+        .replaceAll('{{consolidated_history}}', consolidatedHistory)  // v0.46
+        .replaceAll('{{stress}}', stressAsPromptText(agentName));     // v0.60
 
     try {
         const completion = await openai.chat.completions.create({
