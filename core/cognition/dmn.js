@@ -227,41 +227,47 @@ function _replayLine(top) {
 function _phraseOne(m) {
     const who    = m.actor ? `${m.actor}` : 'someone';
     const target = m.target;
-    const verbed = _eventVerbal(m.type);
     const cuts   = m.valence < 0 ? 'still cuts' : 'still warms';
 
+    // v0.70: pick the verb perspective based on the speaker's relation to
+    // the event. 'self' assumes the speaker IS the target ("raised a hand
+    // against me"). 'other' phrases the same act without claiming the
+    // speaker as target ("raised a hand"), used for vicarious moments
+    // where we name the actual target separately.
     if (m.role === 'vicarious' && target) {
-        // I felt it through them. Sign of vicarious valence drives wording —
-        // remember: trust < 0 flips a target-side harm into Schadenfreude
-        // (positive vicarious valence), and we should NOT call that "what
-        // they had to live through."
+        const verbed = _eventVerbal(m.type, 'other');
         if (m.valence < 0) {
             return `what ${target} had to live through when ${who} ${verbed}, and the ache that left in me ${cuts}`;
         }
         return `the strange small relief I felt when ${who} ${verbed} against ${target}, and that ${cuts}`;
     }
     if (m.role === 'target') {
+        const verbed = _eventVerbal(m.type, 'self');
         return `${who} ${verbed}, and the memory ${cuts}`;
     }
     if (m.role === 'actor') {
+        const verbed = _eventVerbal(m.type, 'other');
         return `what I myself did — ${verbed} — and how that ${cuts}`;
     }
     // witness
+    const verbed = _eventVerbal(m.type, 'other');
     return `${who} ${verbed}, and the memory ${cuts}`;
 }
 
 function _phraseTwo(m) {
     const who    = m.actor ? `${m.actor}` : 'someone';
     const target = m.target;
-    const verbed = _eventVerbal(m.type);
     if (m.role === 'vicarious' && target) {
+        const verbed = _eventVerbal(m.type, 'other');
         return m.valence < 0
             ? `what was done to ${target}`
             : `the quieter justice when ${who} ${verbed} against ${target}`;
     }
     if (m.role === 'actor') {
+        const verbed = _eventVerbal(m.type, 'other');
         return `my own hand in ${verbed}`;
     }
+    const verbed = _eventVerbal(m.type, 'other');
     return `${who} ${verbed}`;
 }
 
@@ -275,9 +281,15 @@ function _closingLine(mood) {
  * Translate a system event-type into a short verbal phrase usable in
  * narrative prose. Intentionally simple — this is a stylistic veneer,
  * not semantics.
+ *
+ * v0.70: optional `perspective` parameter. 'self' (default) phrases the
+ * verb as if the speaker IS the target ("raised a hand against me");
+ * 'other' phrases without claiming the speaker as target ("raised a
+ * hand"), used for vicarious / actor / bystander rumination where the
+ * actual target is named separately.
  */
-function _eventVerbal(type) {
-    const map = {
+function _eventVerbal(type, perspective = 'self') {
+    const SELF = {
         attack_player:   'raised a hand against me',
         kill_player:     'took a life',
         flog:            'had me flogged',
@@ -309,6 +321,39 @@ function _eventVerbal(type) {
         speak:           'said it out loud',
         confess_burden:  'told the truth they had been hiding'
     };
+    const OTHER = {
+        attack_player:   'raised a hand',
+        kill_player:     'took a life',
+        flog:            'ordered the flogging',
+        brig:            'sent them to the brig',
+        release:         'let them go',
+        divide_plunder:  'divided the spoils',
+        mutiny_call:     'called a mutiny',
+        mutiny_succeed:  'overthrew the captain',
+        vent:            'opened the airlock',
+        lockdown:        'locked us in',
+        repair:          'fixed what was broken',
+        examine_crew:    'looked after one of us',
+        contain:         'contained the threat',
+        contain_fail:    'fumbled the containment',
+        preach:          'preached a hard sermon',
+        accuse:          'levelled an accusation',
+        excommunicate:   'cast them out',
+        confess:         'confessed',
+        fast:            'kept the fast',
+        writeScripture:  'wrote down the words',
+        forge:           'forged a paper',
+        sabotage:        'set a fire',
+        meet:            'met someone outside',
+        leave_drop:      'left the drop',
+        expel:           'cut a comrade loose',
+        captured:        'was taken',
+        broke:           'gave up names under questioning',
+        lay_low:         'went still and silent',
+        speak:           'said it out loud',
+        confess_burden:  'told the truth they had been hiding'
+    };
+    const map = perspective === 'other' ? OTHER : SELF;
     return map[type] || `did ${type}`;
 }
 
