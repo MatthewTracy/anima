@@ -22,6 +22,7 @@ import { Burden, assignRandomFromBank } from '../../core/burdens/burden.js';
 import { applyEventsToBeliefs } from '../../core/beliefs/auto_update.js';
 import { FeudTracker } from '../../core/feuds/feud_tracker.js';
 import { Persona } from '../../core/personas/persona.js';
+import { AffectLog } from '../../core/affect/affect.js';
 import { StubLLM } from '../../core/stub/stub_llm.js';
 import { getKey, hasKey } from '../../src/utils/keys.js';
 import { getBudgetGuard } from '../../src/governance/budget_guard.js';
@@ -102,6 +103,8 @@ ${new FeudTracker().asPromptText(askingName)}
 ${pantheonAsPromptText(2)}
 
 ${persona.asPromptText()}
+
+${new AffectLog(askingName).asPromptText()}
 
 ${soul.asPromptText()}
 

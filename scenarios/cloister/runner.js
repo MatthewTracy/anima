@@ -26,6 +26,7 @@ import { BeliefTable } from '../../core/beliefs/belief_table.js';
 import { RecursiveBeliefTable } from '../../core/beliefs/recursive_belief.js';
 import { Burden } from '../../core/burdens/burden.js';
 import { FeudTracker } from '../../core/feuds/feud_tracker.js';
+import { AffectLog } from '../../core/affect/affect.js';
 import { applyEventsToBeliefs } from '../../core/beliefs/auto_update.js';
 import { getKey, hasKey } from '../../src/utils/keys.js';
 import { getBudgetGuard } from '../../src/governance/budget_guard.js';
@@ -79,6 +80,8 @@ function buildPrompt(monastery, profile, askingMonkName) {
 ${new FeudTracker().asPromptText(askingMonkName)}
 
 ${pantheonAsPromptText(2)}
+
+${new AffectLog(askingMonkName).asPromptText()}
 
 ${soul.asPromptText()}
 

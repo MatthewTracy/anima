@@ -21,6 +21,7 @@
 import { BeliefTable } from './belief_table.js';
 import { RecursiveBeliefTable } from './recursive_belief.js';
 import { logEventAsFeud } from '../feuds/feud_tracker.js';
+import { tagEvent, AffectLog } from '../affect/affect.js';
 
 /**
  * Default trust deltas for known event types.
@@ -111,28 +112,54 @@ export function applyEventToBeliefs(event, witnesses, overrides = {}) {
     const actor = event.actor;
     const target = event.target;
 
+    // v0.45: amygdala-style affect scaling. High-arousal events shift trust
+    // harder than low-arousal ones. The amygdala doesn't care about
+    // directionality — it cares about INTENSITY. So we use arousal as the
+    // belief-delta multiplier, not the magnitude product.
+    //
+    // Affect range: arousal ∈ [0, 1]. We map to a multiplier of [0.5, 1.5]
+    // so calm events get half-impact and intense events 1.5×.
+    const affect = tagEvent(event);
+    const affectScale = 0.5 + affect.arousal;   // [0.5, 1.5]
+
     // 1) Update witnesses' BeliefTable about the actor (if delta.byActor)
     if (typeof delta.byActor === 'number' && delta.byActor !== 0 && actor) {
+        const scaledDelta = delta.byActor * affectScale;
         for (const witnessName of witnesses) {
             if (!witnessName || witnessName === actor) continue;
             try {
                 const beliefs = new BeliefTable(witnessName);
-                beliefs.update(actor, delta.byActor, `witnessed: ${event.type}${target ? ' against ' + target : ''}`);
+                beliefs.update(actor, scaledDelta, `witnessed: ${event.type}${target ? ' against ' + target : ''}`);
                 beliefUpdates++;
+                // Also record in the witness's affect log
+                try {
+                    const role = (witnessName === target) ? 'target' : 'witness';
+                    new AffectLog(witnessName).record(event, role);
+                } catch { /* nonfatal */ }
             } catch { /* nonfatal */ }
         }
     }
 
     // 2) Update witnesses' BeliefTable about the target (if delta.byTarget and target)
     if (typeof delta.byTarget === 'number' && delta.byTarget !== 0 && target) {
+        const scaledDelta = delta.byTarget * affectScale;
         for (const witnessName of witnesses) {
             if (!witnessName || witnessName === target) continue;
             try {
                 const beliefs = new BeliefTable(witnessName);
-                beliefs.update(target, delta.byTarget, `witnessed as target of ${event.type}${actor ? ' by ' + actor : ''}`);
+                beliefs.update(target, scaledDelta, `witnessed as target of ${event.type}${actor ? ' by ' + actor : ''}`);
                 beliefUpdates++;
             } catch { /* nonfatal */ }
         }
+    }
+
+    // 2b) Record affect for actor + target if they're not in the witnesses
+    //     list (some event-loops only pass non-actor witnesses).
+    if (actor && !witnesses.includes(actor)) {
+        try { new AffectLog(actor).record(event, 'actor'); } catch { /* nonfatal */ }
+    }
+    if (target && target !== actor && !witnesses.includes(target)) {
+        try { new AffectLog(target).record(event, 'target'); } catch { /* nonfatal */ }
     }
 
     // 3) Update the TARGET's RecursiveBeliefTable about the ACTOR

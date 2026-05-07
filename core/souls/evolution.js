@@ -21,6 +21,7 @@ import { Soul } from './soul.js';
 import { BeliefTable } from '../beliefs/belief_table.js';
 import { RecursiveBeliefTable } from '../beliefs/recursive_belief.js';
 import { Burden } from '../burdens/burden.js';
+import { AffectLog } from '../affect/affect.js';
 import { getKey, hasKey } from '../../src/utils/keys.js';
 import { getBudgetGuard } from '../../src/governance/budget_guard.js';
 import OpenAIApi from 'openai';
@@ -107,6 +108,29 @@ function _formatReflectionsForPrompt(agentName) {
  * v0.15: format the agent's burden. Empty string if none — keeps the
  * prompt clean for agents who carry no secret.
  */
+// v0.45: affect summary — what FELT most charged this game, ranked by
+// amygdala-style |valence| × arousal. The synthesis prompt prioritizes
+// these over banal events. Models how real memory consolidation works:
+// emotional moments survive; flat ones fade.
+function _formatAffectForPrompt(agentName) {
+    try {
+        const log = new AffectLog(agentName);
+        const mood = log.currentMood();
+        const top = log.topMoments(5);
+        if (top.length === 0) return '(felt state: settled, no charged moments)';
+        const lines = [];
+        lines.push(`Final mood: ${mood.label} (valence ${mood.valence > 0 ? '+' : ''}${mood.valence.toFixed(2)}, arousal ${mood.arousal.toFixed(2)})`);
+        lines.push('Most-charged moments — these should weigh MOST in your scars / what-I-have-learned:');
+        for (const m of top) {
+            const sign = m.valence > 0 ? '+' : '';
+            lines.push(`  - [${sign}${m.valence.toFixed(2)}/${m.arousal.toFixed(2)}] ${m.type}${m.actor ? ' by ' + m.actor : ''}${m.target ? ' on ' + m.target : ''}`);
+        }
+        return lines.join('\n');
+    } catch {
+        return '(felt state unavailable)';
+    }
+}
+
 function _formatBurdenForPrompt(agentName) {
     try {
         const burdenObj = new Burden(agentName);
@@ -216,6 +240,7 @@ async function _evolveOne(agentName, events, openai, gameId = null) {
     const burden = _formatBurdenForPrompt(agentName);
     const commitments = _formatCommitmentsForPrompt(agentName, gameId);
     const memoir = _formatMemoirForPrompt(agentName);
+    const affect = _formatAffectForPrompt(agentName);   // v0.45
 
     const promptTemplate = readFileSync(PROMPT_PATH, 'utf8');
     const prompt = promptTemplate
@@ -226,7 +251,8 @@ async function _evolveOne(agentName, events, openai, gameId = null) {
         .replaceAll('{{reflections}}', reflections)
         .replaceAll('{{burden}}', burden)
         .replaceAll('{{commitments}}', commitments)
-        .replaceAll('{{memoir}}', memoir);
+        .replaceAll('{{memoir}}', memoir)
+        .replaceAll('{{affect}}', affect);
 
     try {
         const completion = await openai.chat.completions.create({

@@ -283,6 +283,22 @@ KEY COMMANDS: !collectBlocks, !craftRecipe, !goToCoordinates, !attack, !goToPlay
             }
         }
 
+        // ANIMA v0.45: $MOOD — agent's current felt state from the affect
+        // log. Composes mood label (settled / wary / tense / shaken /
+        // devastated / hopeful / elated) + top-3 most-charged moments.
+        // This is the somatic-marker layer: a 'gut sense' of how the
+        // game is going that biases reasoning, not just a chronological
+        // event log.
+        if (prompt.includes('$MOOD')) {
+            try {
+                const { AffectLog } = await import('../../core/affect/affect.js');
+                const log = new AffectLog(this.agent.name);
+                prompt = prompt.replaceAll('$MOOD', log.asPromptText());
+            } catch (e) {
+                prompt = prompt.replaceAll('$MOOD', '');
+            }
+        }
+
         // V3: $GAME_DURATION placeholder — accurate per-run, not hardcoded text
         if (prompt.includes('$GAME_DURATION')) {
             try {
