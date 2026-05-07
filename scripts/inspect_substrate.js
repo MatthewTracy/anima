@@ -90,6 +90,19 @@ header('AFFECT (per-event amygdala-tagged log)');
 const log = new AffectLog(agent);
 const mood = log.currentMood();
 console.log(`  Current mood:      ${mood.label} (valence ${mood.valence > 0 ? '+' : ''}${mood.valence}, arousal ${mood.arousal})`);
+// v0.98: name the Russell circumplex quadrant for the mood, so a reader
+// who isn't fluent in the label vocabulary still sees where the agent
+// sits in 2D affect space.
+{
+    const v = mood.valence, a = mood.arousal;
+    let quadrant;
+    if (a < 0.20) quadrant = v >= 0 ? 'low-arousal positive (settled, content quadrant)' : 'low-arousal negative (numb, withdrawn quadrant)';
+    else if (a < 0.50) quadrant = v >= 0.20 ? 'mild-arousal positive (content)' : v >= -0.20 ? 'mild-arousal neutral (watchful)' : 'mild-arousal negative (wary)';
+    else if (v >= 0.10) quadrant = v >= 0.40 ? 'high-arousal positive (elated)' : 'high-arousal mildly positive (hopeful)';
+    else if (v >= -0.10) quadrant = 'high-arousal neutral (tense)';
+    else quadrant = v >= -0.40 ? 'high-arousal negative (shaken)' : 'high-arousal extreme negative (devastated)';
+    console.log(`  Quadrant:          ${quadrant}`);
+}
 
 const top = log.topMoments(5);
 if (top.length === 0) {
