@@ -59,7 +59,10 @@ function snapshotBotDirs() {
 const before = snapshotBotDirs();
 
 const env = { ...process.env, ANIMA_NO_PANTHEON: '1' };
-const result = spawnSync('node', ['--test', ...testFiles], { stdio: 'inherit', env });
+// v1.1.20: process.execPath instead of bare 'node' so the test suite
+// runs on the same Node binary as the wrapper (matters for nvm setups
+// where shell PATH may resolve 'node' to a different installed version).
+const result = spawnSync(process.execPath, ['--test', ...testFiles], { stdio: 'inherit', env });
 
 // Sweep new bot dirs created by tests. Only deletes names that did NOT
 // exist before this run started, so legitimate persistent agents are safe.

@@ -100,7 +100,11 @@ function fire(event, label) {
 }
 
 function inspect(agent) {
-    const result = spawnSync('node', ['scripts/inspect_substrate.js', agent], {
+    // v1.1.20: use process.execPath instead of bare 'node' so the spawned
+    // child runs on the SAME Node binary as the parent. With nvm or
+    // multiple Node installs, bare 'node' could resolve to a different
+    // version with subtly different behavior.
+    const result = spawnSync(process.execPath, ['scripts/inspect_substrate.js', agent], {
         cwd: repoRoot,
         encoding: 'utf8'
     });
@@ -147,7 +151,7 @@ console.log('');
 console.log('════════════════════════════════════════════════════════════════════');
 console.log('  DIVERGENCE — same five events, two minds');
 console.log('════════════════════════════════════════════════════════════════════');
-const diffResult = spawnSync('node', ['scripts/substrate_diff.js', MOTHER, SOLDIER], {
+const diffResult = spawnSync(process.execPath, ['scripts/substrate_diff.js', MOTHER, SOLDIER], {
     cwd: repoRoot,
     encoding: 'utf8'
 });

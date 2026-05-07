@@ -60,7 +60,9 @@ console.log(`  ANIMA SUBSTRATE COHORT — ${names.length} agent${names.length ==
 console.log('═'.repeat(70));
 
 for (const name of names.sort()) {
-    const result = spawnSync('node', ['scripts/inspect_substrate.js', name], {
+    // v1.1.20: process.execPath instead of bare 'node' for same-version
+    // guarantee under nvm / multi-install setups.
+    const result = spawnSync(process.execPath, ['scripts/inspect_substrate.js', name], {
         cwd: repoRoot,
         encoding: 'utf8'
     });
