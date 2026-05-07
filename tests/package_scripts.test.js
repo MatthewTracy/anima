@@ -144,9 +144,7 @@ test('v1.1.45: src/governance/autobiographies.js imports cleanly even without op
 test('v1.1.46: evolution / reflection / post_game_summary import without openai', async () => {
     // v1.1.46 generalized the v1.1.35/v1.1.45 fix into a shared
     // core/runtime/load_openai.js helper and applied it to the remaining
-    // non-runner files. (The three scenario runners are excluded from
-    // this test because they auto-execute main() on import — that's a
-    // separate isMainModule fix for a future iteration.)
+    // non-runner files.
     const { pathToFileURL } = await import('url');
     const targets = [
         ['core/runtime/load_openai.js', 'loadOpenAI'],
@@ -159,5 +157,28 @@ test('v1.1.46: evolution / reflection / post_game_summary import without openai'
         const mod = await import(url);
         assert.ok(typeof mod[expectedExport] === 'function',
             `${rel} must export ${expectedExport} (clean import without openai)`);
+    }
+});
+
+test('v1.1.47: all four scenario runners import cleanly (no eager main, no eager openai)', async () => {
+    // Pre-fix the runners (1) imported openai at module top, and
+    // (2) called main().catch(...) unconditionally. Either alone made
+    // them unimportable in environments without openai, and the auto-
+    // main meant tests / utilities couldn't even check the file's
+    // exports without triggering process.exit(1) when API keys were
+    // missing. v1.1.46 fixed (1) via the shared loadOpenAI helper;
+    // v1.1.47 fixed (2) by gating main() on isMainModule.
+    const { pathToFileURL } = await import('url');
+    const runners = [
+        'scenarios/cloister/runner.js',
+        'scenarios/crew/runner.js',
+        'scenarios/outpost/runner.js',
+        'scenarios/cell/runner.js'
+    ];
+    for (const rel of runners) {
+        const url = pathToFileURL(join(repoRoot, rel)).href;
+        // Pre-fix this would trigger main() and process.exit(1) on missing
+        // OPENROUTER_API_KEY. With the gate, importing is a no-op effect-wise.
+        await import(url);
     }
 });

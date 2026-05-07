@@ -381,7 +381,13 @@ async function main() {
     console.log('\n[OUTPOST] Run complete. Inspect with: npm run souls\n');
 }
 
-main().catch(e => {
-    console.error('[OUTPOST] Fatal:', e.stack || e.message);
-    process.exit(1);
-});
+// v1.1.47: gate main() on isMainModule (same pattern as scripts/record.js
+// and scripts/replay.js, v1.1.11). See cloister/runner.js for the rationale.
+import { fileURLToPath } from 'url';
+const isMainModule = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+if (isMainModule) {
+    main().catch(e => {
+        console.error('[OUTPOST] Fatal:', e.stack || e.message);
+        process.exit(1);
+    });
+}

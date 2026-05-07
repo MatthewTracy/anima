@@ -388,7 +388,16 @@ async function main() {
     console.log('\n[CLOISTER] Run complete. Inspect with: npm run souls\n');
 }
 
-main().catch(e => {
-    console.error('[CLOISTER] Fatal:', e.stack || e.message);
-    process.exit(1);
-});
+// v1.1.47: gate main() on isMainModule (same pattern as scripts/record.js
+// and scripts/replay.js, v1.1.11). Importing this runner used to trigger
+// main() unconditionally, which made the file unimportable for tests,
+// type-checking, or any utility that wanted access to its exported
+// helpers without actually running a scenario.
+import { fileURLToPath } from 'url';
+const isMainModule = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+if (isMainModule) {
+    main().catch(e => {
+        console.error('[CLOISTER] Fatal:', e.stack || e.message);
+        process.exit(1);
+    });
+}
