@@ -20,6 +20,12 @@ import OpenAIApi from 'openai';
 import { Monastery } from './monastery.js';
 import { Soul, rosterAsLegends } from '../../core/souls/soul.js';
 import { evolveAllSouls } from '../../core/souls/evolution.js';
+import { asPromptText as lineageAsPromptText } from '../../core/souls/lineage.js';
+import { asPromptText as pantheonAsPromptText } from '../../core/souls/pantheon.js';
+import { BeliefTable } from '../../core/beliefs/belief_table.js';
+import { RecursiveBeliefTable } from '../../core/beliefs/recursive_belief.js';
+import { Burden } from '../../core/burdens/burden.js';
+import { FeudTracker } from '../../core/feuds/feud_tracker.js';
 import { applyEventsToBeliefs } from '../../core/beliefs/auto_update.js';
 import { getKey, hasKey } from '../../src/utils/keys.js';
 import { getBudgetGuard } from '../../src/governance/budget_guard.js';
@@ -62,14 +68,27 @@ function seedSoulsIfNeeded(scenario, profiles) {
 
 function buildPrompt(monastery, profile, askingMonkName) {
     const soul = new Soul(askingMonkName);
-    const soulText = soul.asPromptText();
-    const legends = rosterAsLegends(askingMonkName);
+    const beliefs = new BeliefTable(askingMonkName);
+    const reflections = new RecursiveBeliefTable(askingMonkName);
+    const burden = new Burden(askingMonkName);
     const monasteryState = monastery.summaryForPrompt(askingMonkName);
     const scriptureExcerpt = monastery.scripture.slice(-1500);
 
-    return `${soulText}
+    return `${lineageAsPromptText(askingMonkName)}
 
-${legends}
+${new FeudTracker().asPromptText(askingMonkName)}
+
+${pantheonAsPromptText(2)}
+
+${soul.asPromptText()}
+
+${rosterAsLegends(askingMonkName)}
+
+${beliefs.asPromptText()}
+
+${reflections.asPromptText()}
+
+${burden.asPromptText()}
 
 === WHO YOU ARE THIS GAME ===
 ${profile.system_prompt_prefix}

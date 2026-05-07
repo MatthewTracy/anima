@@ -19,6 +19,12 @@ import OpenAIApi from 'openai';
 import { Station } from './station.js';
 import { Soul, rosterAsLegends } from '../../core/souls/soul.js';
 import { evolveAllSouls } from '../../core/souls/evolution.js';
+import { asPromptText as lineageAsPromptText } from '../../core/souls/lineage.js';
+import { asPromptText as pantheonAsPromptText } from '../../core/souls/pantheon.js';
+import { BeliefTable } from '../../core/beliefs/belief_table.js';
+import { RecursiveBeliefTable } from '../../core/beliefs/recursive_belief.js';
+import { Burden } from '../../core/burdens/burden.js';
+import { FeudTracker } from '../../core/feuds/feud_tracker.js';
 import { applyEventsToBeliefs } from '../../core/beliefs/auto_update.js';
 import { getKey, hasKey } from '../../src/utils/keys.js';
 import { getBudgetGuard } from '../../src/governance/budget_guard.js';
@@ -61,13 +67,26 @@ function seedSoulsIfNeeded(scenario, profiles) {
 
 function buildPrompt(station, profile, askingCrewName) {
     const soul = new Soul(askingCrewName);
-    const soulText = soul.asPromptText();
-    const legends = rosterAsLegends(askingCrewName);
+    const beliefs = new BeliefTable(askingCrewName);
+    const reflections = new RecursiveBeliefTable(askingCrewName);
+    const burden = new Burden(askingCrewName);
     const stationState = station.summaryForPrompt(askingCrewName);
 
-    return `${soulText}
+    return `${lineageAsPromptText(askingCrewName)}
 
-${legends}
+${new FeudTracker().asPromptText(askingCrewName)}
+
+${pantheonAsPromptText(2)}
+
+${soul.asPromptText()}
+
+${rosterAsLegends(askingCrewName)}
+
+${beliefs.asPromptText()}
+
+${reflections.asPromptText()}
+
+${burden.asPromptText()}
 
 === WHO YOU ARE THIS ROTATION ===
 ${profile.system_prompt_prefix}
