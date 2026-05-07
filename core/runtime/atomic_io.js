@@ -39,10 +39,38 @@ import { dirname } from 'path';
 export function atomicWriteFileSync(path, data) {
     const dir = dirname(path);
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-    const tmp = path + '.tmp';
+    // v1.1.22: include pid + random suffix in the tmp name. Without this,
+    // two writers atomically saving to the same destination (e.g. shared
+    // logs/feuds.json from multiple test files) raced on a shared
+    // <path>.tmp — the second writer's writeFileSync clobbered the
+    // first's tmp, then the first's rename succeeded but the second's
+    // failed ENOENT. Per-call unique tmp names make atomic writes safe
+    // for concurrent destination targets.
+    const tmp = `${path}.tmp-${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
     try {
         writeFileSync(tmp, data);
-        renameSync(tmp, path);
+        // v1.1.22: retry renameSync on transient Windows errors. Anti-
+        // virus scanners and the file indexer can briefly hold the
+        // destination's handle, causing EPERM/EACCES on rename. The
+        // operation is otherwise legal — a few-millisecond wait is
+        // enough to clear the lock. POSIX systems don't hit this
+        // (rename is unconditional there) but the retry is harmless.
+        let lastErr = null;
+        const TRANSIENT_CODES = new Set(['EPERM', 'EACCES', 'EBUSY']);
+        for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+                renameSync(tmp, path);
+                return;
+            } catch (e) {
+                lastErr = e;
+                if (!TRANSIENT_CODES.has(e?.code)) throw e;
+                // Brief sync sleep before retry — Atomics.wait on
+                // SharedArrayBuffer is the standard sync-sleep idiom.
+                const buf = new SharedArrayBuffer(4);
+                Atomics.wait(new Int32Array(buf), 0, 0, 10 * (attempt + 1));
+            }
+        }
+        throw lastErr;
     } catch (e) {
         // Best-effort tmp cleanup; ignore if absent.
         try { unlinkSync(tmp); } catch { /* ok */ }

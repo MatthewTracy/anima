@@ -10,7 +10,7 @@
 
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, rmSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { existsSync, rmSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { atomicWriteFileSync } from '../core/runtime/atomic_io.js';
 
@@ -67,4 +67,27 @@ test('content can be a Buffer (not just string)', () => {
     assert.equal(back[0], 0x00);
     assert.equal(back[1], 0xff);
     assert.equal(back[2], 0x42);
+});
+
+test('v1.1.22: many writers to the same path do NOT race on the tmp file', () => {
+    // Pre-fix bug: every call shared the same tmp name (path + ".tmp"),
+    // so two writers to the same path could clobber each other's tmp
+    // and the second renameSync would fail ENOENT. Now each call gets
+    // a unique <path>.tmp-<pid>-<random> suffix.
+    const path = join(DIR, 'shared.json');
+    let failures = 0;
+    for (let i = 0; i < 20; i++) {
+        try {
+            atomicWriteFileSync(path, JSON.stringify({ writer: i }));
+        } catch {
+            failures++;
+        }
+    }
+    assert.equal(failures, 0, 'no writes should fail');
+    // Final state must be valid JSON (not a half-written tmp).
+    const final = JSON.parse(readFileSync(path, 'utf8'));
+    assert.ok(typeof final.writer === 'number');
+    // No stray tmp files left behind.
+    const stragglers = readdirSync(DIR).filter(f => f.startsWith('shared.json.tmp'));
+    assert.deepEqual(stragglers, [], `stale tmp files: ${stragglers.join(', ')}`);
 });
