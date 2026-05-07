@@ -16,7 +16,7 @@
 
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import OpenAIApi from 'openai';
+import { loadOpenAI } from '../../core/runtime/load_openai.js';
 import { Ship } from './ship.js';
 import { Soul, rosterAsLegends } from '../../core/souls/soul.js';
 import { evolveAllSouls } from '../../core/souls/evolution.js';
@@ -225,6 +225,11 @@ async function generateMemoirs(ship, scenario) {
     const outDir = join(scenario.outputs.manuscript_dir, 'memoirs');
     if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
 
+    const OpenAIApi = await loadOpenAI();
+    if (!OpenAIApi) {
+        console.log('[CREW] openai package missing — skipping memoir generation.');
+        return;
+    }
     const openai = new OpenAIApi({
         baseURL: 'https://openrouter.ai/api/v1',
         apiKey: getKey('OPENROUTER_API_KEY')
@@ -268,6 +273,11 @@ async function main() {
     seedSoulsIfNeeded(scenario, profiles);
     const ship = new Ship(scenario, profiles);
 
+    const OpenAIApi = await loadOpenAI();
+    if (!OpenAIApi) {
+        console.error('[CREW] openai package not installed. Run `npm install` first.');
+        process.exit(1);
+    }
     const openai = new OpenAIApi({
         baseURL: 'https://openrouter.ai/api/v1',
         apiKey: getKey('OPENROUTER_API_KEY')

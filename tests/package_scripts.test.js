@@ -140,3 +140,24 @@ test('v1.1.45: src/governance/autobiographies.js imports cleanly even without op
     assert.ok(typeof mod.generateAutobiographies === 'function',
         'generateAutobiographies must be exported');
 });
+
+test('v1.1.46: evolution / reflection / post_game_summary import without openai', async () => {
+    // v1.1.46 generalized the v1.1.35/v1.1.45 fix into a shared
+    // core/runtime/load_openai.js helper and applied it to the remaining
+    // non-runner files. (The three scenario runners are excluded from
+    // this test because they auto-execute main() on import — that's a
+    // separate isMainModule fix for a future iteration.)
+    const { pathToFileURL } = await import('url');
+    const targets = [
+        ['core/runtime/load_openai.js', 'loadOpenAI'],
+        ['core/souls/evolution.js', 'evolveAllSouls'],
+        ['src/governance/reflection.js', 'reflectOnAction'],
+        ['src/governance/post_game_summary.js', 'generatePostGameSummary']
+    ];
+    for (const [rel, expectedExport] of targets) {
+        const url = pathToFileURL(join(repoRoot, rel)).href;
+        const mod = await import(url);
+        assert.ok(typeof mod[expectedExport] === 'function',
+            `${rel} must export ${expectedExport} (clean import without openai)`);
+    }
+});

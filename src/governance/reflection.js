@@ -9,7 +9,7 @@
 import { getKey, hasKey } from '../utils/keys.js';
 import { getBudgetGuard } from './budget_guard.js';
 import { getNarrativeLogger } from './narrative_logger.js';
-import OpenAIApi from 'openai';
+import { loadOpenAI } from '../../core/runtime/load_openai.js';
 
 const REFLECTION_MODEL = 'deepseek/deepseek-chat';
 const _recentReflections = new Map();  // agentName -> last reflection time
@@ -66,6 +66,8 @@ Context: ${context}${actualAgents}
 In ONE short sentence (max 25 words), explain why you did that. Reference only the actual players above — do NOT mention historical figures who aren't in this game. Stay in character.`;
 
     try {
+        const OpenAIApi = await loadOpenAI();
+        if (!OpenAIApi) return null;
         const openai = new OpenAIApi({
             baseURL: 'https://openrouter.ai/api/v1',
             apiKey: getKey('OPENROUTER_API_KEY')

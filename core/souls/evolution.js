@@ -27,7 +27,7 @@ import { asPromptText as stressAsPromptText } from '../cognition/allostatic_load
 import { detectDissonance, detectPride } from '../cognition/dissonance.js';
 import { getKey, hasKey } from '../../src/utils/keys.js';
 import { getBudgetGuard } from '../../src/governance/budget_guard.js';
-import OpenAIApi from 'openai';
+import { loadOpenAI } from '../runtime/load_openai.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROMPT_PATH = join(__dirname, 'templates', 'evolution_prompt.md');
@@ -388,6 +388,11 @@ export async function evolveAllSouls(gameLogger, roster) {
     } catch { /* if guard unavailable, proceed */ }
 
     const events = gameLogger?.events || [];
+    const OpenAIApi = await loadOpenAI();
+    if (!OpenAIApi) {
+        console.log('[EVOLVE] openai package missing — skipping soul evolution.');
+        return { evolved: [], skipped: roster || [] };
+    }
     const openai = new OpenAIApi({
         baseURL: 'https://openrouter.ai/api/v1',
         apiKey: getKey('OPENROUTER_API_KEY')

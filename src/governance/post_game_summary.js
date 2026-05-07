@@ -9,7 +9,7 @@ import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { getKey, hasKey } from '../utils/keys.js';
 import { getBudgetGuard } from './budget_guard.js';
-import OpenAIApi from 'openai';
+import { loadOpenAI } from '../../core/runtime/load_openai.js';
 
 const SUMMARY_MODEL = 'deepseek/deepseek-chat';
 
@@ -84,6 +84,11 @@ ${timeline}
 Write the recap now (markdown, ~400 words):`;
 
     try {
+        const OpenAIApi = await loadOpenAI();
+        if (!OpenAIApi) {
+            console.log('[POST-GAME] openai package missing — skipping LLM summary');
+            return null;
+        }
         const openai = new OpenAIApi({
             baseURL: 'https://openrouter.ai/api/v1',
             apiKey: getKey('OPENROUTER_API_KEY')
