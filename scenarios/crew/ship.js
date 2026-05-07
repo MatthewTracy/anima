@@ -5,8 +5,9 @@
  * loyalty per crew, mutiny votes, and the persistent Captain's Log.
  */
 
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { CommitmentLedger } from '../../core/commitments/commitment_ledger.js';
+import { atomicWriteFileSync } from '../../core/runtime/atomic_io.js';
 
 export class Ship {
     constructor(scenarioConfig, characterProfiles, gameId = null) {
@@ -40,7 +41,8 @@ export class Ship {
     }
 
     saveCaptainsLog() {
-        try { writeFileSync(this.captainsLogPath, this.captainsLog); }
+        // v1.1.39: atomic. captains_log.md is the persistent ship-canon.
+        try { atomicWriteFileSync(this.captainsLogPath, this.captainsLog); }
         catch (e) { console.warn('[CREW] Failed to save log:', e.message); }
     }
 

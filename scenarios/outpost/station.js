@@ -10,7 +10,8 @@
  * Future crews read it. Lies become canonical.
  */
 
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
+import { atomicWriteFileSync } from '../../core/runtime/atomic_io.js';
 
 export class Station {
     constructor(scenarioConfig, characterProfiles) {
@@ -54,7 +55,11 @@ export class Station {
 
     saveEarthLog() {
         try {
-            writeFileSync(this.earthLogPath, this.earthLog);
+            // v1.1.39: atomic. earth_log.md is the cross-game canonical
+            // mission record — every future Outpost run reads it. A crash
+            // mid-save would corrupt scenario lore that's accumulated
+            // across runs.
+            atomicWriteFileSync(this.earthLogPath, this.earthLog);
         } catch (e) { console.warn('[OUTPOST] Failed to save earth log:', e.message); }
     }
 

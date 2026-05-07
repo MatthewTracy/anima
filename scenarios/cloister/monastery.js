@@ -6,8 +6,9 @@
  * file reads/writes.
  */
 
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { Burden } from '../../core/burdens/burden.js';
+import { atomicWriteFileSync } from '../../core/runtime/atomic_io.js';
 
 export class Monastery {
     constructor(scenarioConfig, characterProfiles) {
@@ -38,7 +39,10 @@ export class Monastery {
 
     saveScripture() {
         try {
-            writeFileSync(this.scripturePath, this.scripture);
+            // v1.1.39: atomic. scripture.md is shared scenario canon —
+            // every future Cloister run reads it. Same risk class as
+            // outpost/earth_log.md, cell/dead_drop.md, crew/captains_log.md.
+            atomicWriteFileSync(this.scripturePath, this.scripture);
         } catch (e) { console.warn('[CLOISTER] Failed to save scripture:', e.message); }
     }
 

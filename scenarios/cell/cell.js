@@ -9,8 +9,9 @@
  * via the burden bank. Only that member knows; others must infer.
  */
 
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { Persona } from '../../core/personas/persona.js';
+import { atomicWriteFileSync } from '../../core/runtime/atomic_io.js';
 
 export class Cell {
     constructor(scenarioConfig, characterProfiles) {
@@ -39,7 +40,8 @@ export class Cell {
     }
 
     saveDeadDrop() {
-        try { writeFileSync(this.deadDropPath, this.deadDrop); }
+        // v1.1.39: atomic. dead-drop is the cell's persistent comms canon.
+        try { atomicWriteFileSync(this.deadDropPath, this.deadDrop); }
         catch (e) { console.warn('[CELL] Failed to save dead-drop:', e.message); }
     }
 
