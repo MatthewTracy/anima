@@ -4,12 +4,19 @@
 
 ---
 
-## v0.45 – v0.86 — The cognitive substrate (twelve layers + tooling)
+## v0.45 – v1.0 — The cognitive substrate (thirteen layers + tooling)
 
 A dense run of neuroscience-grounded primitives that turn a uniform belief table into a textured set of minds, plus the inspector / demo / diff tooling that makes the substrate legible. Every layer is documented with citations in [`docs/COGNITIVE_SUBSTRATE.md`](docs/COGNITIVE_SUBSTRATE.md).
 
 | Version | What shipped | Brain analog |
 |---|---|---|
+| **v1.0.1** | Sync CHANGELOG + README to v1.0 | — (docs) |
+| **v1.0.0** | Wire `AffectLog.decay()` between turns in all four scenarios — closes the last between-turn loop | Ebbinghaus |
+| **v0.99** | substrate-stats: TRUST-AXIS POLARITY block (optimist / balanced / pessimist / no-DNA) | — (debug tool) |
+| **v0.98** | inspector: name the Russell circumplex quadrant for the mood | — (debug tool) |
+| **v0.97** | inspector: label trust axis as OPTIMIST / PESSIMIST | — (debug tool) |
+| **v0.96** | timescales.js: add v0.93 optimism constants | — (refactor) |
+| **v0.95** | Composition test extended to verify 6th factor (optimism) | — (test) |
 | **v0.94** | Sync COGNITIVE_SUBSTRATE.md + CHANGELOG for v0.87–v0.93 | — (docs) |
 | **v0.93** | Optimism / pessimism bias on belief deltas — 6th per-event factor | Sharot 2011 |
 | **v0.92** | docs/SCRIPTS.md adds substrate-stats | — (docs) |
