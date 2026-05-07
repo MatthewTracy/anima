@@ -49,7 +49,11 @@ export const queryList = [
             let action = agent.actions.currentActionLabel;
             if (agent.isIdle())
                 action = 'Idle';
-            res += `\- Current Action: ${action}`;
+            // v1.1.53: was `\\- Current Action: ...` — `\\-` in a JS template
+            // literal collapses to just `-`, so the line concatenated onto
+            // the previous "- Time: Night" without a newline. Every !stats
+            // output had "...Night- Current Action: Idle" run together.
+            res += `\n- Current Action: ${action}`;
 
 
             let players = world.getNearbyPlayerNames(bot);
