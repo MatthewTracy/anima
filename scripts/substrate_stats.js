@@ -30,6 +30,7 @@ import { Persona } from '../core/personas/persona.js';
 import { getStress, stressLevel } from '../core/cognition/allostatic_load.js';
 import { detectDissonance, detectPride } from '../core/cognition/dissonance.js';
 import { dnaOf } from '../core/dna/soul_dna.js';
+import { getFaction } from '../core/identity/faction.js';
 import { OPTIMISM_THRESHOLD } from '../core/cognition/timescales.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -66,6 +67,7 @@ const stressCounts = { baseline: 0, elevated: 0, allostatic: 0, overloaded: 0 };
 const dissonanceCounts = { none: 0, soft: 0, loud: 0 };
 const prideCounts = { none: 0, soft: 0, loud: 0 };
 const optimismCounts = { optimist: 0, pessimist: 0, balanced: 0, 'no DNA': 0 };
+const factionCounts = {};
 let totalActiveBeliefs = 0;
 let agentsWithBeliefs = 0;
 let masked = 0;
@@ -98,6 +100,9 @@ for (const n of names) {
     else if (dna.trust >= OPTIMISM_THRESHOLD) optimismCounts.optimist++;
     else if (dna.trust <= -OPTIMISM_THRESHOLD) optimismCounts.pessimist++;
     else optimismCounts.balanced++;
+
+    const f = getFaction(n);
+    factionCounts[f] = (factionCounts[f] || 0) + 1;
 }
 
 const meanBeliefs = agentsWithBeliefs > 0
@@ -154,6 +159,15 @@ console.log('  TRUST-AXIS POLARITY (optimism / pessimism)');
 console.log(`  ${bar()}`);
 for (const level of ['optimist', 'balanced', 'pessimist', 'no DNA']) {
     console.log(distRow(level, optimismCounts[level], names.length));
+}
+
+console.log('');
+console.log(`  ${bar()}`);
+console.log('  FACTION DISTRIBUTION');
+console.log(`  ${bar()}`);
+const sortedFactions = Object.entries(factionCounts).sort((a, b) => b[1] - a[1]);
+for (const [label, count] of sortedFactions) {
+    console.log(distRow(label, count, names.length));
 }
 
 console.log('');
