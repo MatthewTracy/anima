@@ -24,7 +24,7 @@ import { Burden } from '../burdens/burden.js';
 import { AffectLog } from '../affect/affect.js';
 import { consolidate, asPromptText as consolidatedAsPromptText } from '../affect/consolidation.js';
 import { asPromptText as stressAsPromptText } from '../cognition/allostatic_load.js';
-import { detectDissonance } from '../cognition/dissonance.js';
+import { detectDissonance, detectPride } from '../cognition/dissonance.js';
 import { getKey, hasKey } from '../../src/utils/keys.js';
 import { getBudgetGuard } from '../../src/governance/budget_guard.js';
 import OpenAIApi from 'openai';
@@ -142,6 +142,26 @@ function _formatAffectForPrompt(agentName) {
  * frame: either change behavior, or rationalize the action into
  * compatibility with values.
  */
+/**
+ * v1.1: pride summary — actions you took that felt good to take. The
+ * counterpart to _formatDissonanceForPrompt. Symmetric framing so the
+ * soul rewrite acknowledges both poles of acted alignment.
+ */
+function _formatPrideForPrompt(agentName) {
+    const r = detectPride(agentName, { recentN: Infinity });
+    if (r.entries.length === 0) {
+        return '(no significant pride — no actions of yours stood out as value-aligned this game)';
+    }
+    const lines = [];
+    lines.push(`You took ${r.entries.length} action${r.entries.length === 1 ? '' : 's'} that felt good to take. These are the moments where YOUR action and YOUR values pulled the same direction.`);
+    lines.push('Most-resonant moments:');
+    for (const m of r.entries.slice(0, 3)) {
+        lines.push(`  - [v+${m.valence.toFixed(2)}/a${m.arousal.toFixed(2)}] ${m.type}${m.target ? ' on ' + m.target : ''}`);
+    }
+    lines.push('In this rewrite, let these moments inform "What I have learned" or "Who I trust" — pride is data about who you were when you were most yourself.');
+    return lines.join('\n');
+}
+
 function _formatDissonanceForPrompt(agentName) {
     // v0.78: shared detector with DMN (recentN=Infinity here so the
     // whole game is scanned, not just the last working-memory window).
@@ -270,6 +290,7 @@ async function _evolveOne(agentName, events, openai, gameId = null) {
     const memoir = _formatMemoirForPrompt(agentName);
     const affect = _formatAffectForPrompt(agentName);   // v0.45
     const dissonance = _formatDissonanceForPrompt(agentName);  // v0.77
+    const pride = _formatPrideForPrompt(agentName);            // v1.1.1
 
     // v0.46: hippocampus → cortex consolidation. Runs BEFORE evolution.
     // Extracts the most-charged moments, detects recurring themes,
@@ -306,7 +327,8 @@ async function _evolveOne(agentName, events, openai, gameId = null) {
         .replaceAll('{{just_consolidated}}', justConsolidated)        // v0.46
         .replaceAll('{{consolidated_history}}', consolidatedHistory)  // v0.46
         .replaceAll('{{stress}}', stressAsPromptText(agentName))      // v0.60
-        .replaceAll('{{dissonance}}', dissonance);                    // v0.77
+        .replaceAll('{{dissonance}}', dissonance)                     // v0.77
+        .replaceAll('{{pride}}', pride);                              // v1.1.1
 
     try {
         const completion = await openai.chat.completions.create({

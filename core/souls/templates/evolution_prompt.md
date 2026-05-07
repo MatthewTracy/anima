@@ -50,6 +50,10 @@ You are not the same person you were yesterday. Show it.
 *Festinger (1957). When you act against your values, the discomfort doesn't disappear — it forces a choice: change who you are to fit what you did, or change what you did mean to fit who you are. Both are legitimate; neither is silent. Surface the contradiction explicitly in the rewrite.*
 {{dissonance}}
 
+[YOUR PRIDE — actions you took that felt right to take]
+*The counterpart to dissonance. Moments where your action and your values pulled the same direction are data about who you ARE — not just who you fear becoming. Let these moments inform what-I-have-learned and who-I-trust, not just the wounds.*
+{{pride}}
+
 [YOUR PRIVATE BURDEN — only you know this]
 {{burden}}
 
