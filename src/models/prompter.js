@@ -1,4 +1,4 @@
-import { readFileSync, mkdirSync, writeFileSync} from 'fs';
+import { readFileSync, mkdirSync } from 'fs';
 import { Examples } from '../utils/examples.js';
 import { getCommandDocs } from '../agent/commands/index.js';
 import { SkillLibrary } from "../agent/library/skill_library.js";
@@ -11,6 +11,7 @@ import { fileURLToPath } from 'url';
 import { selectAPI, createModel } from './_model_map.js';
 import { getGovernanceManager } from '../governance/governance_manager.js';
 import { getGameClock } from '../governance/game_clock.js';
+import { atomicWriteFileSync } from '../../core/runtime/atomic_io.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -94,12 +95,18 @@ export class Prompter {
 
         this.skill_libary = new SkillLibrary(agent, this.embedding_model);
         mkdirSync(`./bots/${name}`, { recursive: true });
-        writeFileSync(`./bots/${name}/last_profile.json`, JSON.stringify(this.profile, null, 4), (err) => {
-            if (err) {
-                throw new Error('Failed to save profile:', err);
-            }
+        // v1.1.41: writeFileSync is SYNC — it does not take a callback. The
+        // pre-fix code passed an (err) => {…} as the third arg, which Node
+        // silently ignored: the success log never fired and any error was
+        // thrown synchronously rather than via the callback. Use the
+        // sync API correctly with try/catch, and switch to atomic write
+        // since this is the canonical per-agent profile snapshot.
+        try {
+            atomicWriteFileSync(`./bots/${name}/last_profile.json`, JSON.stringify(this.profile, null, 4));
             console.log("Copy profile saved.");
-        });
+        } catch (err) {
+            throw new Error(`Failed to save profile: ${err.message}`);
+        }
     }
 
     getName() {
