@@ -124,13 +124,25 @@ export function reincarnationOf(name) {
 /**
  * Walk all reincarnations to find the agent's full chain of past lives.
  * Returns array of names oldest-first.
+ *
+ * v1.1.36: cycle-safe. Pre-fix, a cyclic reincarnation chain (e.g. A's
+ * record points at B, B's at A — possible via manual file editing or
+ * malformed test fixtures) caused an unbounded loop that would block
+ * any caller. The seen-set both prevents the cycle and bounds the
+ * iteration count by the number of unique prior identities on disk.
  */
 export function pastLives(name) {
     const lives = [];
+    const seen = new Set([name]);
     let current = name;
     while (true) {
         const rec = reincarnationOf(current);
         if (!rec || !rec.priorIdentity) break;
+        if (seen.has(rec.priorIdentity)) {
+            console.warn(`[REINCARNATION] cycle detected at "${rec.priorIdentity}" while walking past lives of "${name}" — stopping.`);
+            break;
+        }
+        seen.add(rec.priorIdentity);
         lives.unshift(rec.priorIdentity);
         current = rec.priorIdentity;
     }

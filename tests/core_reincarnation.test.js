@@ -4,7 +4,7 @@
 
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, rmSync } from 'fs';
+import { existsSync, rmSync, mkdirSync, writeFileSync } from 'fs';
 import { Soul } from '../core/souls/soul.js';
 import { reincarnate, reincarnationOf, pastLives } from '../core/reincarnation/reincarnation.js';
 
@@ -61,4 +61,29 @@ test('pastLives walks the chain backward', () => {
     reincarnate(B, C);
     const lives = pastLives(C);
     assert.deepEqual(lives, [A, B]);
+});
+
+test('v1.1.36: pastLives terminates on a cyclic reincarnation chain', () => {
+    // Simulate a cycle (A says priorIdentity=B, B says priorIdentity=A)
+    // by writing reincarnation.json directly. This shouldn't happen in
+    // production, but the original `while(true)` loop had no defense
+    // against it — any caller of pastLives() would hang forever.
+    for (const n of [A, B]) {
+        mkdirSync(`./bots/${n}`, { recursive: true });
+    }
+    writeFileSync(`./bots/${A}/reincarnation.json`, JSON.stringify({
+        version: 1, reincarnatedAs: A, priorIdentity: B, hazy: true,
+        reincarnatedAt: new Date().toISOString()
+    }));
+    writeFileSync(`./bots/${B}/reincarnation.json`, JSON.stringify({
+        version: 1, reincarnatedAs: B, priorIdentity: A, hazy: true,
+        reincarnatedAt: new Date().toISOString()
+    }));
+
+    // If the cycle-detection breaks, this hangs forever and the test
+    // times out. With the fix, it returns within a few iterations.
+    const lives = pastLives(A);
+    // We at least walked one step (A → B), then hit the cycle and stopped.
+    assert.ok(lives.includes(B), `expected B in lives, got: ${JSON.stringify(lives)}`);
+    assert.ok(lives.length <= 2, `chain should be bounded by unique names, got length ${lives.length}`);
 });
