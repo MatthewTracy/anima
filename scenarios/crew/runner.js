@@ -24,6 +24,7 @@ import { asPromptText as lineageAsPromptText } from '../../core/souls/lineage.js
 import { asPromptText as pantheonAsPromptText } from '../../core/souls/pantheon.js';
 import { FeudTracker } from '../../core/feuds/feud_tracker.js';
 import { AffectLog } from '../../core/affect/affect.js';
+import { ruminate, asPromptText as musingsAsPromptText } from '../../core/cognition/dmn.js';
 import { BeliefTable } from '../../core/beliefs/belief_table.js';
 import { RecursiveBeliefTable } from '../../core/beliefs/recursive_belief.js';
 import { applyEventsToBeliefs } from '../../core/beliefs/auto_update.js';
@@ -78,6 +79,8 @@ ${new FeudTracker().asPromptText(askingName)}
 ${pantheonAsPromptText(3)}
 
 ${new AffectLog(askingName).asPromptText()}
+
+${musingsAsPromptText(askingName)}
 
 ${soul.asPromptText()}
 
@@ -161,6 +164,9 @@ async function runOneTurn(openai, ship, profiles, model) {
             const { beliefUpdates, recursiveUpdates } = applyEventsToBeliefs(newEvents, witnesses);
             if (beliefUpdates > 0 || recursiveUpdates > 0) {
                 console.log(`    [beliefs] ${beliefUpdates} witness updates, ${recursiveUpdates} reflections`);
+            }
+            for (const w of witnesses) {
+                try { ruminate(w); } catch { /* nonfatal */ }
             }
         }
         return { actor: speakerName, action, raw };

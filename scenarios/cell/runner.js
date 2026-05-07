@@ -23,6 +23,7 @@ import { applyEventsToBeliefs } from '../../core/beliefs/auto_update.js';
 import { FeudTracker } from '../../core/feuds/feud_tracker.js';
 import { Persona } from '../../core/personas/persona.js';
 import { AffectLog } from '../../core/affect/affect.js';
+import { ruminate, asPromptText as musingsAsPromptText } from '../../core/cognition/dmn.js';
 import { StubLLM } from '../../core/stub/stub_llm.js';
 import { getKey, hasKey } from '../../src/utils/keys.js';
 import { getBudgetGuard } from '../../src/governance/budget_guard.js';
@@ -106,6 +107,8 @@ ${persona.asPromptText()}
 
 ${new AffectLog(askingName).asPromptText()}
 
+${musingsAsPromptText(askingName)}
+
 ${soul.asPromptText()}
 
 ${rosterAsLegends(askingName)}
@@ -180,7 +183,11 @@ async function runOneTurn(openai, cell, profiles, model) {
         }
         const newEvents = cell.events.slice(eventCountBefore);
         if (newEvents.length > 0) {
-            applyEventsToBeliefs(newEvents.map(e => ({ ...e, scenario: 'cell' })), cell.activeRoster());
+            const witnesses = cell.activeRoster();
+            applyEventsToBeliefs(newEvents.map(e => ({ ...e, scenario: 'cell' })), witnesses);
+            for (const w of witnesses) {
+                try { ruminate(w); } catch { /* nonfatal */ }
+            }
         }
         return { actor: speakerName, action };
     } catch (e) {

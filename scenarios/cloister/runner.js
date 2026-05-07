@@ -27,6 +27,7 @@ import { RecursiveBeliefTable } from '../../core/beliefs/recursive_belief.js';
 import { Burden } from '../../core/burdens/burden.js';
 import { FeudTracker } from '../../core/feuds/feud_tracker.js';
 import { AffectLog } from '../../core/affect/affect.js';
+import { ruminate, asPromptText as musingsAsPromptText } from '../../core/cognition/dmn.js';
 import { applyEventsToBeliefs } from '../../core/beliefs/auto_update.js';
 import { getKey, hasKey } from '../../src/utils/keys.js';
 import { getBudgetGuard } from '../../src/governance/budget_guard.js';
@@ -82,6 +83,8 @@ ${new FeudTracker().asPromptText(askingMonkName)}
 ${pantheonAsPromptText(2)}
 
 ${new AffectLog(askingMonkName).asPromptText()}
+
+${musingsAsPromptText(askingMonkName)}
 
 ${soul.asPromptText()}
 
@@ -173,6 +176,11 @@ async function runOneTurn(openai, monastery, profiles, model) {
             );
             if (beliefUpdates > 0 || recursiveUpdates > 0) {
                 console.log(`    [beliefs] ${beliefUpdates} witness updates, ${recursiveUpdates} reflections`);
+            }
+            // v0.49: DMN — let every active monk ruminate so the next turn's
+            // prompt carries an inner monologue informed by the new events.
+            for (const w of witnesses) {
+                try { ruminate(w); } catch { /* nonfatal */ }
             }
         }
         return { actor: speakerName, action, raw };
