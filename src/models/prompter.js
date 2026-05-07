@@ -182,6 +182,22 @@ KEY COMMANDS: !collectBlocks, !craftRecipe, !goToCoordinates, !attack, !goToPlay
             }
         }
 
+        // ANIMA: $BELIEFS — this agent's theory of mind. Per-target trust
+        // scores with recent evidence. Beliefs persist per-game in
+        // bots/<name>/beliefs.json and feed into soul evolution at game end.
+        // Updates are mechanical (delta on witness events) plus optional
+        // LLM revision; both deferred to later iterations. This iteration
+        // ships the data structure + prompt injection.
+        if (prompt.includes('$BELIEFS')) {
+            try {
+                const { BeliefTable } = await import('../../core/beliefs/belief_table.js');
+                const beliefs = new BeliefTable(this.agent.name);
+                prompt = prompt.replaceAll('$BELIEFS', beliefs.asPromptText());
+            } catch (e) {
+                prompt = prompt.replaceAll('$BELIEFS', '');
+            }
+        }
+
         // V3: $GAME_DURATION placeholder — accurate per-run, not hardcoded text
         if (prompt.includes('$GAME_DURATION')) {
             try {

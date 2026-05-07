@@ -71,8 +71,18 @@ If souls could evolve after death, death would have no stakes. The whole point o
 | Constitution-as-code (v12) | Laws shape what becomes scar-worthy |
 | Memoirs (v12) | Memoirs are first-person; souls are accumulated voice |
 | Tribal/predator framing (v12.1) | Frames the *seed*; evolution does the rest |
-| Theory of mind (v13 if shipped) | Belief tables write to "Who I trust" |
-| Conditional commitments (v13 if shipped) | Broken promises become scars |
+| **Theory of mind (v0.6)** | Belief tables track trust over time; feed into soul at game end |
+| Conditional commitments (planned) | Broken promises become scars |
+
+### How beliefs and souls compose
+
+Beliefs (`core/beliefs/BeliefTable`) are the **persistent middle layer** between raw events and soul identity. Without them, soul evolution has to reconstruct trust from raw event logs every time — wasteful and noisy. With them:
+
+- During a game: beliefs accumulate as witness events fire (`+0.20` for a fulfilled promise, `-0.40` for a public attack, etc.)
+- At game end: the soul evolution prompt reads the belief table and incorporates it into "Who I trust" / "Who I fear or distrust" sections of the soul
+- Across games: beliefs persist on disk per-agent, so trust survives the run boundary just like souls do
+
+A soul says "I am the kind of person who trusts builders and distrusts speakers." A belief table says "Trust(Hamilton) = +0.80, Trust(Fox) = -0.65." The soul is the *disposition*; the belief table is the *current ledger*.
 
 Souls are the **integration layer**. Every other mechanic feeds back into the soul. The soul is what the agent IS; everything else is what the agent DOES.
 
