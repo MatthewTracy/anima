@@ -24,6 +24,7 @@ import { logEventAsFeud } from '../feuds/feud_tracker.js';
 import { tagEvent, AffectLog } from '../affect/affect.js';
 import { surpriseScale } from '../affect/predictive.js';
 import { ingroupBias } from '../identity/faction.js';
+import { recordExposure } from '../cognition/habituation.js';
 
 /**
  * Default trust deltas for known event types.
@@ -124,6 +125,18 @@ export function applyEventToBeliefs(event, witnesses, overrides = {}) {
     const affect = tagEvent(event);
     const affectScale = 0.5 + affect.arousal;   // [0.5, 1.5]
 
+    // v0.50: compute habituation/sensitization factor ONCE per witness
+    // per event (recordExposure mutates state on disk). Reused below in
+    // both the byActor and byTarget paths so the same event isn't
+    // double-counted on a witness's exposure log.
+    const habitByWitness = new Map();
+    for (const w of witnesses) {
+        if (!w) continue;
+        if (habitByWitness.has(w)) continue;
+        try { habitByWitness.set(w, recordExposure(w, event.type, affect.arousal)); }
+        catch { habitByWitness.set(w, 1.0); }
+    }
+
     // 1) Update witnesses' BeliefTable about the actor (if delta.byActor)
     //
     // v0.47: predictive coding (Friston). Each witness has a prior trust in
@@ -142,10 +155,13 @@ export function applyEventToBeliefs(event, witnesses, overrides = {}) {
                 // Same-faction allies get the benefit of doubt; out-group
                 // actors are read with extra suspicion.
                 const ingroup = ingroupBias(witnessName, actor, baseDelta);
-                const scaledDelta = baseDelta * surprise * ingroup;
+                // v0.50: habituation/sensitization (per-witness, per-event-type).
+                const habit = habitByWitness.get(witnessName) ?? 1.0;
+                const scaledDelta = baseDelta * surprise * ingroup * habit;
                 const tags = [];
                 if (surprise > 1.05) tags.push(`surprise ×${surprise.toFixed(2)}`);
                 if (ingroup !== 1.0)  tags.push(`ingroup ×${ingroup.toFixed(2)}`);
+                if (Math.abs(habit - 1.0) > 0.05) tags.push(`habit ×${habit.toFixed(2)}`);
                 const why = tags.length
                     ? `witnessed: ${event.type}${target ? ' against ' + target : ''} [${tags.join(', ')}]`
                     : `witnessed: ${event.type}${target ? ' against ' + target : ''}`;
@@ -175,7 +191,8 @@ export function applyEventToBeliefs(event, witnesses, overrides = {}) {
                 // In-group bias toward the target: did one of our own get
                 // hurt? Did a rival just get justly punished?
                 const ingroup = ingroupBias(witnessName, target, baseDelta);
-                const scaledDelta = baseDelta * surprise * ingroup;
+                const habit = habitByWitness.get(witnessName) ?? 1.0;
+                const scaledDelta = baseDelta * surprise * ingroup * habit;
                 beliefs.update(target, scaledDelta, `witnessed as target of ${event.type}${actor ? ' by ' + actor : ''}`);
                 beliefUpdates++;
             } catch { /* nonfatal */ }
