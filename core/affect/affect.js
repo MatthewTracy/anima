@@ -234,6 +234,43 @@ export class AffectLog {
     }
 
     /**
+     * Mood-congruent retrieval — Bower (1981) / Eich (1995).
+     *
+     * Real cognition: once you're in a sad mood, sad memories surface
+     * faster than happy ones, even when the happy ones are more "objectively"
+     * memorable. The same person in a happy mood retrieves happy memories.
+     * This is the classic mechanism behind depression's self-reinforcing
+     * loop and mania's confidence spiral.
+     *
+     * Implementation: rank by  magnitude × congruence, where
+     *   congruence = 1.0 if event.valence and mood.valence share sign
+     *                0.4 otherwise (dissonant memories are still accessible
+     *                but less salient — never zero, so the agent isn't fully
+     *                cocooned by mood).
+     *
+     * If the current mood's |valence| is below NEUTRAL_BAND, fall back to
+     * raw topMoments() — a settled / numb agent has no mood-congruency lens
+     * to apply.
+     */
+    congruentMoments(n = 5) {
+        const data = this._load();
+        if (data.log.length === 0) return [];
+        const mood = this.currentMood();
+        const NEUTRAL_BAND = 0.10;
+        if (Math.abs(mood.valence) < NEUTRAL_BAND) {
+            return data.log.slice().sort((a, b) => b.magnitude - a.magnitude).slice(0, n);
+        }
+        const moodSign = Math.sign(mood.valence);
+        const DISSONANT = 0.4;
+        const ranked = data.log.slice().map(e => {
+            const eSign = Math.sign(e.valence);
+            const congruent = (eSign === 0) ? 0.7 : (eSign === moodSign ? 1.0 : DISSONANT);
+            return { e, score: e.magnitude * congruent };
+        }).sort((a, b) => b.score - a.score);
+        return ranked.slice(0, n).map(r => r.e);
+    }
+
+    /**
      * Rolling mood label — useful for prompts. Computed from the recent
      * (last 10) entries' weighted-average valence and average arousal.
      */

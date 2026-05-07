@@ -56,7 +56,10 @@ export function ruminate(agentName, opts = {}) {
 
     const log = new AffectLog(agentName);
     const mood = log.currentMood();
-    const top = log.topMoments(2);
+    // v0.52: mood-congruent retrieval. The DMN is the substrate of
+    // depression/elation spirals — what surfaces in idle thought is
+    // shaped by the mood you carry into the silence.
+    const top = log.congruentMoments(2);
 
     const beliefs = new BeliefTable(agentName);
     const ranked = beliefs.rankedTargets();
