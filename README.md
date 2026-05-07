@@ -52,9 +52,9 @@ A soul says *I am the one who outlasts*. A belief table says *I trust Hamilton +
 
 ---
 
-## The cognitive substrate (v0.45–v0.67)
+## The cognitive substrate (v0.45–v0.86)
 
-Underneath the visible primitives sits a twelve-layer cognitive stack — neuroscience-grounded mechanisms that shape *how* belief deltas land, *what* gets remembered, *how* the body wears, *what voice* the agent carries into the next prompt, and *what stays loud enough to read* in working memory. None of them spend an LLM call.
+Underneath the visible primitives sits a twelve-layer cognitive stack — neuroscience-grounded mechanisms that shape *how* belief deltas land, *what* gets remembered, *how* the body wears, *what voice* the agent carries into the next prompt, and *what stays loud enough to read* in working memory. Plus a half-dozen compositions and refinements (Festinger dissonance, Brown & Kulik flashbulbs, Goffman persona slip under load, Easterbrook stress-narrowing) that emerge from the layers interacting. None of them spend an LLM call.
 
 | Layer | Mechanism | Brain analog |
 |---|---|---|

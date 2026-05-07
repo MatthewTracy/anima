@@ -4,12 +4,24 @@
 
 ---
 
-## v0.45 – v0.68 — The cognitive substrate (twelve layers)
+## v0.45 – v0.86 — The cognitive substrate (twelve layers + tooling)
 
-A dense run of neuroscience-grounded primitives that turn a uniform belief table into a textured set of minds. Every layer is documented with citations in [`docs/COGNITIVE_SUBSTRATE.md`](docs/COGNITIVE_SUBSTRATE.md).
+A dense run of neuroscience-grounded primitives that turn a uniform belief table into a textured set of minds, plus the inspector / demo / diff tooling that makes the substrate legible. Every layer is documented with citations in [`docs/COGNITIVE_SUBSTRATE.md`](docs/COGNITIVE_SUBSTRATE.md).
 
 | Version | What shipped | Brain analog |
 |---|---|---|
+| **v0.87** | Sync CHANGELOG + README to v0.86 | — (docs) |
+| **v0.86** | `core/cognition/timescales.js` — central re-export index of every substrate constant + `asReport()` | — (refactor) |
+| **v0.85** | `npm run substrate-all` — cohort-wide inspector across every agent in `bots/` | — (debug tool) |
+| **v0.84** | README Quickstart leads with the free `substrate-demo` / inspect / diff tools | — (docs) |
+| **v0.83** | inspector: per-event-type habituation / sensitization arrows | — (debug tool) |
+| **v0.82** | `substrate-demo` includes `substrate-diff` at the end — both tools, one command | — (showcase) |
+| **v0.81** | substrate-wide smoke test: every event type + 6 edge cases | — (test) |
+| **v0.80** | inspector: surface active persona mask | — (debug tool) |
+| **v0.79** | Persona masks slip under acute load: composes v0.26 + v0.56 | Goffman 1959 |
+| **v0.78** | Refactor: `core/cognition/dissonance.js` — shared Festinger detector for DMN + evolution | — (refactor) |
+| **v0.77** | Festinger rationalization in soul evolution: `$DISSONANCE` placeholder | Festinger 1957 |
+| **v0.76** | Flashbulb-memory override on mood-congruent retrieval | Brown & Kulik 1977 |
 | **v0.75** | Sync COGNITIVE_SUBSTRATE.md / CHANGELOG with v0.71/v0.73/v0.74 | — (docs) |
 | **v0.74** | DMN cognitive dissonance line: scans recent role='actor' negative-valence entries | Festinger 1957 |
 | **v0.73** | Stress-induced narrowing: under allostatic load, $BELIEFS cap shrinks 9 → 3 | Easterbrook 1959 / Kahneman 1973 |
