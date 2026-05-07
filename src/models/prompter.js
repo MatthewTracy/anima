@@ -198,6 +198,21 @@ KEY COMMANDS: !collectBlocks, !craftRecipe, !goToCoordinates, !attack, !goToPlay
             }
         }
 
+        // ANIMA: $REFLECTIONS — second-order theory of mind. What this
+        // agent believes OTHERS believe about THEM. Unlocks second-order
+        // strategy: act differently than the others expect. Persists at
+        // bots/<name>/recursive_beliefs.json. Empty until the agent forms
+        // explicit hypotheses (or until inference rules ship in v0.9+).
+        if (prompt.includes('$REFLECTIONS')) {
+            try {
+                const { RecursiveBeliefTable } = await import('../../core/beliefs/recursive_belief.js');
+                const reflections = new RecursiveBeliefTable(this.agent.name);
+                prompt = prompt.replaceAll('$REFLECTIONS', reflections.asPromptText());
+            } catch (e) {
+                prompt = prompt.replaceAll('$REFLECTIONS', '');
+            }
+        }
+
         // V3: $GAME_DURATION placeholder — accurate per-run, not hardcoded text
         if (prompt.includes('$GAME_DURATION')) {
             try {
