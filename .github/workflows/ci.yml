@@ -29,9 +29,9 @@ jobs:
           for f in $(find scripts -name '*.js'); do
             node --check "$f"
           done
-      - name: node --check scenarios/cloister + outpost + crew
+      - name: node --check scenarios/cloister + outpost + crew + cell
         run: |
-          for f in $(find scenarios/cloister scenarios/outpost scenarios/crew -name '*.js'); do
+          for f in $(find scenarios/cloister scenarios/outpost scenarios/crew scenarios/cell -name '*.js'); do
             node --check "$f"
           done
       - name: Validate scenario JSONs
@@ -46,8 +46,15 @@ jobs:
           done
 
   test:
-    name: Unit tests for core/
-    runs-on: ubuntu-latest
+    name: Unit tests for core/ (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # Both OSes to catch Windows-specific regressions (e.g. v1.1.22's
+      # atomicWriteFileSync rename retry on EPERM/EACCES, which only
+      # surfaces on Windows under AV/indexer contention).
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+      fail-fast: false
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
