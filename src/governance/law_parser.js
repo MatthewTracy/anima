@@ -14,11 +14,19 @@
 const RULES = [
     // Tax rate: "set tax rate to 30%" / "tax of 30 percent" / "tax: 30%"
     {
-        match: /\btax(?:\s+rate)?\s*(?:to|of|at|:|=)?\s*(\d+(?:\.\d+)?)\s*%?/i,
-        build: (n) => {
+        // v1.1.51: capture the optional "%" marker so we can distinguish
+        // "tax 1" (= 1%) from "tax 1.0" (ambiguous, treated as 1% since
+        // a tax rate of 100% is absurd and was anyway capped at 90%).
+        match: /\btax(?:\s+rate)?\s*(?:to|of|at|:|=)?\s*(\d+(?:\.\d+)?)(\s*%)?/i,
+        build: (n, pctMarker) => {
             const pct = parseFloat(n);
-            // Accept either "30" (=30%) or "0.3" (=30%); cap at 90%
-            const rate = pct > 1 ? Math.min(pct, 90) / 100 : Math.min(pct, 0.9);
+            // v1.1.51: treat any explicit "%" or any value >= 1 as percent.
+            // Pre-fix used \`pct > 1\`, so exactly pct=1 (e.g. "tax 1%" with
+            // the regex stripping the %, or "tax of 1") fell through to the
+            // decimal branch and produced 100% tax (capped to 90%) instead
+            // of the intended 1%. Same surprise at pct=1.0.
+            const isPercent = !!pctMarker || pct >= 1;
+            const rate = isPercent ? Math.min(pct, 90) / 100 : Math.min(pct, 0.9);
             return { param: 'tax_rate', newValue: rate, label: `${(rate * 100).toFixed(0)}% tax` };
         }
     },

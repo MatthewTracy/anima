@@ -12,7 +12,7 @@
 | Minecraft adapter | [`src/mindcraft/`](../../src/mindcraft/) — mineflayer integration |
 | Settings / config | [`settings.js`](../../settings.js) |
 
-The four other scenarios in this directory ([`cloister/`](../cloister/), [`crew/`](../crew/), [`cell/`](../cloister/), [`outpost/`](../outpost/)) follow the unified `scenarios/<name>/runner.js` shape that's now the framework's standard. **Migrating Forum to that shape is on the roadmap** but not yet done — it's substantial work because Forum predates the unified shape and has more surface area (Minecraft embodiment, dashboard, video recording, etc.).
+The four other scenarios in this directory ([`cloister/`](../cloister/), [`crew/`](../crew/), [`cell/`](../cell/), [`outpost/`](../outpost/)) follow the unified `scenarios/<name>/runner.js` shape that's now the framework's standard. **Migrating Forum to that shape is on the roadmap** but not yet done — it's substantial work because Forum predates the unified shape and has more surface area (Minecraft embodiment, dashboard, video recording, etc.).
 
 For now, this directory is intentionally empty so that:
 - Listings of `scenarios/` show Forum is a real scenario
