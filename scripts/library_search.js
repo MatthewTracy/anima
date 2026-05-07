@@ -13,7 +13,13 @@ import { search, stats } from '../core/library/library.js';
 const args = process.argv.slice(2);
 const kindsIdx = args.indexOf('--kinds');
 const kindsArg = kindsIdx >= 0 ? args[kindsIdx + 1] : null;
-const query = args.filter((a, i) => !a.startsWith('--') && i !== kindsIdx + 1).join(' ').trim();
+// v1.1.33: when --kinds was absent, kindsIdx was -1 and `i !== kindsIdx + 1`
+// excluded args[0] — silently dropping single-word queries like
+// `library_search.js silence`. Only skip the kinds-value position when
+// --kinds is actually present.
+const query = args
+    .filter((a, i) => !a.startsWith('--') && (kindsIdx < 0 || i !== kindsIdx + 1))
+    .join(' ').trim();
 
 function bar() { return '─'.repeat(70); }
 

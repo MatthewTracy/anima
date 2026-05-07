@@ -13,6 +13,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync, readdirSync, statSync } from 'fs';
+import { spawnSync } from 'child_process';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -70,6 +71,26 @@ test('v1.1.23: every scenario.json roster has matching character profile files',
     }
     assert.deepEqual(failures, [],
         `scenarios with missing character profiles:\n  ${failures.join('\n  ')}`);
+});
+
+test('v1.1.33: library_search CLI accepts a single-word query without --kinds', () => {
+    // Regression: the arg parser used `i !== kindsIdx + 1` to skip the
+    // value of --kinds. When --kinds was absent, kindsIdx was -1 and the
+    // expression became `i !== 0` — silently dropping args[0]. So a
+    // single-word query like `library_search.js silence` fell through to
+    // the stats banner instead of running a search.
+    const script = join(repoRoot, 'scripts', 'library_search.js');
+    const result = spawnSync(process.execPath, [script, 'xyzzy_no_match_expected_zzz'], {
+        cwd: repoRoot,
+        encoding: 'utf8'
+    });
+    assert.equal(result.status, 0, `script crashed: ${result.stderr}`);
+    // It should have entered SEARCH mode (which prints the query) — NOT
+    // the stats mode (which prints "Library Stats").
+    assert.match(result.stdout, /search "xyzzy_no_match_expected_zzz"/,
+        `single-word query was dropped — stdout was:\n${result.stdout}`);
+    assert.doesNotMatch(result.stdout, /Library Stats/,
+        `single-word query incorrectly fell through to stats mode`);
 });
 
 test('v1.1.11: replay.js and record.js import cleanly (no eager side effects)', async () => {
