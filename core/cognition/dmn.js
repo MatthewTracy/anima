@@ -36,7 +36,7 @@ import { AffectLog } from '../affect/affect.js';
 import { BeliefTable } from '../beliefs/belief_table.js';
 import { getFaction } from '../identity/faction.js';
 import { getStress, stressLevel } from './allostatic_load.js';
-import { detectDissonance } from './dissonance.js';
+import { detectDissonance, detectPride } from './dissonance.js';
 
 const BOTS_DIR = './bots';
 const MUSINGS_FILE = 'musings.md';
@@ -92,11 +92,22 @@ export function ruminate(agentName, opts = {}) {
 
     // v0.74: cognitive dissonance (Festinger 1957). v0.78: now shares the
     // detection with soul evolution via core/cognition/dissonance.js.
+    // v1.1: pride detection — symmetric counterpart so agents can
+    // acknowledge value-aligned actions, not just brood on misaligned ones.
+    // Dissonance takes precedence when both fire (the body remembers
+    // wrong-action more loudly than right-action — Festinger's asymmetry).
     const dis = detectDissonance(agentName, { recentN: 10 });
     if (dis.level === 'loud') {
         lines.push(`I have lately done things I cannot reconcile with who I thought I was.`);
     } else if (dis.level === 'soft') {
         lines.push(`One thing I did sits in me wrong.`);
+    } else {
+        const pride = detectPride(agentName, { recentN: 10 });
+        if (pride.level === 'loud') {
+            lines.push(`I have done things lately that I am quietly proud of.`);
+        } else if (pride.level === 'soft') {
+            lines.push(`There is one thing I did that sits well with me.`);
+        }
     }
 
     // Beliefs — who I trust, who I distrust (only mention each if signal-bearing)
