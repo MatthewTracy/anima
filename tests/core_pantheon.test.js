@@ -23,7 +23,15 @@ function backup() {
     }
 }
 function restore() {
-    if (savedPantheon !== null) writeFileSync(PANTHEON_PATH, savedPantheon);
+    if (savedPantheon !== null) {
+        writeFileSync(PANTHEON_PATH, savedPantheon);
+    } else if (existsSync(PANTHEON_PATH)) {
+        // v1.1.19: tests that CREATE pantheon.md (e.g. the v1.1.18
+        // header race test which deletes then recreates it) must not
+        // leak their creation into the next test run. If we had no
+        // backup but a file exists now, the test created it — delete it.
+        unlinkSync(PANTHEON_PATH);
+    }
     savedPantheon = null;
 }
 
