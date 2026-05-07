@@ -15,7 +15,7 @@
  * No LLM calls. No mutation. Pure read.
  */
 
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { AffectLog } from '../core/affect/affect.js';
 import { BeliefTable } from '../core/beliefs/belief_table.js';
@@ -27,6 +27,7 @@ import { getFaction } from '../core/identity/faction.js';
 import { dnaOf } from '../core/dna/soul_dna.js';
 import { getStress, stressLevel } from '../core/cognition/allostatic_load.js';
 import { readLatestMusings } from '../core/cognition/dmn.js';
+import { exposureFactor, explainExposure } from '../core/cognition/habituation.js';
 
 const args = process.argv.slice(2);
 const agent = args[0];
@@ -104,6 +105,37 @@ if (cong.length > 0 && JSON.stringify(cong) !== JSON.stringify(top)) {
         const sign = m.valence > 0 ? '+' : '';
         const role = m.role || '?';
         console.log(`    [${sign}${m.valence.toFixed(2)}] (${role}) ${m.type}${m.actor ? ' by ' + m.actor : ''}`);
+    }
+}
+
+// ── Habituation / sensitization ──────────────────────────────────
+header('HABITUATION (per-event-type response curves)');
+const habitPath = `./bots/${agent}/habituation.json`;
+if (!existsSync(habitPath)) {
+    console.log('  (no exposure history yet)');
+} else {
+    try {
+        const habitData = JSON.parse(readFileSync(habitPath, 'utf8'));
+        const types = Object.keys(habitData.byEvent || {});
+        if (types.length === 0) {
+            console.log('  (no exposure history yet)');
+        } else {
+            // Sort by raw count descending — most-experienced types first
+            const summary = types.map(t => {
+                const list = habitData.byEvent[t] || [];
+                const arousal = list.length > 0 ? list[list.length - 1].arousal : 0;
+                const factor = exposureFactor(agent, t, arousal);
+                const explain = explainExposure(agent, t, arousal);
+                return { t, count: list.length, factor, mode: explain.mode };
+            }).sort((a, b) => b.count - a.count);
+            console.log(`  ${'event type'.padEnd(20)} count  factor  mode`);
+            for (const s of summary) {
+                const tag = s.mode === 'habituating' ? '↓' : s.mode === 'sensitizing' ? '↑' : '·';
+                console.log(`  ${s.t.padEnd(20)} ${String(s.count).padStart(5)}  ${s.factor.toFixed(2).padStart(5)}  ${tag} ${s.mode}`);
+            }
+        }
+    } catch (e) {
+        console.log(`  (failed to read habituation log: ${e.message})`);
     }
 }
 
