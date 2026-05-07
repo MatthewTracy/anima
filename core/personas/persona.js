@@ -27,6 +27,7 @@
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from 'fs';
 import { join } from 'path';
+import { getStress, stressLevel } from '../cognition/allostatic_load.js';
 
 const BOTS_DIR = './bots';
 
@@ -154,14 +155,28 @@ export class Persona {
     /**
      * What the bearer should see in their prompt about their own mask.
      * (Bearer only — others see only the mask name via separate API.)
+     *
+     * v0.79: under acute allostatic load (Goffman 1959 on the
+     * "performance"; clinical literature on stress + facade collapse),
+     * social masks are expensive to maintain. The bearer's prompt now
+     * reads a slipping warning when they are allostatic or overloaded —
+     * cuing the LLM to let some real voice through, or to lean harder
+     * on the mask at visible cost.
      */
     asPromptText() {
         const a = this.read();
         if (!a) return '';
         const motive = a.motive ? ` Your motive: ${a.motive}.` : '';
+        const level = stressLevel(getStress(this.name));
+        let stressNote = '';
+        if (level === 'overloaded') {
+            stressNote = `\n[YOUR MASK IS SLIPPING] You are too tired to keep ${a.alias} airtight right now. The real ${this.name} keeps surfacing — in word choice, in posture, in what you almost say before catching yourself. Either let something true through or pay the cost of holding the line.`;
+        } else if (level === 'allostatic') {
+            stressNote = `\n[YOUR MASK IS HEAVIER] Maintaining ${a.alias} requires more effort than usual. You can still hold it, but the seams are visible to someone paying attention.`;
+        }
         return `=== YOUR ACTIVE MASK — only you know you wear it ===
 You present yourself to others as "${a.alias}".${a.bio ? ` Your claimed bio: ${a.bio}.` : ''}${motive}
-Others see "${a.alias}" in chat and rosters. The simulation knows you are ${this.name}.
+Others see "${a.alias}" in chat and rosters. The simulation knows you are ${this.name}.${stressNote}
 === END MASK ===`;
     }
 }
