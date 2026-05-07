@@ -25,7 +25,14 @@ export function blacklistCommands(commands) {
             continue;
         }
         delete commandMap[command_name];
-        delete commandList.find(command => command.name === command_name);
+        // v1.1.52: \`delete commandList.find(...)\` was a silent no-op
+        // because `delete` on a function-call result does nothing — it
+        // can only delete property accesses. So blacklisted commands
+        // stayed in commandList and continued to appear in
+        // getCommandDocs's prompt output, even though they couldn't
+        // actually be invoked. Splice the index out properly.
+        const idx = commandList.findIndex(command => command.name === command_name);
+        if (idx !== -1) commandList.splice(idx, 1);
     }
 }
 
