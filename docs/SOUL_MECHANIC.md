@@ -72,7 +72,7 @@ If souls could evolve after death, death would have no stakes. The whole point o
 | Memoirs (v12) | Memoirs are first-person; souls are accumulated voice |
 | Tribal/predator framing (v12.1) | Frames the *seed*; evolution does the rest |
 | **Theory of mind (v0.6)** | Belief tables track trust over time; feed into soul at game end |
-| Conditional commitments (planned) | Broken promises become scars |
+| **Conditional commitments (v0.7)** | Binding IF/THEN promises; broken ones become scars |
 
 ### How beliefs and souls compose
 
