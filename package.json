@@ -54,7 +54,7 @@
         "library": "node scripts/library_search.js",
         "publish": "node scripts/publish_game.js",
         "demo": "node scripts/seed_demo_cohort.js && node scripts/publish_game.js --scenario cloister --roster BrotherG,BrotherA,BrotherT,BrotherB,BrotherL,BrotherW",
-        "test": "node --test tests/core_souls.test.js tests/core_beliefs.test.js tests/core_burdens.test.js tests/core_feuds.test.js tests/core_lineage.test.js tests/core_pantheon.test.js tests/core_persona.test.js tests/core_commitments.test.js tests/core_library.test.js",
+        "test": "node --test tests/core_souls.test.js tests/core_beliefs.test.js tests/core_burdens.test.js tests/core_feuds.test.js tests/core_lineage.test.js tests/core_pantheon.test.js tests/core_persona.test.js tests/core_commitments.test.js tests/core_library.test.js tests/core_dna.test.js",
         "score": "node scripts/score_game.js",
         "analyze": "node scripts/analyze_runs.js",
         "replay": "node scripts/replay.js",
