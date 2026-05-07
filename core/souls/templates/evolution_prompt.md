@@ -46,6 +46,10 @@ You are not the same person you were yesterday. Show it.
 *Allostatic load — McEwen's stress reservoir. A baseline body has stamina; an overloaded body had to give something up. Let the body-state inflect your scars and your motto: a body that ran "overloaded" most of the game often produces a different soul rewrite than one that ran "baseline."*
 {{stress}}
 
+[YOUR COGNITIVE DISSONANCE — actions you took that felt wrong to take]
+*Festinger (1957). When you act against your values, the discomfort doesn't disappear — it forces a choice: change who you are to fit what you did, or change what you did mean to fit who you are. Both are legitimate; neither is silent. Surface the contradiction explicitly in the rewrite.*
+{{dissonance}}
+
 [YOUR PRIVATE BURDEN — only you know this]
 {{burden}}
 

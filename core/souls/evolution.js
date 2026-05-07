@@ -133,6 +133,38 @@ function _formatAffectForPrompt(agentName) {
     }
 }
 
+/**
+ * v0.77: scan the agent's affect log for cognitive dissonance — actions
+ * THEY took that felt bad to take. Same fingerprint the DMN uses
+ * (v0.74). Returns a prompt section that asks the LLM to reckon with
+ * the contradiction during soul rewrite, in Festinger's two-path
+ * frame: either change behavior, or rationalize the action into
+ * compatibility with values.
+ */
+function _formatDissonanceForPrompt(agentName) {
+    try {
+        const log = new AffectLog(agentName);
+        const data = log._load();
+        const dissonant = data.log.filter(e =>
+            e.role === 'actor' && typeof e.valence === 'number' && e.valence < -0.3
+        );
+        if (dissonant.length === 0) {
+            return '(no significant dissonance — your actions sat comfortably with who you took yourself to be)';
+        }
+        const lines = [];
+        lines.push(`You took ${dissonant.length} action${dissonant.length === 1 ? '' : 's'} that felt bad to take. The body remembers them. Festinger's choice now: revise who you are to fit what you did, or revise what you did to fit who you are.`);
+        const top = dissonant.slice().sort((a, b) => b.magnitude - a.magnitude).slice(0, 3);
+        lines.push('Most-dissonant moments:');
+        for (const m of top) {
+            lines.push(`  - [v${m.valence.toFixed(2)}/a${m.arousal.toFixed(2)}] ${m.type}${m.target ? ' on ' + m.target : ''}`);
+        }
+        lines.push('In this rewrite, surface the contradiction explicitly — either as a new lesson learned, a new scar, or a recasting of who you understand yourself to be. Do not silently ignore it.');
+        return lines.join('\n');
+    } catch {
+        return '(dissonance unavailable)';
+    }
+}
+
 function _formatBurdenForPrompt(agentName) {
     try {
         const burdenObj = new Burden(agentName);
@@ -243,6 +275,7 @@ async function _evolveOne(agentName, events, openai, gameId = null) {
     const commitments = _formatCommitmentsForPrompt(agentName, gameId);
     const memoir = _formatMemoirForPrompt(agentName);
     const affect = _formatAffectForPrompt(agentName);   // v0.45
+    const dissonance = _formatDissonanceForPrompt(agentName);  // v0.77
 
     // v0.46: hippocampus → cortex consolidation. Runs BEFORE evolution.
     // Extracts the most-charged moments, detects recurring themes,
@@ -278,7 +311,8 @@ async function _evolveOne(agentName, events, openai, gameId = null) {
         .replaceAll('{{affect}}', affect)
         .replaceAll('{{just_consolidated}}', justConsolidated)        // v0.46
         .replaceAll('{{consolidated_history}}', consolidatedHistory)  // v0.46
-        .replaceAll('{{stress}}', stressAsPromptText(agentName));     // v0.60
+        .replaceAll('{{stress}}', stressAsPromptText(agentName))      // v0.60
+        .replaceAll('{{dissonance}}', dissonance);                    // v0.77
 
     try {
         const completion = await openai.chat.completions.create({
