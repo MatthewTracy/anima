@@ -269,6 +269,20 @@ KEY COMMANDS: !collectBlocks, !craftRecipe, !goToCoordinates, !attack, !goToPlay
             }
         }
 
+        // ANIMA: $MASK — active persona mask (if any). ONLY visible to
+        // the bearer. Others see resolveDisplayName output via separate
+        // scenario integration. If bearer wears no mask, $MASK expands
+        // to empty string.
+        if (prompt.includes('$MASK')) {
+            try {
+                const { Persona } = await import('../../core/personas/persona.js');
+                const p = new Persona(this.agent.name);
+                prompt = prompt.replaceAll('$MASK', p.asPromptText());
+            } catch (e) {
+                prompt = prompt.replaceAll('$MASK', '');
+            }
+        }
+
         // V3: $GAME_DURATION placeholder — accurate per-run, not hardcoded text
         if (prompt.includes('$GAME_DURATION')) {
             try {
