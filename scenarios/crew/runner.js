@@ -25,6 +25,7 @@ import { asPromptText as pantheonAsPromptText } from '../../core/souls/pantheon.
 import { FeudTracker } from '../../core/feuds/feud_tracker.js';
 import { AffectLog } from '../../core/affect/affect.js';
 import { ruminate, asPromptText as musingsAsPromptText } from '../../core/cognition/dmn.js';
+import { tickRecovery, asPromptText as stressAsPromptText } from '../../core/cognition/allostatic_load.js';
 import { BeliefTable } from '../../core/beliefs/belief_table.js';
 import { RecursiveBeliefTable } from '../../core/beliefs/recursive_belief.js';
 import { applyEventsToBeliefs } from '../../core/beliefs/auto_update.js';
@@ -81,6 +82,8 @@ ${pantheonAsPromptText(3)}
 ${new AffectLog(askingName).asPromptText()}
 
 ${musingsAsPromptText(askingName)}
+
+${stressAsPromptText(askingName)}
 
 ${soul.asPromptText()}
 
@@ -168,6 +171,7 @@ async function runOneTurn(openai, ship, profiles, model) {
             for (const w of witnesses) {
                 try { ruminate(w); } catch { /* nonfatal */ }
             }
+            try { tickRecovery(witnesses); } catch { /* nonfatal */ }
         }
         return { actor: speakerName, action, raw };
     } catch (e) {

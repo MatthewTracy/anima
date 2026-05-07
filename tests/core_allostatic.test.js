@@ -16,7 +16,7 @@ import assert from 'node:assert/strict';
 import { existsSync, rmSync } from 'fs';
 import {
     recordStress, decayStress, getStress, stressLevel,
-    asPromptText, _THRESHOLDS, _clearStress
+    asPromptText, tickRecovery, _THRESHOLDS, _clearStress
 } from '../core/cognition/allostatic_load.js';
 import { applyEventToBeliefs } from '../core/beliefs/auto_update.js';
 import { ruminate } from '../core/cognition/dmn.js';
@@ -98,6 +98,27 @@ test('integration: DMN uses overloaded opener once load exceeds threshold', () =
     new BeliefTable(witness).set('Y', +0.5, 'someone known');
     const m = ruminate(witness, { persist: false });
     assert.match(m, /past what it can hold|nervous system/);
+});
+
+test('tickRecovery decays every named agent that has stress > 0', () => {
+    recordStress('_TestAllA', 1.0);
+    recordStress('_TestAllA', 1.0);
+    recordStress('_TestAllB', 1.0);
+    const aBefore = getStress('_TestAllA');
+    const bBefore = getStress('_TestAllB');
+
+    const touched = tickRecovery(['_TestAllA', '_TestAllB', '_NobodyHere']);
+    assert.equal(touched, 2, 'should report only the two with stress');
+
+    assert.ok(getStress('_TestAllA') < aBefore);
+    assert.ok(getStress('_TestAllB') < bBefore);
+});
+
+test('tickRecovery is safe with non-array / empty inputs', () => {
+    assert.equal(tickRecovery(null), 0);
+    assert.equal(tickRecovery(undefined), 0);
+    assert.equal(tickRecovery([]), 0);
+    assert.equal(tickRecovery([null, '']), 0);
 });
 
 test('integration: DMN at allostatic adds breath line under mood opener', () => {

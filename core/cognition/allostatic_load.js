@@ -124,6 +124,28 @@ export function asPromptText(agentName) {
 }
 
 /**
+ * Apply RECOVERY_RATE decay to a whole roster at once. Use at end of
+ * each scenario turn to model "between-event recovery." Without this,
+ * stress accumulates monotonically and every agent overloads in 15
+ * events — which would not match the McEwen literature.
+ *
+ * @param {string[]} names
+ * @returns {number} count of agents whose load changed
+ */
+export function tickRecovery(names) {
+    if (!Array.isArray(names)) return 0;
+    let touched = 0;
+    for (const n of names) {
+        if (!n) continue;
+        const before = getStress(n);
+        if (before <= 0) continue;
+        decayStress(n);
+        touched++;
+    }
+    return touched;
+}
+
+/**
  * Test/setup helper: clear the load file.
  */
 export function _clearStress(agentName) {

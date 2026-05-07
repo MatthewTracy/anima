@@ -28,6 +28,7 @@ import { Burden } from '../../core/burdens/burden.js';
 import { FeudTracker } from '../../core/feuds/feud_tracker.js';
 import { AffectLog } from '../../core/affect/affect.js';
 import { ruminate, asPromptText as musingsAsPromptText } from '../../core/cognition/dmn.js';
+import { tickRecovery, asPromptText as stressAsPromptText } from '../../core/cognition/allostatic_load.js';
 import { applyEventsToBeliefs } from '../../core/beliefs/auto_update.js';
 import { getKey, hasKey } from '../../src/utils/keys.js';
 import { getBudgetGuard } from '../../src/governance/budget_guard.js';
@@ -85,6 +86,8 @@ ${pantheonAsPromptText(2)}
 ${new AffectLog(askingMonkName).asPromptText()}
 
 ${musingsAsPromptText(askingMonkName)}
+
+${stressAsPromptText(askingMonkName)}
 
 ${soul.asPromptText()}
 
@@ -179,9 +182,12 @@ async function runOneTurn(openai, monastery, profiles, model) {
             }
             // v0.49: DMN — let every active monk ruminate so the next turn's
             // prompt carries an inner monologue informed by the new events.
+            // v0.57: allostatic recovery — apply decay to the whole roster
+            // so stress doesn't accumulate without bound.
             for (const w of witnesses) {
                 try { ruminate(w); } catch { /* nonfatal */ }
             }
+            try { tickRecovery(witnesses); } catch { /* nonfatal */ }
         }
         return { actor: speakerName, action, raw };
     } catch (e) {

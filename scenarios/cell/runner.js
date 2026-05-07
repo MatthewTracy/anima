@@ -24,6 +24,7 @@ import { FeudTracker } from '../../core/feuds/feud_tracker.js';
 import { Persona } from '../../core/personas/persona.js';
 import { AffectLog } from '../../core/affect/affect.js';
 import { ruminate, asPromptText as musingsAsPromptText } from '../../core/cognition/dmn.js';
+import { tickRecovery, asPromptText as stressAsPromptText } from '../../core/cognition/allostatic_load.js';
 import { StubLLM } from '../../core/stub/stub_llm.js';
 import { getKey, hasKey } from '../../src/utils/keys.js';
 import { getBudgetGuard } from '../../src/governance/budget_guard.js';
@@ -109,6 +110,8 @@ ${new AffectLog(askingName).asPromptText()}
 
 ${musingsAsPromptText(askingName)}
 
+${stressAsPromptText(askingName)}
+
 ${soul.asPromptText()}
 
 ${rosterAsLegends(askingName)}
@@ -188,6 +191,7 @@ async function runOneTurn(openai, cell, profiles, model) {
             for (const w of witnesses) {
                 try { ruminate(w); } catch { /* nonfatal */ }
             }
+            try { tickRecovery(witnesses); } catch { /* nonfatal */ }
         }
         return { actor: speakerName, action };
     } catch (e) {

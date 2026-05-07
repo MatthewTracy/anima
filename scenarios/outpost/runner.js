@@ -27,6 +27,7 @@ import { Burden } from '../../core/burdens/burden.js';
 import { FeudTracker } from '../../core/feuds/feud_tracker.js';
 import { AffectLog } from '../../core/affect/affect.js';
 import { ruminate, asPromptText as musingsAsPromptText } from '../../core/cognition/dmn.js';
+import { tickRecovery, asPromptText as stressAsPromptText } from '../../core/cognition/allostatic_load.js';
 import { applyEventsToBeliefs } from '../../core/beliefs/auto_update.js';
 import { getKey, hasKey } from '../../src/utils/keys.js';
 import { getBudgetGuard } from '../../src/governance/budget_guard.js';
@@ -83,6 +84,8 @@ ${pantheonAsPromptText(2)}
 ${new AffectLog(askingCrewName).asPromptText()}
 
 ${musingsAsPromptText(askingCrewName)}
+
+${stressAsPromptText(askingCrewName)}
 
 ${soul.asPromptText()}
 
@@ -172,6 +175,7 @@ async function runOneTurn(openai, station, profiles, model) {
             for (const w of witnesses) {
                 try { ruminate(w); } catch { /* nonfatal */ }
             }
+            try { tickRecovery(witnesses); } catch { /* nonfatal */ }
         }
         return { actor: speakerName, action, raw };
     } catch (e) {
