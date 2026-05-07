@@ -35,6 +35,7 @@ export const ANTAGONISM_WEIGHTS = Object.freeze({
     kill_player:      6,
     vent:             5,        // killed by depressurization
     excommunicate:    4,        // exiled from the order
+    expel:            4,        // exiled from the cell
     flog:             1,
     brig:             1,
     accuse:           1,        // public accusation of sin

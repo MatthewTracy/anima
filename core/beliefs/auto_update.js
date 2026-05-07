@@ -65,6 +65,17 @@ export const DEFAULT_DELTAS = {
     fast:             { byActor: +0.05 },                    // visible piety
     writeScripture:   { byActor: +0.10 },
     vision:           { byActor: 0 },                        // ambivalent
+    lectio:           { byActor: 0 },                        // contemplative, neutral
+
+    // ── Cell (resistance) actions ──────────────────────────────────
+    forge:            { byActor: +0.05 },                    // making the work possible
+    sabotage:         { byActor: -0.05 },                    // cell-sympathetic; raises external heat but only mildly antagonistic among comrades
+    meet:             { byActor: 0 },                        // external contact, opaque
+    leave_drop:       { byActor: 0 },                        // anonymous, neutral within cell
+    expel:            { byActor: -0.20, byTarget: -0.30, recursive_for_target: { trust: -0.70, conf: 0.50 } },
+    captured:         { byActor: 0 },                        // happens to actor, no other target
+    broke:            { byActor: -0.40 },                    // confessed under interrogation; cellmates lose trust
+    lay_low:          { byActor: 0 },                        // protective, neutral
 
     // ── Universal ──────────────────────────────────────────────────
     speak:            { byActor: 0 },                        // pure speech is neutral; content matters separately
