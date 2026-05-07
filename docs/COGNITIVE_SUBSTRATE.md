@@ -31,8 +31,10 @@ Around that per-event pipeline, several layers run *between* events or *between*
 - **v0.71** — dishabituation: novel events spontaneously restore response to other types (Kandel 1968).
 - **v0.73** — stress-induced narrowing: under high allostatic load, the working-memory cap shrinks 9 → 3.
 - **v0.74** — DMN cognitive dissonance line: recent self-actions with negative valence surface as Festinger-style self-confrontation.
+- **v1.0** — Ebbinghaus affect decay: between-turn decay(0.05) wired into all four scenarios so old moments fade naturally.
+- **v1.1** — DMN pride line (symmetric to v0.74 dissonance): role='actor' positive entries surface as "I am quietly proud of…"
 
-Twelve distinct mechanisms plus three internal compositions/exceptions. None touch any LLM prompt directly. The LLM still reads a soul.md, a mood line, a beliefs table — but what those READ LIKE has been shaped by all of them.
+Thirteen distinct mechanisms plus internal compositions/exceptions. None touch any LLM prompt directly. The LLM still reads a soul.md, a mood line, a beliefs table — but what those READ LIKE has been shaped by all of them.
 
 ## Per-event layers
 
@@ -130,6 +132,14 @@ v0.54 adds role-aware phrasing — vicarious affect entries (v0.53) yield "what 
 - otherwise → silent.
 
 Inserted between the mood/load opener and the belief line, so the self-confrontation lands before the agent starts thinking about others. No new state, no persistent file — Festinger's distress is just role='actor' with negative valence, recurring.
+
+**v1.1 — Pride line (symmetric counterpart).** Detects `role='actor'` entries with positive valence ≥ +0.3:
+
+- ≥ 2 such entries → loud: "I have done things lately that I am quietly proud of."
+- 1 strong entry (mag ≥ 0.40) → soft: "There is one thing I did that sits well with me."
+- otherwise → silent.
+
+Pride's soft threshold (0.40) is lower than dissonance's (0.55) — Festinger's asymmetry that wrong-action sits in the body louder than right-action. Dissonance takes precedence when both fire. v1.1.1 wires pride into the soul evolution prompt symmetrically to dissonance, so the LLM rewriting the soul sees both poles of acted alignment.
 
 ### v0.52 — Mood-congruent memory retrieval
 **Module:** [`core/affect/affect.js`](../core/affect/affect.js) (`congruentMoments()`)

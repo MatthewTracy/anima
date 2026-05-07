@@ -10,6 +10,12 @@ A dense run of neuroscience-grounded primitives that turn a uniform belief table
 
 | Version | What shipped | Brain analog |
 |---|---|---|
+| **v1.1.3** | Sync COGNITIVE_SUBSTRATE.md + CHANGELOG for v1.0–v1.1.2 | — (docs) |
+| **v1.1.2** | substrate-stats: pride distribution alongside dissonance | — (debug tool) |
+| **v1.1.1** | Pride section in soul evolution prompt | Festinger 1957 |
+| **v1.1** | Pride detection in DMN (symmetric counterpart to dissonance) | Festinger 1957 (asymmetry) |
+| **v1.0.3** | CONTRIBUTING.md substrate-extension checklist | — (docs) |
+| **v1.0.2** | docs/CITATIONS.md bibliographic index | — (docs) |
 | **v1.0.1** | Sync CHANGELOG + README to v1.0 | — (docs) |
 | **v1.0.0** | Wire `AffectLog.decay()` between turns in all four scenarios — closes the last between-turn loop | Ebbinghaus |
 | **v0.99** | substrate-stats: TRUST-AXIS POLARITY block (optimist / balanced / pessimist / no-DNA) | — (debug tool) |
