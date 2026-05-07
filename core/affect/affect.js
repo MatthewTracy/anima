@@ -331,6 +331,11 @@ export class AffectLog {
 
     /**
      * Format for a $MOOD prompt placeholder — short, evocative.
+     *
+     * v0.59: role-aware — vicarious entries (felt through trust ties) and
+     * actor entries (your own hand in the moment) get distinct prefixes,
+     * so the LLM doesn't conflate "what happened to me" with "what
+     * happened to <someone I care about> that I felt."
      */
     asPromptText() {
         const mood = this.currentMood();
@@ -341,7 +346,10 @@ export class AffectLog {
         lines.push(`Most-charged moments still in your head:`);
         for (const m of top) {
             const sign = m.valence > 0 ? '+' : '';
-            lines.push(`  - [${sign}${m.valence.toFixed(2)}/${m.arousal.toFixed(2)}] ${m.type}${m.actor ? ' by ' + m.actor : ''}${m.target ? ' on ' + m.target : ''}`);
+            const prefix = _rolePrefix(m);
+            const lhs = `[${sign}${m.valence.toFixed(2)}/${m.arousal.toFixed(2)}]`;
+            const what = `${m.type}${m.actor ? ' by ' + m.actor : ''}${m.target ? ' on ' + m.target : ''}`;
+            lines.push(`  - ${lhs} ${prefix}${what}`);
         }
         lines.push('=== END FELT STATE ===');
         return lines.join('\n');
@@ -354,6 +362,16 @@ export class AffectLog {
     clear() {
         this._cache = { version: 1, owner: this.name, log: [] };
         this._save();
+    }
+}
+
+function _rolePrefix(m) {
+    switch (m.role) {
+        case 'target':    return '(to me) ';
+        case 'actor':     return '(my hand) ';
+        case 'vicarious': return m.valence < 0 ? '(felt with) ' : '(felt against) ';
+        case 'witness':
+        default:          return '';
     }
 }
 
