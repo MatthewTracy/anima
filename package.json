@@ -51,6 +51,7 @@
         "souls": "node scripts/soul_inspector.js",
         "feuds": "node scripts/feud_inspector.js",
         "publish": "node scripts/publish_game.js",
+        "demo": "node scripts/seed_demo_cohort.js && node scripts/publish_game.js --scenario cloister --roster BrotherG,BrotherA,BrotherT,BrotherB,BrotherL,BrotherW",
         "test": "node --test tests/",
         "score": "node scripts/score_game.js",
         "analyze": "node scripts/analyze_runs.js",

@@ -26,6 +26,7 @@ import { join, basename, dirname } from 'path';
 const args = process.argv.slice(2);
 const scenarioFlag = _flag(args, '--scenario');
 const manuscriptFlag = _flag(args, '--manuscript');
+const rosterFlag = _flag(args, '--roster');   // comma-separated override
 
 const ROSTERS = {
     forum: ['Madison', 'Hamilton', 'Paine', 'Chaos', 'Wolf', 'Fox'],
@@ -255,7 +256,9 @@ function main() {
 
     const manuscriptText = readFileSync(manuscript.path, 'utf8');
     const memoirs = readMemoirs(manuscript.scenario, manuscript.path);
-    const roster = ROSTERS[manuscript.scenario] || [];
+    const roster = rosterFlag
+        ? rosterFlag.split(',').map(s => s.trim()).filter(Boolean)
+        : (ROSTERS[manuscript.scenario] || []);
     const souls = roster.map(name => {
         const snap = readSoulSnapshot(name);
         return snap ? { name, ...snap } : null;
