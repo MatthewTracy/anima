@@ -74,6 +74,7 @@ If souls could evolve after death, death would have no stakes. The whole point o
 | **Theory of mind (v0.6)** | Belief tables track trust over time; feed into soul at game end |
 | **Conditional commitments (v0.7)** | Binding IF/THEN promises; broken ones become scars |
 | **Recursive theory of mind (v0.8)** | Reflections track what others *think of you*; unlocks 2nd-order strategy |
+| **Lineage (v0.9)** | Successors inherit from locked souls; multi-generation drama across runs |
 
 ### How beliefs and souls compose
 

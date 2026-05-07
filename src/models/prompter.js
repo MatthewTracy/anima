@@ -213,6 +213,19 @@ KEY COMMANDS: !collectBlocks, !craftRecipe, !goToCoordinates, !attack, !goToPlay
             }
         }
 
+        // ANIMA: $LINEAGE — successor lineage chain. If this agent inherited
+        // from a locked-soul ancestor (multi-generation play), show the
+        // chain backward through the ancestors with their mottos and causes
+        // of death. Empty for root-of-line agents.
+        if (prompt.includes('$LINEAGE')) {
+            try {
+                const { asPromptText } = await import('../../core/souls/lineage.js');
+                prompt = prompt.replaceAll('$LINEAGE', asPromptText(this.agent.name));
+            } catch (e) {
+                prompt = prompt.replaceAll('$LINEAGE', '');
+            }
+        }
+
         // V3: $GAME_DURATION placeholder — accurate per-run, not hardcoded text
         if (prompt.includes('$GAME_DURATION')) {
             try {

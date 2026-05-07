@@ -13,6 +13,7 @@
 
 import { readFileSync } from 'fs';
 import { listAllSouls } from '../core/souls/soul.js';
+import { getLineage } from '../core/souls/lineage.js';
 
 const args = process.argv.slice(2);
 const wantFull = args.includes('--full');
@@ -40,7 +41,11 @@ function printSummary() {
         console.log('ALIVE');
         console.log('─────');
         for (const s of alive) {
-            console.log('  ' + s.oneLineSummary());
+            const lineage = getLineage(s.name);
+            const lineageNote = lineage
+                ? `  ⟵ ${lineage.lineage.slice(0, 2).join(' ⟵ ')}${lineage.depth > 2 ? ' ⟵ ...' : ''}`
+                : '';
+            console.log('  ' + s.oneLineSummary() + lineageNote);
         }
         console.log('');
     }
