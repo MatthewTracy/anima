@@ -5,12 +5,22 @@
  *
  * This is the moment where character development happens. If souls evolve
  * into mush, this prompt is the first place to look.
+ *
+ * v0.15: synthesis layer. Evolution now reads ALL the primitives an agent
+ * has accumulated during the game — BeliefTable, RecursiveBeliefTable,
+ * Burden, CommitmentLedger, memoir — and weaves them into the soul rewrite.
+ * Without this, the primitives were runtime decoration with no long-term
+ * effect on character. With it, everything an agent learned, felt, and
+ * hid this game becomes part of who they are next game.
  */
 
-import { readFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, existsSync, mkdirSync, readdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { Soul } from './soul.js';
+import { BeliefTable } from '../beliefs/belief_table.js';
+import { RecursiveBeliefTable } from '../beliefs/recursive_belief.js';
+import { Burden } from '../burdens/burden.js';
 import { getKey, hasKey } from '../../src/utils/keys.js';
 import { getBudgetGuard } from '../../src/governance/budget_guard.js';
 import OpenAIApi from 'openai';
@@ -53,9 +63,131 @@ function _buildPersonalTimeline(events, agentName) {
 }
 
 /**
- * Evolve one agent's soul. Returns true on success, false if skipped.
+ * v0.15: format the agent's BeliefTable for prompt input. Caps at top-3
+ * highest-magnitude beliefs (most positive AND most negative trust).
  */
-async function _evolveOne(agentName, events, openai) {
+function _formatBeliefsForPrompt(agentName) {
+    try {
+        const ranked = new BeliefTable(agentName).rankedTargets();
+        if (ranked.length === 0) return '(no beliefs formed yet)';
+        // Pick by absolute magnitude — strongest opinions on either side
+        const sorted = ranked.slice().sort((a, b) => Math.abs(b.trust) - Math.abs(a.trust));
+        const top = sorted.slice(0, 3);
+        return top.map(t => {
+            const sign = t.trust > 0 ? '+' : '';
+            const recent = t.evidence?.length > 0 ? ` (because: ${t.evidence[t.evidence.length - 1].reason})` : '';
+            return `- ${t.name}: trust ${sign}${t.trust.toFixed(2)}${recent}`;
+        }).join('\n');
+    } catch {
+        return '(no beliefs available)';
+    }
+}
+
+/**
+ * v0.15: format the agent's RecursiveBeliefTable. Top-3 reflections.
+ */
+function _formatReflectionsForPrompt(agentName) {
+    try {
+        const ranked = new RecursiveBeliefTable(agentName).rankedPerceptions();
+        if (ranked.length === 0) return '(no reflections formed yet)';
+        const sorted = ranked.slice().sort((a, b) => Math.abs(b.perceived_trust_of_me) - Math.abs(a.perceived_trust_of_me));
+        const top = sorted.slice(0, 3);
+        return top.map(r => {
+            const sign = r.perceived_trust_of_me > 0 ? '+' : '';
+            const conf = r.confidence >= 0.5 ? 'I believe' : 'I suspect';
+            const recent = r.evidence?.length > 0 ? ` (because: ${r.evidence[r.evidence.length - 1].reason})` : '';
+            return `- ${conf} ${r.name} sees me at ${sign}${r.perceived_trust_of_me.toFixed(2)}${recent}`;
+        }).join('\n');
+    } catch {
+        return '(no reflections available)';
+    }
+}
+
+/**
+ * v0.15: format the agent's burden. Empty string if none — keeps the
+ * prompt clean for agents who carry no secret.
+ */
+function _formatBurdenForPrompt(agentName) {
+    try {
+        const b = new Burden(agentName).read();
+        if (!b) return '(no burden carried)';
+        return `[${b.kind?.toUpperCase() || 'SECRET'}] ${b.text}`;
+    } catch {
+        return '(no burden carried)';
+    }
+}
+
+/**
+ * v0.15: format commitments involving the agent. Pulls from the most
+ * recent game's CommitmentLedger if it exists. Caller passes gameId
+ * (or we fall back to scanning logs/commitments for any ledger).
+ */
+function _formatCommitmentsForPrompt(agentName, gameId) {
+    try {
+        // We don't have direct access to the gameId in evolution.js —
+        // try to find ledgers in logs/commitments that include this agent.
+        // Best-effort. Most scenarios won't have used commitments yet.
+        const path = `./logs/commitments/${gameId || ''}.json`;
+        if (gameId && existsSync(path)) {
+            const data = JSON.parse(readFileSync(path, 'utf8'));
+            const involving = (data.commitments || []).filter(c => c.by === agentName || c.to === agentName);
+            if (involving.length === 0) return '(no commitments made or received this game)';
+            return involving.map(c => {
+                const role = c.by === agentName ? 'I promised' : `${c.by} promised me`;
+                return `- ${role} "${c.consequence}" IF "${c.condition}" — ${c.status}${c.resolution ? ' (' + c.resolution + ')' : ''}`;
+            }).join('\n');
+        }
+        return '(no commitments made or received this game)';
+    } catch {
+        return '(no commitments available)';
+    }
+}
+
+/**
+ * v0.15: read the agent's memoir for THIS game from logs/<scenario>/memoirs/.
+ * We don't know the scenario from here, so search broadly. Best-effort.
+ */
+function _formatMemoirForPrompt(agentName) {
+    try {
+        const candidates = [
+            './logs/cloister/memoirs',
+            './logs/outpost/memoirs',
+            './logs/crew/memoirs',
+            './logs/narratives/memoirs',
+        ];
+        const today = new Date().toISOString().slice(0, 10);
+        for (const dir of candidates) {
+            if (!existsSync(dir)) continue;
+            const files = readdirSync(dir).filter(f => f.startsWith(`${agentName}_`) && f.includes(today));
+            if (files.length > 0) {
+                files.sort();
+                return readFileSync(join(dir, files[files.length - 1]), 'utf8').slice(0, 1500);
+            }
+        }
+        // Forum's autobiographies live in dated memoir directories
+        const narrDir = './logs/narratives';
+        if (existsSync(narrDir)) {
+            const subdirs = readdirSync(narrDir).filter(d => d.endsWith('_memoirs'));
+            // Try the most recent first
+            subdirs.sort().reverse();
+            for (const sd of subdirs) {
+                const fp = join(narrDir, sd, `${agentName}.md`);
+                if (existsSync(fp)) return readFileSync(fp, 'utf8').slice(0, 1500);
+            }
+        }
+        return '(no memoir written for this game)';
+    } catch {
+        return '(no memoir available)';
+    }
+}
+
+/**
+ * Evolve one agent's soul. Returns true on success, false if skipped.
+ *
+ * v0.15: now reads ALL the primitives — BeliefTable, RecursiveBeliefTable,
+ * Burden, CommitmentLedger, memoir — and weaves them into the LLM prompt.
+ */
+async function _evolveOne(agentName, events, openai, gameId = null) {
     const soul = new Soul(agentName);
     if (soul.isLocked()) {
         console.log(`[EVOLVE] ${agentName}: locked, skipping.`);
@@ -67,11 +199,22 @@ async function _evolveOne(agentName, events, openai) {
         return false;
     }
     const timeline = _buildPersonalTimeline(events, agentName);
+    const beliefs = _formatBeliefsForPrompt(agentName);
+    const reflections = _formatReflectionsForPrompt(agentName);
+    const burden = _formatBurdenForPrompt(agentName);
+    const commitments = _formatCommitmentsForPrompt(agentName, gameId);
+    const memoir = _formatMemoirForPrompt(agentName);
+
     const promptTemplate = readFileSync(PROMPT_PATH, 'utf8');
     const prompt = promptTemplate
         .replaceAll('{{name}}', agentName)
         .replaceAll('{{prior_soul}}', priorSoul.trim())
-        .replaceAll('{{event_timeline}}', timeline || '(few events on record — speak to the silence)');
+        .replaceAll('{{event_timeline}}', timeline || '(few events on record — speak to the silence)')
+        .replaceAll('{{beliefs}}', beliefs)
+        .replaceAll('{{reflections}}', reflections)
+        .replaceAll('{{burden}}', burden)
+        .replaceAll('{{commitments}}', commitments)
+        .replaceAll('{{memoir}}', memoir);
 
     try {
         const completion = await openai.chat.completions.create({
