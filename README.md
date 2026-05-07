@@ -98,7 +98,18 @@ git clone https://github.com/MatthewTracy/anima.git
 cd anima
 npm install
 
-# Run a scenario (text-only ones don't need Minecraft)
+# See the cognitive substrate in action (no API key, no cost) —
+# 3 synthetic agents, 5 events, 12 neuroscience-grounded layers
+# fanning out into three differently-shaped minds.
+npm run substrate-demo
+
+# Inspect any agent's full cognitive state
+npm run substrate -- _DemoMother
+
+# Compare two agents side-by-side
+npm run substrate-diff -- _DemoMother _DemoSoldier
+
+# Run a scenario (text-only ones don't need Minecraft) — these DO use the LLM
 npm run cloister    # ~$0.10/game, 60-90 sec
 npm run outpost     # ~$0.10/game, sci-fi station drama
 npm run crew        # ~$0.10/game, pirate ship + uses ALL 5 primitives in one prompt
