@@ -25,6 +25,7 @@ import { tagEvent, tagEventForWitness, AffectLog } from '../affect/affect.js';
 import { surpriseScale } from '../affect/predictive.js';
 import { ingroupBias } from '../identity/faction.js';
 import { recordExposure } from '../cognition/habituation.js';
+import { somaticAmplify } from '../affect/somatic.js';
 
 /**
  * Default trust deltas for known event types.
@@ -137,6 +138,19 @@ export function applyEventToBeliefs(event, witnesses, overrides = {}) {
         catch { habitByWitness.set(w, 1.0); }
     }
 
+    // v0.55: somatic-marker amplification (Damasio). Each witness's value
+    // DNA, extracted from their soul.md, determines how sharply this event
+    // collides with their personality. Misaligned events arouse harder than
+    // aligned ones — your nervous system flinches at violations of your
+    // values. Computed once per witness per event for use by both the
+    // byActor and byTarget paths.
+    const somaticByWitness = new Map();
+    for (const w of witnesses) {
+        if (!w || somaticByWitness.has(w)) continue;
+        try { somaticByWitness.set(w, somaticAmplify(w, event.type)); }
+        catch { somaticByWitness.set(w, 1.0); }
+    }
+
     // v0.53: snapshot each witness's PRIOR trust in actor + target before
     // step 1 mutates beliefs. Empathy should reflect the relationship the
     // witness held coming INTO this moment, not the post-event update.
@@ -186,11 +200,14 @@ export function applyEventToBeliefs(event, witnesses, overrides = {}) {
                 const ingroup = ingroupBias(witnessName, actor, baseDelta);
                 // v0.50: habituation/sensitization (per-witness, per-event-type).
                 const habit = habitByWitness.get(witnessName) ?? 1.0;
-                const scaledDelta = baseDelta * surprise * ingroup * habit;
+                // v0.55: somatic markers — value-aligned amplification.
+                const somatic = somaticByWitness.get(witnessName) ?? 1.0;
+                const scaledDelta = baseDelta * surprise * ingroup * habit * somatic;
                 const tags = [];
                 if (surprise > 1.05) tags.push(`surprise ×${surprise.toFixed(2)}`);
                 if (ingroup !== 1.0)  tags.push(`ingroup ×${ingroup.toFixed(2)}`);
                 if (Math.abs(habit - 1.0) > 0.05) tags.push(`habit ×${habit.toFixed(2)}`);
+                if (somatic > 1.05) tags.push(`somatic ×${somatic.toFixed(2)}`);
                 const why = tags.length
                     ? `witnessed: ${event.type}${target ? ' against ' + target : ''} [${tags.join(', ')}]`
                     : `witnessed: ${event.type}${target ? ' against ' + target : ''}`;
@@ -225,7 +242,8 @@ export function applyEventToBeliefs(event, witnesses, overrides = {}) {
                 // hurt? Did a rival just get justly punished?
                 const ingroup = ingroupBias(witnessName, target, baseDelta);
                 const habit = habitByWitness.get(witnessName) ?? 1.0;
-                const scaledDelta = baseDelta * surprise * ingroup * habit;
+                const somatic = somaticByWitness.get(witnessName) ?? 1.0;
+                const scaledDelta = baseDelta * surprise * ingroup * habit * somatic;
                 beliefs.update(target, scaledDelta, `witnessed as target of ${event.type}${actor ? ' by ' + actor : ''}`);
                 beliefUpdates++;
             } catch { /* nonfatal */ }
