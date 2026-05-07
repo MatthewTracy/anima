@@ -23,6 +23,7 @@ import { evolveAllSouls } from '../../core/souls/evolution.js';
 import { asPromptText as lineageAsPromptText } from '../../core/souls/lineage.js';
 import { BeliefTable } from '../../core/beliefs/belief_table.js';
 import { RecursiveBeliefTable } from '../../core/beliefs/recursive_belief.js';
+import { applyEventsToBeliefs } from '../../core/beliefs/auto_update.js';
 import { getKey, hasKey } from '../../src/utils/keys.js';
 import { getBudgetGuard } from '../../src/governance/budget_guard.js';
 
@@ -132,14 +133,25 @@ async function runOneTurn(openai, ship, profiles, model) {
         }
         const raw = completion?.choices?.[0]?.message?.content || '';
         const action = parseAction(raw);
+        const eventCountBefore = ship.events.length;
         if (!action) {
             console.warn(`[CREW] ${speakerName}: unparseable response, recording silence.`);
             ship.applyAction(speakerName, { type: 'speak', text: '(silent — unparseable response)' });
-            return { actor: speakerName, action: { type: 'speak' }, raw };
+        } else {
+            const result = ship.applyAction(speakerName, action);
+            console.log(`  Turn ${ship.turn + 1} — ${result}`);
         }
-        const result = ship.applyAction(speakerName, action);
-        console.log(`  Turn ${ship.turn + 1} — ${result}`);
-        return { actor: speakerName, action, result };
+        // ANIMA: auto-update beliefs from any events this action produced.
+        // Witnesses for Crew = whole living roster (everyone is on the same ship).
+        const newEvents = ship.events.slice(eventCountBefore);
+        if (newEvents.length > 0) {
+            const witnesses = ship.livingRoster();
+            const { beliefUpdates, recursiveUpdates } = applyEventsToBeliefs(newEvents, witnesses);
+            if (beliefUpdates > 0 || recursiveUpdates > 0) {
+                console.log(`    [beliefs] ${beliefUpdates} witness updates, ${recursiveUpdates} reflections`);
+            }
+        }
+        return { actor: speakerName, action, raw };
     } catch (e) {
         console.warn(`[CREW] LLM failed for ${speakerName}: ${e.message}`);
         return { actor: speakerName, error: e.message };

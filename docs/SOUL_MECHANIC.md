@@ -75,6 +75,16 @@ If souls could evolve after death, death would have no stakes. The whole point o
 | **Conditional commitments (v0.7)** | Binding IF/THEN promises; broken ones become scars |
 | **Recursive theory of mind (v0.8)** | Reflections track what others *think of you*; unlocks 2nd-order strategy |
 | **Lineage (v0.9)** | Successors inherit from locked souls; multi-generation drama across runs |
+| **Auto-update (v0.11)** | Events automatically update witnesses' BeliefTable + RecursiveBeliefTable |
+
+### How auto-update closes the loop
+
+For five iterations the primitives existed without firing during games. With `core/beliefs/auto_update.js`, every witnessable event (flog, vent, accuse, mutiny_call, …) mechanically updates everyone present:
+
+- **Witnesses** see their `BeliefTable` shift toward or against the actor (`flog` → witness gives flogger −0.10).
+- **The target** sees their `RecursiveBeliefTable` updated to reflect what they now think the actor thinks of them (if you flogged me, I think you trust me less).
+
+This is the layer that makes the substrate alive. Without it, beliefs are storage. With it, beliefs accumulate evidence as the game runs, then feed into soul evolution at the end. The full loop: **witness → belief → soul**.
 
 ### How beliefs and souls compose
 
