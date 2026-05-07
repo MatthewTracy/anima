@@ -26,6 +26,7 @@ import { surpriseScale } from '../affect/predictive.js';
 import { ingroupBias } from '../identity/faction.js';
 import { recordExposure } from '../cognition/habituation.js';
 import { somaticAmplify } from '../affect/somatic.js';
+import { recordStress } from '../cognition/allostatic_load.js';
 
 /**
  * Default trust deltas for known event types.
@@ -149,6 +150,26 @@ export function applyEventToBeliefs(event, witnesses, overrides = {}) {
         if (!w || somaticByWitness.has(w)) continue;
         try { somaticByWitness.set(w, somaticAmplify(w, event.type)); }
         catch { somaticByWitness.set(w, 1.0); }
+    }
+
+    // v0.56: allostatic load — accumulate body-state cost of arousal across
+    // events. Each witness (and the actor/target if not in witnesses) gets
+    // a small, somatic-amplified nudge to their stress reservoir. Recovery
+    // happens out-of-band via decayStress() at scenario tick boundaries.
+    {
+        const stressedNames = new Set();
+        for (const w of witnesses) {
+            if (!w || stressedNames.has(w)) continue;
+            stressedNames.add(w);
+            const somatic = somaticByWitness.get(w) ?? 1.0;
+            try { recordStress(w, affect.arousal * somatic); } catch { /* nonfatal */ }
+        }
+        if (actor && !stressedNames.has(actor)) {
+            try { recordStress(actor, affect.arousal * (somaticByWitness.get(actor) ?? 1.0)); } catch {}
+        }
+        if (target && target !== actor && !stressedNames.has(target)) {
+            try { recordStress(target, affect.arousal * (somaticByWitness.get(target) ?? 1.0)); } catch {}
+        }
     }
 
     // v0.53: snapshot each witness's PRIOR trust in actor + target before

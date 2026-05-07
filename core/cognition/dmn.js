@@ -35,6 +35,7 @@ import { join } from 'path';
 import { AffectLog } from '../affect/affect.js';
 import { BeliefTable } from '../beliefs/belief_table.js';
 import { getFaction } from '../identity/faction.js';
+import { getStress, stressLevel } from './allostatic_load.js';
 
 const BOTS_DIR = './bots';
 const MUSINGS_FILE = 'musings.md';
@@ -66,14 +67,27 @@ export function ruminate(agentName, opts = {}) {
     const ally = ranked.length > 0 ? ranked[0] : null;
     const enemy = ranked.length > 0 ? ranked[ranked.length - 1] : null;
     const faction = getFaction(agentName);
+    // v0.56: allostatic load — when the body is overloaded, the inner
+    // monologue is colored by exhaustion before mood even gets a turn.
+    const load = getStress(agentName);
+    const level = stressLevel(load);
 
-    // If there's truly nothing — neutral mood, no beliefs, no events — skip.
-    if (top.length === 0 && (!ally || ally.trust === 0)) return '';
+    // If there's truly nothing — neutral mood, no beliefs, no events,
+    // and no body state to speak of — skip.
+    if (top.length === 0 && (!ally || ally.trust === 0) && level === 'baseline') return '';
 
     const lines = [];
 
-    // Opening — mood-anchored self-statement
-    lines.push(_moodOpener(mood, faction));
+    // Opening — body-load takes priority over mood when overloaded;
+    // otherwise mood-anchored self-statement.
+    if (level === 'overloaded') {
+        lines.push(_overloadedOpener(faction));
+    } else {
+        lines.push(_moodOpener(mood, faction));
+        if (level === 'allostatic') {
+            lines.push(`I have not had a clean breath in a while.`);
+        }
+    }
 
     // Beliefs — who I trust, who I distrust (only mention each if signal-bearing)
     const beliefLine = _beliefLine(ally, enemy);
@@ -150,6 +164,13 @@ export function _clearMusings(agentName) {
 // Internal text synthesis. Templates are written for first-person voice
 // without naming the agent (the agent IS the voice).
 // ────────────────────────────────────────────────────────────────────
+
+function _overloadedOpener(faction) {
+    const factionRef = (faction && faction !== 'unknown')
+        ? ` Even among the ${faction}, I have nothing left to give right now.`
+        : '';
+    return `My nervous system is past what it can hold.${factionRef}`;
+}
 
 function _moodOpener(mood, faction) {
     const factionRef = (faction && faction !== 'unknown')
