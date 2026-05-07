@@ -22,6 +22,7 @@ import { BeliefTable } from './belief_table.js';
 import { RecursiveBeliefTable } from './recursive_belief.js';
 import { logEventAsFeud } from '../feuds/feud_tracker.js';
 import { tagEvent, AffectLog } from '../affect/affect.js';
+import { surpriseScale } from '../affect/predictive.js';
 
 /**
  * Default trust deltas for known event types.
@@ -123,13 +124,24 @@ export function applyEventToBeliefs(event, witnesses, overrides = {}) {
     const affectScale = 0.5 + affect.arousal;   // [0.5, 1.5]
 
     // 1) Update witnesses' BeliefTable about the actor (if delta.byActor)
+    //
+    // v0.47: predictive coding (Friston). Each witness has a prior trust in
+    // the actor; the surprise multiplier amplifies updates that VIOLATE that
+    // prior. A betrayal by an ally reshapes belief faster than the same act
+    // from someone already distrusted.
     if (typeof delta.byActor === 'number' && delta.byActor !== 0 && actor) {
-        const scaledDelta = delta.byActor * affectScale;
+        const baseDelta = delta.byActor * affectScale;
         for (const witnessName of witnesses) {
             if (!witnessName || witnessName === actor) continue;
             try {
                 const beliefs = new BeliefTable(witnessName);
-                beliefs.update(actor, scaledDelta, `witnessed: ${event.type}${target ? ' against ' + target : ''}`);
+                const priorTrust = beliefs.get(actor)?.trust ?? 0;
+                const surprise = surpriseScale(priorTrust, affect.valence);
+                const scaledDelta = baseDelta * surprise;
+                const why = surprise > 1.05
+                    ? `witnessed: ${event.type}${target ? ' against ' + target : ''} [surprise ×${surprise.toFixed(2)}]`
+                    : `witnessed: ${event.type}${target ? ' against ' + target : ''}`;
+                beliefs.update(actor, scaledDelta, why);
                 beliefUpdates++;
                 // Also record in the witness's affect log
                 try {
@@ -142,11 +154,17 @@ export function applyEventToBeliefs(event, witnesses, overrides = {}) {
 
     // 2) Update witnesses' BeliefTable about the target (if delta.byTarget and target)
     if (typeof delta.byTarget === 'number' && delta.byTarget !== 0 && target) {
-        const scaledDelta = delta.byTarget * affectScale;
+        const baseDelta = delta.byTarget * affectScale;
         for (const witnessName of witnesses) {
             if (!witnessName || witnessName === target) continue;
             try {
                 const beliefs = new BeliefTable(witnessName);
+                const priorTrust = beliefs.get(target)?.trust ?? 0;
+                // For target deltas, surprise is computed against the witness's
+                // prior view of the *target*: e.g. if you trusted the target and
+                // they were just publicly humiliated, the lowering hits harder.
+                const surprise = surpriseScale(priorTrust, affect.valence);
+                const scaledDelta = baseDelta * surprise;
                 beliefs.update(target, scaledDelta, `witnessed as target of ${event.type}${actor ? ' by ' + actor : ''}`);
                 beliefUpdates++;
             } catch { /* nonfatal */ }
