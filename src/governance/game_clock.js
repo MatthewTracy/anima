@@ -147,16 +147,27 @@ class GameClock {
                 const aTerritory = logger.territoryBlocks?.anarchy || 0;
                 const total = cTerritory + aTerritory;
                 if (total > 100) {
+                    // v1.1.48: reset the hold timer when the leading faction
+                    // changes. Pre-fix used `_territoryHoldStart || ...` to
+                    // create the record, which never overwrote a stale
+                    // record for the OTHER faction. So if constitutional
+                    // dominated for a while then anarchy took over directly
+                    // (no middle tick where neither was above threshold),
+                    // anarchy's hold clock never started — _territoryHoldStart
+                    // still pointed at constitutional, and the inner check
+                    // `=== 'anarchy'` rejected it. Same in reverse.
                     if (cTerritory / total >= blocksThreshold) {
-                        this._territoryHoldStart = this._territoryHoldStart || { faction: 'constitutional', since: Date.now() };
-                        if (this._territoryHoldStart.faction === 'constitutional' &&
-                            (Date.now() - this._territoryHoldStart.since) >= requiredMinutes * 60000) {
+                        if (!this._territoryHoldStart || this._territoryHoldStart.faction !== 'constitutional') {
+                            this._territoryHoldStart = { faction: 'constitutional', since: Date.now() };
+                        }
+                        if ((Date.now() - this._territoryHoldStart.since) >= requiredMinutes * 60000) {
                             return 'territory_hold:constitutional';
                         }
                     } else if (aTerritory / total >= blocksThreshold) {
-                        this._territoryHoldStart = this._territoryHoldStart || { faction: 'anarchy', since: Date.now() };
-                        if (this._territoryHoldStart.faction === 'anarchy' &&
-                            (Date.now() - this._territoryHoldStart.since) >= requiredMinutes * 60000) {
+                        if (!this._territoryHoldStart || this._territoryHoldStart.faction !== 'anarchy') {
+                            this._territoryHoldStart = { faction: 'anarchy', since: Date.now() };
+                        }
+                        if ((Date.now() - this._territoryHoldStart.since) >= requiredMinutes * 60000) {
                             return 'territory_hold:anarchy';
                         }
                     } else {
