@@ -6,9 +6,10 @@
  * This is a singleton shared across all constitutional faction agents.
  */
 
-import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import settings from '../../settings.js';
+import { atomicWriteFileSync } from '../../core/runtime/atomic_io.js';
 import { parseLawAsCode, formatMutationSummary } from './law_parser.js';
 
 // Read faction members from settings or use defaults
@@ -1687,7 +1688,9 @@ class GovernanceManager {
     _saveEventLog() {
         try {
             const filename = join(this.logDir, `governance_events_${new Date().toISOString().split('T')[0]}.json`);
-            writeFileSync(filename, JSON.stringify(this.eventLog, null, 2));
+            // v1.1.38: atomic write. Re-rewritten every 5 events; a crash
+            // mid-write corrupts the day's event log.
+            atomicWriteFileSync(filename, JSON.stringify(this.eventLog, null, 2));
         } catch (e) {
             console.warn('Could not save governance event log:', e.message);
         }
@@ -1720,7 +1723,12 @@ class GovernanceManager {
 
         try {
             const filename = join(this.logDir, 'governance_state.json');
-            writeFileSync(filename, JSON.stringify(state, null, 2));
+            // v1.1.38: atomic write. governance_state.json is the singleton
+            // for live governance — laws, elections, cases, treasury,
+            // every gov-relevant counter. Pre-fix, a crash mid-write
+            // corrupted ALL of it. Same risk class as the core/ state
+            // files migrated in v1.1.5–v1.1.13.
+            atomicWriteFileSync(filename, JSON.stringify(state, null, 2));
         } catch (e) {
             console.warn('Could not save governance state:', e.message);
         }

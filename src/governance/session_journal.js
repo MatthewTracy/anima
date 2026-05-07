@@ -6,8 +6,9 @@
  * so agents remember "Last game I lost the election to Hamilton."
  */
 
-import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
+import { atomicWriteFileSync } from '../../core/runtime/atomic_io.js';
 
 const JOURNAL_DIR = './logs/sessions';
 const JOURNAL_FILE = join(JOURNAL_DIR, 'journal.json');
@@ -65,7 +66,11 @@ export function appendSession({ sessionId, finalScores, governanceState, duratio
     }
 
     try {
-        writeFileSync(JOURNAL_FILE, JSON.stringify(journal, null, 2));
+        // v1.1.38: atomic write. session_journal.json is shared mutable
+        // state across runs (read+modify+write pattern), so a crash mid-
+        // write would lose the entire history of past games. Same risk
+        // class as the core/ state files migrated in v1.1.5–v1.1.13.
+        atomicWriteFileSync(JOURNAL_FILE, JSON.stringify(journal, null, 2));
         console.log(`[JOURNAL] Appended session ${sessionId}. ${journal.length} sessions remembered.`);
     } catch (e) {
         console.warn('[JOURNAL] write failed:', e.message);
