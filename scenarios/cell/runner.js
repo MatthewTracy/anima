@@ -21,6 +21,7 @@ import { RecursiveBeliefTable } from '../../core/beliefs/recursive_belief.js';
 import { Burden, assignRandomFromBank } from '../../core/burdens/burden.js';
 import { applyEventsToBeliefs } from '../../core/beliefs/auto_update.js';
 import { FeudTracker } from '../../core/feuds/feud_tracker.js';
+import { Persona } from '../../core/personas/persona.js';
 import { StubLLM } from '../../core/stub/stub_llm.js';
 import { getKey, hasKey } from '../../src/utils/keys.js';
 import { getBudgetGuard } from '../../src/governance/budget_guard.js';
@@ -92,12 +93,15 @@ function buildPrompt(cell, profile, askingName) {
     const beliefs = new BeliefTable(askingName);
     const reflections = new RecursiveBeliefTable(askingName);
     const burden = new Burden(askingName);
+    const persona = new Persona(askingName);
 
     return `${lineageAsPromptText(askingName)}
 
 ${new FeudTracker().asPromptText(askingName)}
 
 ${pantheonAsPromptText(2)}
+
+${persona.asPromptText()}
 
 ${soul.asPromptText()}
 
@@ -133,6 +137,8 @@ Available actions:
 - expel — Hawk only. Remove a member from the cell. {"type":"expel","target":"<name>","reason":"..."}
 - confess — Speak privately to one member. {"type":"confess","target":"<name>","text":"..."}
 - lay_low — Stay off the streets. Reduces heat by 0.05. {"type":"lay_low"}
+- adopt_mask — Take on a cover identity. Others will see the alias going forward. {"type":"adopt_mask","alias":"<new name>","bio":"<claimed background>","motive":"<why>"}
+- expose_mask — Claim that another member is wearing a false identity. If they are, the mask drops. If not, the accusation is still public. {"type":"expose_mask","target":"<name>","basis":"..."}
 
 Choose what your character would do — not what is safe, not what pleases the others. JSON only:`;
 }

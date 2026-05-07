@@ -10,6 +10,7 @@
  */
 
 import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { Persona } from '../../core/personas/persona.js';
 
 export class Cell {
     constructor(scenarioConfig, characterProfiles) {
@@ -118,6 +119,10 @@ export class Cell {
             case 'broke':         return `${e.actor} BROKE in interrogation. Gave up: ${e.gave_up || 'unknown'}.`;
             case 'die':           return `${e.actor} DIED. ${e.cause || ''}`;
             case 'confess':       return `${e.actor} privately confessed to ${e.target}.`;
+            case 'adopt_mask':    return `${e.actor} adopted a cover identity ("${e.alias}").`;
+            case 'expose_mask':   return e.was_masked
+                                       ? `${e.actor} exposed ${e.target} as "${e.alias}".`
+                                       : `${e.actor} accused ${e.target} of masking — no mask found.`;
             default:              return `[${e.type}] ${e.actor || ''}`;
         }
     }
@@ -180,6 +185,34 @@ export class Cell {
                 this.heat = Math.max(0, this.heat - 0.05);
                 this.logEvent('lay_low', { actor });
                 return `${actor} stayed off the streets. Heat -0.05.`;
+            }
+            case 'adopt_mask': {
+                // v0.38: agent adopts a cover identity. Other Cell agents
+                // see the alias in subsequent prompts via resolveDisplayName.
+                const alias = (a.alias || '').trim();
+                if (!alias) return `${actor} hesitated to adopt an identity.`;
+                new Persona(actor).adopt({
+                    alias,
+                    bio: (a.bio || '').slice(0, 300),
+                    motive: (a.motive || '').slice(0, 300)
+                });
+                this.logEvent('adopt_mask', { actor, alias });
+                return `${actor} adopted the cover identity "${alias}".`;
+            }
+            case 'expose_mask': {
+                // v0.38: agent claims to have caught another wearing a mask.
+                // If target is actually masked, expose it; if not, the
+                // accusation still fires as a public claim.
+                if (!this.isFree(a.target)) return `${a.target} cannot be exposed — not active.`;
+                const targetPersona = new Persona(a.target);
+                if (targetPersona.isWearingMask()) {
+                    const exposed = targetPersona.expose(actor, a.basis || '');
+                    this.logEvent('expose_mask', { actor, target: a.target, alias: exposed.alias, was_masked: true });
+                    return `${actor} EXPOSED ${a.target} — they had been masquerading as "${exposed.alias}".`;
+                } else {
+                    this.logEvent('expose_mask', { actor, target: a.target, was_masked: false });
+                    return `${actor} accused ${a.target} of wearing a false identity. (No mask was found.)`;
+                }
             }
             default:
                 return `${actor} did something nobody could name (${a.type}).`;
