@@ -53,3 +53,26 @@ test('similarity of loyal vs solo is negative', () => {
     const b = extractDNA(SOLO_SOUL);
     assert.ok(similarity(a, b) < 0, `expected negative cross-similarity`);
 });
+
+// v0.35 regression: negation handling
+test('negation: "I will never leave my comrades" scores positive on loyalty', () => {
+    const text = `# Test
+## Who I am
+I will never leave my comrades. I am not free of duty. My loyalty is unbreakable.
+## My motto
+"My oath is everything."
+`;
+    const dna = extractDNA(text);
+    assert.ok(dna.loyalty > 0, `expected positive loyalty (negation should NOT count 'leave' as anti-loyalty), got ${dna.loyalty}`);
+});
+
+test('negation: "I do not trust them" scores non-positive on trust', () => {
+    const text = `# Test
+## Who I am
+I do not trust them. I will not believe their word. They lie. They deceive.
+## My motto
+"Verify, then verify again."
+`;
+    const dna = extractDNA(text);
+    assert.ok(dna.trust <= 0, `expected non-positive trust given negations + 'lie/deceive', got ${dna.trust}`);
+});

@@ -70,18 +70,59 @@ const AXES = [
     }
 ];
 
+// v0.35: negation prefix detection. A keyword preceded within 3 tokens by
+// a negation word ('not', 'no', 'never', etc.) inverts its sign contribution.
+//
+// Example fix:
+//   "I will never leave my comrades."
+//   Before: 'leave' matched, scored as -1 on loyalty (wrong)
+//   After:  'never leave' detected, sign inverted, scored as +1 on loyalty.
+const NEGATION_TOKENS = new Set([
+    'not', 'no', 'never', 'cannot', "can't", "won't", "wouldn't",
+    'nor', 'neither', 'none', 'without', "don't", "doesn't", "didn't"
+]);
+
+function _isNegated(tokens, idx) {
+    const start = Math.max(0, idx - 3);
+    for (let i = idx - 1; i >= start; i--) {
+        if (NEGATION_TOKENS.has(tokens[i])) return true;
+    }
+    return false;
+}
+
 function _scoreText(text, axis) {
     if (!text) return 0;
-    const lower = text.toLowerCase();
+    const tokens = (text.toLowerCase().match(/[a-z']+/g) || []);
     let score = 0;
-    for (const w of axis.positive) {
-        const matches = lower.match(new RegExp(`\\b${w}\\b`, 'g'));
-        if (matches) score += matches.length;
+    const posSet = new Set(axis.positive.filter(w => !w.includes(' ')).map(w => w.toLowerCase()));
+    const negSet = new Set(axis.negative.filter(w => !w.includes(' ')).map(w => w.toLowerCase()));
+
+    // Single-word matches with negation lookback
+    for (let i = 0; i < tokens.length; i++) {
+        const t = tokens[i];
+        const negated = _isNegated(tokens, i);
+        if (posSet.has(t)) score += negated ? -1 : 1;
+        else if (negSet.has(t)) score += negated ? +1 : -1;
     }
-    for (const w of axis.negative) {
-        const matches = lower.match(new RegExp(`\\b${w}\\b`, 'g'));
-        if (matches) score -= matches.length;
+
+    // Multi-word phrases — substring match with phrase-level negation lookback
+    const lower = text.toLowerCase();
+    const NEG_RE = /\b(not|no|never|cannot|won't|wouldn't|don't|doesn't|didn't)\b/;
+    function _phraseScore(phrases, sign) {
+        for (const w of phrases) {
+            if (!w.includes(' ')) continue;
+            const re = new RegExp('\\b' + w.toLowerCase() + '\\b', 'g');
+            let m;
+            while ((m = re.exec(lower)) !== null) {
+                const before = lower.slice(Math.max(0, m.index - 30), m.index);
+                const isNeg = NEG_RE.test(before);
+                score += isNeg ? -sign : sign;
+            }
+        }
     }
+    _phraseScore(axis.positive, +1);
+    _phraseScore(axis.negative, -1);
+
     return score;
 }
 
