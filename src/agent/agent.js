@@ -590,17 +590,25 @@ export class Agent {
         this.bot.on('death', () => {
             this.actions.cancelResume();
             this.actions.stop();
-            // F5: clear stale combat targets on death so post-respawn entity
-            // deaths aren't falsely attributed to this agent.
-            _recentAttackTargets = [];
-            // G1 + v9: log death via mindserver, with the most recent damage source as cause
+            // v1.1.49: read the last attack target BEFORE clearing.
+            // Pre-fix, _recentAttackTargets was cleared on line 595 and
+            // then read on line 600 for cause attribution — but the read
+            // saw the empty array and `cause` stayed 'unknown' for every
+            // death log. Both purposes of the clear (post-respawn safety)
+            // and the read (death-cause inference) are valid; they just
+            // need to run in the right order.
             let cause = 'unknown';
             try {
-                // Use the last attack target as a hint (could be mob the bot was fighting)
-                if (_recentAttackTargets && _recentAttackTargets.length > 0) {
+                if (_recentAttackTargets.length > 0) {
                     const last = _recentAttackTargets[_recentAttackTargets.length - 1];
                     cause = `combat with ${last.entity?.name || last.entity?.username || 'unknown'}`;
                 }
+            } catch (e) { /* optional */ }
+            // F5: clear stale combat targets on death so post-respawn
+            // entity deaths aren't falsely attributed to this agent.
+            _recentAttackTargets = [];
+            // G1 + v9: log death via mindserver
+            try {
                 logEventToMindserver('logCombatDeath', { args: [this.name, cause] });
             } catch (e) { /* optional */ }
 
