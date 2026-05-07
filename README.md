@@ -136,7 +136,8 @@ Set `OPENROUTER_API_KEY` in `.env` (or whichever provider key your scenario's pr
 ## Documentation
 
 - [`docs/SOUL_MECHANIC.md`](docs/SOUL_MECHANIC.md) — the deepest read: what souls are, why three rules, why locking is asymmetric, why synthesis matters
-- [`docs/COGNITIVE_SUBSTRATE.md`](docs/COGNITIVE_SUBSTRATE.md) — the twelve neuroscience-grounded layers that shape how events land, with citations
+- [`docs/COGNITIVE_SUBSTRATE.md`](docs/COGNITIVE_SUBSTRATE.md) — the thirteen neuroscience-grounded layers that shape how events land, with citations
+- [`docs/CITATIONS.md`](docs/CITATIONS.md) — bibliographic index: every paper, mapped to the Anima version that uses it
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — core / scenarios / adapters split, what lives where
 - [`docs/SCENARIO_AUTHORING.md`](docs/SCENARIO_AUTHORING.md) — how to build a new scenario on Anima
 - [`docs/SCRIPTS.md`](docs/SCRIPTS.md) — every npm script, grouped by purpose (free vs LLM-driven vs post-game)
