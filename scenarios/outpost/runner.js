@@ -269,6 +269,17 @@ async function main() {
     console.log(`\n[OUTPOST] Rotation begins. ${scenario.roster.length} crew, ${scenario.duration_turns} turns.`);
     console.log(`[OUTPOST] The anomaly: "${station.anomaly}"\n`);
 
+    // v0.40: opt-in Director (set scenario.director.enabled in scenario.json)
+    const directorCfg = scenario.director || { enabled: false };
+    let consultDirector = null;
+    if (directorCfg.enabled) {
+        try {
+            const dirMod = await import('../../core/director/director.js');
+            consultDirector = dirMod.consultDirector;
+            console.log(`[OUTPOST] Director enabled — consulting every ${directorCfg.every_n_turns || 7} turns.`);
+        } catch { /* nonfatal */ }
+    }
+
     let endReason = 'unknown';
     while (true) {
         const end = station.checkEndConditions();
@@ -282,6 +293,32 @@ async function main() {
                 break;
             }
         } catch { /* proceed */ }
+
+        // v0.40: Director consultation
+        if (consultDirector && station.turn > 0 && station.turn % (directorCfg.every_n_turns || 7) === 0) {
+            try {
+                const decision = await consultDirector({
+                    scenarioName: 'outpost',
+                    scenarioDescription: 'Deep-space station, anomaly in progress, oxygen ticking down.',
+                    activeRoster: station.livingRoster(),
+                    deadRoster: [...station.dead],
+                    recentEvents: station.events.slice(-12),
+                    turnNumber: station.turn + 1,
+                    totalTurns: scenario.duration_turns
+                });
+                if (decision?.type === 'event' && decision.narration) {
+                    console.log(`[OUTPOST][DIRECTOR] ${decision.title}: ${decision.narration}`);
+                    station.logEvent('director_event', {
+                        actor: 'Director',
+                        title: decision.title,
+                        narration: decision.narration,
+                        grounded_in: decision.grounded_in
+                    });
+                }
+            } catch (e) {
+                console.warn(`[OUTPOST] Director consultation failed: ${e.message}`);
+            }
+        }
 
         station.tickResources();
         await runOneTurn(openai, station, profiles, scenario.model);

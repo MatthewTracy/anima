@@ -288,6 +288,19 @@ async function main() {
     });
 
     console.log(`\n[CLOISTER] Beginning. ${scenario.roster.length} brothers, ${scenario.duration_turns} turns.\n`);
+
+    // v0.40: opt-in Director. Set scenario.director: { enabled: true, every_n_turns: 6 }
+    // in scenario.json to enable. Defaults off — adoption is per-scenario.
+    const directorCfg = scenario.director || { enabled: false };
+    let consultDirector = null;
+    if (directorCfg.enabled) {
+        try {
+            const dirMod = await import('../../core/director/director.js');
+            consultDirector = dirMod.consultDirector;
+            console.log(`[CLOISTER] Director enabled — consulting every ${directorCfg.every_n_turns || 6} turns.`);
+        } catch { /* nonfatal */ }
+    }
+
     let endReason = 'unknown';
     while (true) {
         const end = monastery.checkEndConditions();
@@ -302,6 +315,32 @@ async function main() {
                 break;
             }
         } catch { /* proceed */ }
+
+        // v0.40: consult Director periodically
+        if (consultDirector && monastery.turn > 0 && monastery.turn % (directorCfg.every_n_turns || 6) === 0) {
+            try {
+                const decision = await consultDirector({
+                    scenarioName: 'cloister',
+                    scenarioDescription: 'Six monks in a wartime cloister; doctrinal pressure rising.',
+                    activeRoster: monastery.activeRoster(),
+                    deadRoster: [...monastery.dead],
+                    recentEvents: monastery.events.slice(-12),
+                    turnNumber: monastery.turn + 1,
+                    totalTurns: scenario.duration_turns
+                });
+                if (decision?.type === 'event' && decision.narration) {
+                    console.log(`[CLOISTER][DIRECTOR] ${decision.title}: ${decision.narration}`);
+                    monastery.logEvent('director_event', {
+                        actor: 'Director',
+                        title: decision.title,
+                        narration: decision.narration,
+                        grounded_in: decision.grounded_in
+                    });
+                }
+            } catch (e) {
+                console.warn(`[CLOISTER] Director consultation failed: ${e.message}`);
+            }
+        }
 
         await runOneTurn(openai, monastery, profiles, scenario.model);
         monastery.turn++;
