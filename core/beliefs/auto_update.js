@@ -21,7 +21,7 @@
 import { BeliefTable } from './belief_table.js';
 import { RecursiveBeliefTable } from './recursive_belief.js';
 import { logEventAsFeud } from '../feuds/feud_tracker.js';
-import { tagEvent, AffectLog } from '../affect/affect.js';
+import { tagEvent, tagEventForWitness, AffectLog } from '../affect/affect.js';
 import { surpriseScale } from '../affect/predictive.js';
 import { ingroupBias } from '../identity/faction.js';
 import { recordExposure } from '../cognition/habituation.js';
@@ -137,6 +137,20 @@ export function applyEventToBeliefs(event, witnesses, overrides = {}) {
         catch { habitByWitness.set(w, 1.0); }
     }
 
+    // v0.53: snapshot each witness's PRIOR trust in actor + target before
+    // step 1 mutates beliefs. Empathy should reflect the relationship the
+    // witness held coming INTO this moment, not the post-event update.
+    const priorTrustToActor  = new Map();
+    const priorTrustToTarget = new Map();
+    for (const w of witnesses) {
+        if (!w) continue;
+        try {
+            const beliefs = new BeliefTable(w);
+            if (actor && w !== actor) priorTrustToActor.set(w, beliefs.get(actor)?.trust ?? 0);
+            if (target && w !== target) priorTrustToTarget.set(w, beliefs.get(target)?.trust ?? 0);
+        } catch { /* nonfatal */ }
+    }
+
     // 1) Update witnesses' BeliefTable about the actor (if delta.byActor)
     //
     // v0.47: predictive coding (Friston). Each witness has a prior trust in
@@ -206,6 +220,66 @@ export function applyEventToBeliefs(event, witnesses, overrides = {}) {
     }
     if (target && target !== actor && !witnesses.includes(target)) {
         try { new AffectLog(target).record(event, 'target'); } catch { /* nonfatal */ }
+    }
+
+    // 2c) v0.53: VICARIOUS AFFECT — emotional contagion through trust ties.
+    //     Mirror-neuron-style empathy (Preston & de Waal 2002). When a
+    //     witness has strong trust in a participant, they feel a portion
+    //     of that participant's experience. This is the substrate of
+    //     "your pain is my pain (because I love you)" without any
+    //     explicit faction or coalition logic.
+    //
+    //     Rules:
+    //       - For each witness who is NOT actor/target:
+    //         - if |trust in target| > 0.4: vicariously share TARGET's affect
+    //           scaled by trust × 0.5 (it lands less hard than direct experience)
+    //         - else if |trust in actor| > 0.4: vicariously share ACTOR's affect
+    //           scaled by trust × 0.4 (you tend to feel more for the wronged
+    //           than the wronger, hence smaller scale)
+    //
+    //     The vicarious affect entries are tagged role='vicarious' so soul
+    //     evolution and DMN can distinguish them from direct experience.
+    if (actor || target) {
+        const targetTag = target ? tagEventForWitness({ ...event, target }, 'target') : null;
+        const actorTag  = actor  ? tagEvent(event) : null;
+        for (const witnessName of witnesses) {
+            if (!witnessName || witnessName === actor || witnessName === target) continue;
+            try {
+                let vicariousFor = null;
+                let scale = 0;
+                if (target) {
+                    const tt = priorTrustToTarget.get(witnessName) ?? 0;
+                    if (Math.abs(tt) > 0.4) {
+                        vicariousFor = 'target';
+                        // Sign of vicarious feeling: if the witness LOVES the
+                        // target, target's pain → vicarious pain (preserve sign).
+                        // If the witness HATES the target, target's pain →
+                        // vicarious pleasure (Schadenfreude). Trust sign drives
+                        // this asymmetry.
+                        scale = tt * 0.5;
+                    }
+                }
+                if (!vicariousFor && actor) {
+                    const ta = priorTrustToActor.get(witnessName) ?? 0;
+                    if (Math.abs(ta) > 0.4) {
+                        vicariousFor = 'actor';
+                        scale = ta * 0.4;
+                    }
+                }
+                if (vicariousFor) {
+                    const tag = vicariousFor === 'target' ? targetTag : actorTag;
+                    if (tag && tag.magnitude > 0) {
+                        const vicValence = tag.valence * scale;
+                        // Vicarious arousal is a flat 0.7× of direct — empathy
+                        // is felt, but not as physically as being the target.
+                        // (Don't compound by |scale| or low-trust empathy
+                        // disappears under the magnitude floor.)
+                        const vicArousal = Math.min(1, tag.arousal * 0.7);
+                        new AffectLog(witnessName).recordVicarious(event, vicValence, vicArousal);
+                    }
+                }
+            } catch { /* nonfatal */ }
+        }
     }
 
     // 3) Update the TARGET's RecursiveBeliefTable about the ACTOR

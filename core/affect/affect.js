@@ -209,6 +209,41 @@ export class AffectLog {
     }
 
     /**
+     * Record a VICARIOUS affect entry — mirror-neuron-style emotional
+     * contagion (Preston & de Waal 2002; Decety & Ickes 2009).
+     *
+     * Used when this agent witnesses something happen TO someone they
+     * trust strongly. The vicarious entry is tagged role='vicarious' so
+     * downstream reads can distinguish "what happened to me" from "what
+     * happened to my friend that I felt with them." Magnitude is supplied
+     * by the caller; auto_update derives it from the trust intensity.
+     *
+     * @param {object} event       — the original event (shape: { type, actor, target, turn? })
+     * @param {number} valence     — vicarious valence in [-1, 1]
+     * @param {number} arousal     — vicarious arousal in [0, 1]
+     */
+    recordVicarious(event, valence, arousal) {
+        if (typeof valence !== 'number' || typeof arousal !== 'number') return;
+        const magnitude = Math.abs(valence) * arousal;
+        if (magnitude < 0.02) return;
+
+        const data = this._load();
+        data.log.push({
+            type: event.type,
+            actor: event.actor,
+            target: event.target,
+            role: 'vicarious',
+            valence: Math.round(valence * 100) / 100,
+            arousal: Math.round(arousal * 100) / 100,
+            magnitude: Math.round(magnitude * 100) / 100,
+            t: Date.now(),
+            turn: event.turn ?? null
+        });
+        if (data.log.length > 60) data.log = data.log.slice(-60);
+        this._save();
+    }
+
+    /**
      * Apply temporal decay to all events in the log. Called between turns
      * to model the natural fading of recent intensity. Effective magnitude
      * decays by ~5% per call.
