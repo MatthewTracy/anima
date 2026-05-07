@@ -54,6 +54,7 @@
         "substrate-diff": "node scripts/substrate_diff.js",
         "substrate-all": "node scripts/substrate_all.js",
         "substrate-demo": "node scripts/substrate_demo.js",
+        "timescales": "node scripts/show_timescales.js",
         "feuds": "node scripts/feud_inspector.js",
         "library": "node scripts/library_search.js",
         "publish": "node scripts/publish_game.js",
