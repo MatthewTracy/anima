@@ -21,6 +21,7 @@ import { AffectLog } from '../core/affect/affect.js';
 import { BeliefTable } from '../core/beliefs/belief_table.js';
 import { RecursiveBeliefTable } from '../core/beliefs/recursive_belief.js';
 import { Burden } from '../core/burdens/burden.js';
+import { Persona } from '../core/personas/persona.js';
 import { Soul } from '../core/souls/soul.js';
 import { getFaction } from '../core/identity/faction.js';
 import { dnaOf } from '../core/dna/soul_dna.js';
@@ -140,6 +141,23 @@ header('BURDEN (private hidden state — only you know this)');
 const burden = new Burden(agent);
 const burdenText = burden.asPromptText();
 console.log(burdenText || '  (none — clean slate)');
+
+// ── Persona (active mask, if any) ────────────────────────────────
+header('PERSONA (active mask)');
+const persona = new Persona(agent);
+const active = persona.read();
+if (active) {
+    console.log(`  Wearing mask:      "${active.alias}"`);
+    if (active.bio) console.log(`  Claimed bio:       ${active.bio}`);
+    if (active.motive) console.log(`  Motive:            ${active.motive}`);
+    if (active.adoptedAt) console.log(`  Adopted:           ${active.adoptedAt}`);
+} else {
+    console.log('  (no active mask — face is the agent\'s own)');
+}
+const masks = persona.history();
+if (masks.length > 0) {
+    console.log(`  Past masks:        ${masks.length} (most recent: "${masks[masks.length - 1].alias}", ${masks[masks.length - 1].endedAt?.slice(0, 10) || '?'})`);
+}
 
 // ── DMN (rumination) ─────────────────────────────────────────────
 header('DEFAULT MODE NETWORK (most recent rumination)');
