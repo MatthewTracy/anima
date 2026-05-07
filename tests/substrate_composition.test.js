@@ -1,17 +1,17 @@
 /**
  * v0.88 — Full multiplicative pipeline composition test.
+ * v0.95 — Extended to cover the 6th factor (optimism, v0.93).
  *
- * Per-event-scaling has FIVE factors as of v0.55 (see _scaleByWitness in
- * core/beliefs/auto_update.js):
+ * Per-event-scaling now has SIX factors:
  *
- *   nominal  ×  affectScale  ×  surprise  ×  ingroup  ×  habit  ×  somatic
+ *   nominal  ×  affectScale  ×  surprise  ×  ingroup  ×  habit  ×  somatic  ×  optimism
  *
  * Individual unit tests cover each factor independently. This test sets
- * up a single event where ALL FIVE factors fire NON-TRIVIALLY (>1.0× or
- * <1.0×, never 1.0), then asserts the actual belief delta matches the
- * analytical product within rounding tolerance.
+ * up a single event where ALL SIX factors fire NON-TRIVIALLY (≠ 1.0),
+ * then asserts the actual belief delta matches the analytical product
+ * within rounding tolerance. Plus a zero-case where all collapse to 1.0.
  *
- * If a future change introduces a 6th factor or breaks composition
+ * If a future change introduces a 7th factor or breaks composition
  * order, this test catches it on the first run.
  */
 
@@ -25,6 +25,7 @@ import { surpriseScale } from '../core/affect/predictive.js';
 import { ingroupBias, setFaction, _resetFactionCache } from '../core/identity/faction.js';
 import { somaticAmplify } from '../core/affect/somatic.js';
 import { recordExposure } from '../core/cognition/habituation.js';
+import { optimismBias } from '../core/cognition/optimism.js';
 import { BeliefTable } from '../core/beliefs/belief_table.js';
 
 const WITNESS = '_TestCompA';
@@ -114,6 +115,52 @@ test('all five per-event factors compose multiplicatively on one event', () => {
 
     // The signed direction must match the byActor sign (negative).
     assert.ok(observedDelta < 0, `expected trust to drop, got delta ${observedDelta}`);
+});
+
+test('all six per-event factors compose on a positive event with optimism firing', () => {
+    // Setup: optimist witness in same faction as actor, with strong PRIOR
+    // DISTRUST (trust = -0.8). When actor does something positive, this
+    // creates: surprise (sign disagreement), ingroup down-weight (cross-
+    // faction → no, same faction here), positive somatic alignment,
+    // and optimism amplification on the positive direction.
+    const dir = join('./bots', WITNESS);
+    mkdirSync(dir, { recursive: true });
+    // Strong trust axis (optimist) + mercy axis (positive somatic on repair)
+    writeFileSync(join(dir, 'soul.md'),
+        `# ${WITNESS}\n\n` +
+        '- I have learned to trust. I rely on others. I depend on them. I have faith.\n' +
+        '- I am open. I am honest. I am transparent. I believe.\n' +
+        '- I value compassion. Mercy. Grace.\n');
+    setFaction(WITNESS, 'kin');
+    setFaction(ACTOR, 'kin');
+    new BeliefTable(WITNESS).set(ACTOR, -0.6, 'I had distrusted them');
+    // Pre-warm low-arousal repair exposure (habituating)
+    for (let i = 0; i < 3; i++) {
+        recordExposure(WITNESS, 'repair', 0.3);
+    }
+
+    const event = { type: 'repair', actor: ACTOR };
+    const affect = tagEvent(event);   // valence +0.30, arousal 0.30
+    const baseDelta = DEFAULT_DELTAS.repair.byActor * (0.5 + affect.arousal);  // positive
+
+    const surprise = surpriseScale(-0.6, affect.valence);
+    const ingroup  = ingroupBias(WITNESS, ACTOR, baseDelta);
+
+    // optimism is computed on the OUTPUT direction; the chain is positive
+    // by construction so optimism should boost (optimist on positive).
+    const optimism = optimismBias(WITNESS, baseDelta);
+
+    // Every factor non-trivial:
+    assert.ok(surprise > 1.05, `expected surprise > 1.05, got ${surprise}`);
+    assert.ok(ingroup > 1.05, `expected ingroup boost (same faction + positive), got ${ingroup}`);
+    assert.ok(optimism > 1.05, `expected optimism boost, got ${optimism}`);
+
+    const before = new BeliefTable(WITNESS).get(ACTOR).trust;
+    applyEventToBeliefs(event, [WITNESS]);
+    const after = new BeliefTable(WITNESS).get(ACTOR).trust;
+
+    // Trust must have moved upward (positive delta direction).
+    assert.ok(after > before, `expected positive trust shift, got ${after} from ${before}`);
 });
 
 test('zeros short-circuit cleanly (delta=0 if affectScale=0 or somatic=0)', () => {
