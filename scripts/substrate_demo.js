@@ -141,6 +141,19 @@ for (const agent of ROSTER) {
     inspect(agent);
 }
 
+// v0.82: also run substrate-diff between the two most-divergent agents
+// (Mother and Soldier) so the visitor sees both tools land in one run.
+console.log('');
+console.log('════════════════════════════════════════════════════════════════════');
+console.log('  DIVERGENCE — same five events, two minds');
+console.log('════════════════════════════════════════════════════════════════════');
+const diffResult = spawnSync('node', ['scripts/substrate_diff.js', MOTHER, SOLDIER], {
+    cwd: repoRoot,
+    encoding: 'utf8'
+});
+process.stdout.write(diffResult.stdout || '');
+if (diffResult.stderr) process.stderr.write(diffResult.stderr);
+
 console.log('');
 console.log('Demo complete. The three agents now diverge:');
 console.log(`  - ${MOTHER}: targeted three times, but kin-empathy and Schadenfreude`);
