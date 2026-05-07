@@ -17,7 +17,10 @@ import { getLineage } from '../core/souls/lineage.js';
 
 const args = process.argv.slice(2);
 const wantFull = args.includes('--full');
-const targetName = args.find(a => !a.startsWith('--'));
+const wantHistory = args.includes('--history');
+const lastFlagIdx = args.indexOf('--last');
+const lastN = lastFlagIdx >= 0 ? parseInt(args[lastFlagIdx + 1] || '0', 10) : 0;
+const targetName = args.find(a => !a.startsWith('--') && (lastFlagIdx === -1 || args.indexOf(a) !== lastFlagIdx + 1));
 
 function bar() {
     return '─'.repeat(70);
@@ -115,7 +118,62 @@ function printAll() {
     console.log('');
 }
 
-if (targetName) {
+/**
+ * v0.12: --history mode. Show one soul's chronological drift across runs.
+ * Optional --last N caps the display to the most recent N versions.
+ *
+ * Usage:
+ *   npm run souls -- Madison --history             # full chronology
+ *   npm run souls -- Madison --history --last 5    # last 5 versions
+ */
+function printHistory(name) {
+    const all = listAllSouls();
+    const found = all.find(s => s.name.toLowerCase() === name.toLowerCase());
+    if (!found) {
+        console.log(`No soul found for "${name}". Available: ${all.map(s => s.name).join(', ')}`);
+        return;
+    }
+    const versions = found.history();
+    if (versions.length === 0) {
+        console.log('');
+        console.log(bar());
+        console.log(`${name} — no history yet.`);
+        console.log(bar());
+        console.log('A soul has no archived history until it has been evolved at least once.');
+        console.log('Run a game to game end (which fires soul evolution), then check again.');
+        console.log('');
+        return;
+    }
+    const sliced = lastN > 0 ? versions.slice(-lastN) : versions;
+    console.log('');
+    console.log(bar());
+    console.log(`${name} — chronological soul history (${versions.length} version${versions.length === 1 ? '' : 's'}${lastN > 0 ? ', showing last ' + sliced.length : ''})`);
+    console.log(bar());
+    for (let i = 0; i < sliced.length; i++) {
+        const v = sliced[i];
+        console.log('');
+        console.log(`### Version ${i + 1} of ${sliced.length}  (archived ${v.stamp})`);
+        console.log(bar());
+        try { console.log(v.content()); }
+        catch (e) { console.log(`(failed to read: ${e.message})`); }
+    }
+    // Plus the CURRENT live version
+    console.log('');
+    console.log(`### CURRENT (live, will evolve next game-end)`);
+    console.log(bar());
+    const live = found.read();
+    if (live) console.log(live);
+    if (found.isLocked()) {
+        console.log('');
+        console.log('--- THIS SOUL IS LOCKED ---');
+        console.log(`Died: ${found._readDeathDate()}`);
+    }
+    console.log('');
+}
+
+if (wantHistory && targetName) {
+    printHistory(targetName);
+} else if (targetName) {
     printOne(targetName);
 } else if (wantFull) {
     printAll();

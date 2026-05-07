@@ -90,6 +90,13 @@ export class Soul {
 
     /**
      * Overwrite the soul with new content. Errors if the soul is locked.
+     *
+     * v0.12: archives the PRIOR version to bots/<name>/soul_history/<ts>.md
+     * before overwriting. This gives Anima TEMPORAL DEPTH — readers can
+     * trace a character arc across many soul evolutions, not just see the
+     * latest state. Single most important Anima output is reading a
+     * recognizable character drift across games; temporal depth makes
+     * that legible.
      */
     save(content) {
         if (this.isLocked()) {
@@ -97,11 +104,60 @@ export class Soul {
         }
         try {
             if (!existsSync(this.dir)) mkdirSync(this.dir, { recursive: true });
+
+            // v0.12: archive the prior version (if any) before overwriting.
+            // Best-effort — if archive fails, we still save the new version.
+            // Timestamp includes ms; append -N counter if same-ms collision
+            // would still happen (rare but possible on very fast iterations).
+            const prior = this.read();
+            if (prior) {
+                try {
+                    const histDir = join(this.dir, 'soul_history');
+                    if (!existsSync(histDir)) mkdirSync(histDir, { recursive: true });
+                    const baseStamp = new Date().toISOString().replace(/[:.]/g, '-').replace(/Z$/, '');
+                    let path = join(histDir, `${baseStamp}.md`);
+                    let counter = 1;
+                    while (existsSync(path)) {
+                        path = join(histDir, `${baseStamp}-${counter}.md`);
+                        counter++;
+                    }
+                    writeFileSync(path, prior);
+                } catch (e) {
+                    console.warn(`[SOUL] History archive failed for ${this.name}: ${e.message}. Continuing with save.`);
+                }
+            }
+
             writeFileSync(this.soulPath, content);
             return true;
         } catch (e) {
             console.warn(`[SOUL] Failed to save ${this.name}: ${e.message}`);
             return false;
+        }
+    }
+
+    /**
+     * v0.12: list past versions of this soul, oldest first. Each entry:
+     *   { stamp: ISO-like string, path: absolute, content: () => string }
+     * The .content() lazily reads the file so callers can iterate cheaply.
+     */
+    history() {
+        const histDir = join(this.dir, 'soul_history');
+        if (!existsSync(histDir)) return [];
+        try {
+            const files = readdirSync(histDir)
+                .filter(f => f.endsWith('.md'))
+                .sort();          // ISO timestamps sort chronologically
+            return files.map(f => {
+                const path = join(histDir, f);
+                return {
+                    stamp: f.replace(/\.md$/, ''),
+                    path,
+                    content: () => readFileSync(path, 'utf8')
+                };
+            });
+        } catch (e) {
+            console.warn(`[SOUL] Failed to list history for ${this.name}: ${e.message}`);
+            return [];
         }
     }
 
