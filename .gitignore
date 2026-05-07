@@ -36,7 +36,10 @@ src/mindcraft-py/__pycache__/
 logs/
 site/
 pantheon.md
-PRIVATE_NOTES.md
+# PRIVATE_NOTES.md is intentionally tracked while the repo is closed-source.
+# When going OSS, run: git rm --cached PRIVATE_NOTES.md
+#                     and uncomment the next line.
+# PRIVATE_NOTES.md
 _*.txt
 _*.json
 
