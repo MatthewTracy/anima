@@ -28,7 +28,7 @@ import { BeliefTable } from '../core/beliefs/belief_table.js';
 import { Soul } from '../core/souls/soul.js';
 import { Persona } from '../core/personas/persona.js';
 import { getStress, stressLevel } from '../core/cognition/allostatic_load.js';
-import { detectDissonance } from '../core/cognition/dissonance.js';
+import { detectDissonance, detectPride } from '../core/cognition/dissonance.js';
 import { dnaOf } from '../core/dna/soul_dna.js';
 import { OPTIMISM_THRESHOLD } from '../core/cognition/timescales.js';
 
@@ -64,6 +64,7 @@ if (names.length === 0) {
 const moodCounts = {};
 const stressCounts = { baseline: 0, elevated: 0, allostatic: 0, overloaded: 0 };
 const dissonanceCounts = { none: 0, soft: 0, loud: 0 };
+const prideCounts = { none: 0, soft: 0, loud: 0 };
 const optimismCounts = { optimist: 0, pessimist: 0, balanced: 0, 'no DNA': 0 };
 let totalActiveBeliefs = 0;
 let agentsWithBeliefs = 0;
@@ -81,6 +82,8 @@ for (const n of names) {
 
     const dis = detectDissonance(n, { recentN: Infinity });
     dissonanceCounts[dis.level]++;
+    const pride = detectPride(n, { recentN: Infinity });
+    prideCounts[pride.level]++;
 
     const ranked = new BeliefTable(n).rankedTargets();
     if (ranked.length > 0) {
@@ -135,6 +138,14 @@ console.log('  DISSONANCE LEVEL DISTRIBUTION');
 console.log(`  ${bar()}`);
 for (const level of ['none', 'soft', 'loud']) {
     console.log(distRow(level, dissonanceCounts[level], names.length));
+}
+
+console.log('');
+console.log(`  ${bar()}`);
+console.log('  PRIDE LEVEL DISTRIBUTION');
+console.log(`  ${bar()}`);
+for (const level of ['none', 'soft', 'loud']) {
+    console.log(distRow(level, prideCounts[level], names.length));
 }
 
 console.log('');
