@@ -27,8 +27,11 @@ Around that per-event pipeline, several layers run *between* events or *between*
 - **v0.54** — DMN narrative integration of empathy: vicarious entries get distinct phrasing.
 - **v0.56** — allostatic load: a slow-moving stress reservoir; overloads change DMN voice.
 - **v0.67** — working-memory cap on $BELIEFS: top-9 active, the rest backgrounded.
+- **v0.71** — dishabituation: novel events spontaneously restore response to other types (Kandel 1968).
+- **v0.73** — stress-induced narrowing: under high allostatic load, the working-memory cap shrinks 9 → 3.
+- **v0.74** — DMN cognitive dissonance line: recent self-actions with negative valence surface as Festinger-style self-confrontation.
 
-Twelve distinct mechanisms. None of them touch any LLM prompt directly. The LLM still reads a soul.md, a mood line, a beliefs table — but what those READ LIKE has been shaped by all twelve.
+Twelve distinct mechanisms plus three internal compositions/exceptions. None touch any LLM prompt directly. The LLM still reads a soul.md, a mood line, a beliefs table — but what those READ LIKE has been shaped by all of them.
 
 ## Per-event layers
 
@@ -79,6 +82,8 @@ Each witness keeps a per-event-type exposure log at `bots/<name>/habituation.jso
   `f = 1 + 0.5·(1 − exp(-0.3·count))`. The fifth attack / kill / vent escalates.
 - **Mid-arousal** (0.4 ≤ a < 0.7): factor = 1.0.
 
+**v0.71 — Dishabituation (Kandel 1968 / Groves & Thompson 1970).** When a NOVEL event-type interrupts a habituated stream, the agent's response to OTHER habituated types spontaneously partially recovers. Implemented in `recordExposure`: if the firing type is novel for the witness, every other type's exposure list is truncated to its most recent entry. The next time those types fire, they read near-first-exposure rather than fully-habituated. Aplysia gill-withdrawal is the canonical demonstration.
+
 ### v0.55 — Somatic markers
 **Module:** [`core/affect/somatic.js`](../core/affect/somatic.js)
 **Brain analog:** Antonio Damasio's somatic-marker hypothesis (Damasio 1994; Bechara & Damasio 2005).
@@ -101,7 +106,15 @@ Between games, `consolidate(agentName, { scenario })` reads the top-7 moments (M
 
 Between turns, `ruminate(agentName)` deterministically synthesizes a first-person monologue from the agent's current mood, top affect moment, top ally, top enemy, and faction. Appended to `bots/<name>/musings.md` (capped at 4 KB) and surfaced as `$MUSINGS` in the next prompt cycle.
 
-v0.54 adds role-aware phrasing — vicarious affect entries (v0.53) yield "what `<beloved>` had to live through when X did Y" rather than the bystander default. Schadenfreude (vicarious positive valence from a hated target's harm) yields the "strange small relief" variant.
+v0.54 adds role-aware phrasing — vicarious affect entries (v0.53) yield "what `<beloved>` had to live through when X did Y" rather than the bystander default. Schadenfreude (vicarious positive valence from a hated target's harm) yields the "strange small relief" variant. v0.70 finishes the verb perspective system: verbs phrased as "raised a hand against me" only when the speaker IS the target; everyone else gets "raised a hand" with the actual target named separately.
+
+**v0.74 — Cognitive dissonance line (Festinger 1957).** DMN scans the agent's recent affect log for `role='actor'` entries with negative valence — actions YOU took that felt bad to take. Two thresholds:
+
+- ≥ 2 such entries → loud variant: "I have lately done things I cannot reconcile with who I thought I was."
+- 1 strong entry (mag > 0.55) → soft variant: "One thing I did sits in me wrong."
+- otherwise → silent.
+
+Inserted between the mood/load opener and the belief line, so the self-confrontation lands before the agent starts thinking about others. No new state, no persistent file — Festinger's distress is just role='actor' with negative valence, recurring.
 
 ### v0.52 — Mood-congruent memory retrieval
 **Module:** [`core/affect/affect.js`](../core/affect/affect.js) (`congruentMoments()`)
@@ -138,6 +151,17 @@ Crucial detail: prior trust is snapshotted **before** step 1 mutates beliefs, so
 ```
 
 Charge-ranking is on absolute trust, so a strong enemy (-0.9) outranks a faintly cordial acquaintance (+0.1). For most reference scenarios (6-character casts) this is a no-op; for longer-running games and Forum scenarios with growing rosters, it collapses prompt bloat AND matches the cognitive constraint the LLM is implicitly trying to model.
+
+**v0.73 — Stress-induced narrowing (Easterbrook 1959; Kahneman 1973).** The cap shrinks under allostatic load:
+
+| load level | cap |
+|---|---|
+| baseline | 9 |
+| elevated | 7 |
+| allostatic | 5 |
+| overloaded | 3 |
+
+When at allostatic or overloaded, the prompt also gets a header note explaining the contraction so the LLM understands it's real, not an oversight. Composes v0.56 (stress reservoir) with v0.67 (Miller cap) into an emergent narrowing-under-acute-stress behaviour without inventing a new primitive.
 
 ### v0.56 — Allostatic load
 **Module:** [`core/cognition/allostatic_load.js`](../core/cognition/allostatic_load.js)
@@ -185,3 +209,7 @@ The point isn't the exact numbers — it's that the same nominal event produces 
 - Juster, McEwen & Lupien (2010) on allostatic load + cognitive decline
 - Miller (1956) "The magical number seven, plus or minus two"
 - Cowan (2001) "The magical number 4 in short-term memory"
+- Easterbrook (1959) "The effect of emotion on cue utilization"
+- Kahneman (1973) *Attention and Effort*
+- Festinger (1957) *A Theory of Cognitive Dissonance*
+- Groves & Thompson (1970) "Habituation: a dual-process theory" (re: dishabituation)

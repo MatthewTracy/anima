@@ -10,6 +10,13 @@ A dense run of neuroscience-grounded primitives that turn a uniform belief table
 
 | Version | What shipped | Brain analog |
 |---|---|---|
+| **v0.75** | Sync COGNITIVE_SUBSTRATE.md / CHANGELOG with v0.71/v0.73/v0.74 | — (docs) |
+| **v0.74** | DMN cognitive dissonance line: scans recent role='actor' negative-valence entries | Festinger 1957 |
+| **v0.73** | Stress-induced narrowing: under allostatic load, $BELIEFS cap shrinks 9 → 3 | Easterbrook 1959 / Kahneman 1973 |
+| **v0.72** | `scripts/substrate_diff.js` + `npm run substrate-diff -- A B` — side-by-side cognitive comparison | — (debug tool) |
+| **v0.71** | Dishabituation: novel events reset habituation streams for other types | Kandel 1968 / Groves & Thompson 1970 |
+| **v0.70** | DMN verb perspective: `'self'` vs `'other'` so vicarious phrasing doesn't say "against me" | — (synthesis) |
+| **v0.69** | `npm run substrate-demo` — three synthetic agents, five events, twelve layers | — (showcase tool) |
 | **v0.68** | Sync README, COGNITIVE_SUBSTRATE.md, CHANGELOG to reflect v0.66/v0.67 | — (docs) |
 | **v0.67** | Working memory cap on `$BELIEFS`: top-9 by `\|trust\|` visible, rest backgrounded | Miller 1956 |
 | **v0.66** | `CHANGELOG.md` — version cadence at a glance | — (docs) |
