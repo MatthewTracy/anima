@@ -1,0 +1,35 @@
+{
+    "name": "outpost",
+    "title": "The Outpost",
+    "description": "Six crew on a deep-space station. Oxygen ticks down. An anomaly is happening. Comms control what Earth hears — what they report becomes the official history future crews inherit.",
+    "embodiment": "text",
+    "duration_turns": 28,
+    "duration_minutes": null,
+    "roster": ["Reyes", "Voss", "Kai", "Iris", "Hale", "Theo"],
+    "captain": "Reyes",
+    "starting_oxygen_pct": 92,
+    "oxygen_drop_per_turn": 2.0,
+    "starting_power_pct": 85,
+    "power_drop_per_turn": 1.5,
+    "starting_trust": {
+        "Reyes":  0.50,
+        "Voss":   0.50,
+        "Kai":    0.50,
+        "Iris":   0.50,
+        "Hale":   0.50,
+        "Theo":   0.50
+    },
+    "model": "deepseek/deepseek-chat",
+    "outputs": {
+        "manuscript_dir": "./logs/outpost",
+        "earth_log_path": "./scenarios/outpost/earth_log.md"
+    },
+    "anomaly_options": [
+        "Sample bay 3 reports unidentified biological growth on the airlock seal.",
+        "Power core fluctuating 4-7% outside design parameters; cause unknown.",
+        "External contact detected on long-range scan. No transponder. Closing.",
+        "Crew member showing inconsistent biometrics. Vital signs registering as both alive and not.",
+        "Outpost AI logs show a ten-minute gap. No record of what happened in those minutes.",
+        "Distant signal in the dead band — pattern matches no known frequency. Audible if you listen for it."
+    ]
+}
