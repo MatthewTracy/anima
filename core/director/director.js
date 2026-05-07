@@ -30,9 +30,6 @@
  * 5-8 turns, depending on scenario duration.
  */
 
-import OpenAIApi from 'openai';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { join } from 'path';
 import { getKey, hasKey } from '../../src/utils/keys.js';
 import { getBudgetGuard } from '../../src/governance/budget_guard.js';
 import { readEpitaphs } from '../souls/pantheon.js';
@@ -127,6 +124,19 @@ export async function consultDirector(ctx, opts = {}) {
     } catch { /* proceed */ }
 
     const prompt = buildDirectorPrompt(ctx);
+    // v1.1.35: dynamic import — same pattern as scripts/record.js (v1.1.11).
+    // Importing 'openai' at module load made `import .../director.js` crash
+    // hard for any consumer (tests, inspectors, future utilities) when the
+    // npm package wasn't installed. The actual call site is the only place
+    // that genuinely needs it, so defer.
+    let OpenAIApi;
+    try {
+        const mod = await import('openai');
+        OpenAIApi = mod.default || mod;
+    } catch (e) {
+        console.warn(`[DIRECTOR] 'openai' package is not installed — install it to use the Director (${e.message})`);
+        return { type: 'skip', reason: 'openai package missing' };
+    }
     const openai = new OpenAIApi({
         baseURL: 'https://openrouter.ai/api/v1',
         apiKey: getKey('OPENROUTER_API_KEY')

@@ -18,8 +18,6 @@
  * detects the prompt category by content match.
  */
 
-import { writeFileSync, existsSync, mkdirSync } from 'fs';
-
 const SCENARIO_SCRIPTS = {
     cloister: [
         a => ({ type: 'speak', text: `${a} considers the silence of the chapter house.` }),

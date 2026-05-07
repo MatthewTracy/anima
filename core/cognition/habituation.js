@@ -36,7 +36,7 @@
  * Rankin et al. (2009) "Habituation revisited".
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { atomicWriteFileSync } from '../runtime/atomic_io.js';
 import { join } from 'path';
 

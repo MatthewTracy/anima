@@ -35,7 +35,7 @@
  * Ulcers"; Juster, McEwen & Lupien (2010) on allostatic load + cognition.
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { atomicWriteFileSync } from '../runtime/atomic_io.js';
 import { join } from 'path';
 

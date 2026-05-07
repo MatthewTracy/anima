@@ -11,7 +11,7 @@
  * of every locked soul as $LEGENDS, building cross-game mythology.
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, chmodSync, statSync, readdirSync } from 'fs';
+import { readFileSync, existsSync, mkdirSync, chmodSync, statSync, readdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { atomicWriteFileSync } from '../runtime/atomic_io.js';

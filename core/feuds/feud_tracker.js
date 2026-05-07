@@ -20,8 +20,7 @@
  * first-class state.
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { dirname } from 'path';
+import { readFileSync, existsSync } from 'fs';
 import { atomicWriteFileSync } from '../runtime/atomic_io.js';
 
 const FEUDS_PATH = './logs/feuds.json';

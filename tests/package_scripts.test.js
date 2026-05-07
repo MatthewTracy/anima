@@ -112,3 +112,19 @@ test('v1.1.11: replay.js and record.js import cleanly (no eager side effects)', 
     assert.deepEqual(failures, [],
         `scripts that fail to import:\n  ${failures.join('\n  ')}`);
 });
+
+test('v1.1.35: core/director/director.js imports cleanly even without openai', async () => {
+    // Pre-fix, director.js had `import OpenAIApi from 'openai'` at module
+    // top — so `import('./core/director/director.js')` crashed hard for
+    // any consumer when the npm package wasn't installed (tests, future
+    // inspectors, anyone running without `npm install`). v1.1.35 deferred
+    // the openai import to the actual call site of consultDirector,
+    // mirroring the v1.1.11 record.js fix. Lock the contract.
+    const { pathToFileURL } = await import('url');
+    const url = pathToFileURL(join(repoRoot, 'core/director/director.js')).href;
+    const mod = await import(url);
+    assert.ok(typeof mod.consultDirector === 'function',
+        'consultDirector must be exported');
+    assert.ok(typeof mod.maybeFireDirector === 'function',
+        'maybeFireDirector must be exported');
+});

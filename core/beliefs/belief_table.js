@@ -28,7 +28,7 @@
  * Beliefs are private mental state; they're not meant to be shared.
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { getStress, stressLevel } from '../cognition/allostatic_load.js';
 import { atomicWriteFileSync } from '../runtime/atomic_io.js';

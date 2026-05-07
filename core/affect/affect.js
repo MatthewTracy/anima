@@ -33,7 +33,7 @@
  * memory distinction; Barrett's constructed emotion theory.
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { atomicWriteFileSync } from '../runtime/atomic_io.js';
 
