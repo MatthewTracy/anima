@@ -285,13 +285,26 @@ export function applyEventToBeliefs(event, witnesses, overrides = {}) {
                 // Surprise is computed against the witness's prior view of
                 // the *target*. In-group bias toward the target — did one
                 // of our own get hurt? Did a rival just get justly punished?
-                const { scaledDelta } = _scaleByWitness(
+                const { scaledDelta, surprise, ingroup, habit, somatic, optimism } = _scaleByWitness(
                     witnessName, target, baseDelta, affect.valence,
                     beliefs.get(target)?.trust ?? 0,
                     habitByWitness.get(witnessName) ?? 1.0,
                     somaticByWitness.get(witnessName) ?? 1.0
                 );
-                beliefs.update(target, scaledDelta, `witnessed as target of ${event.type}${actor ? ' by ' + actor : ''}`);
+                // v1.1.16: byTarget evidence now mirrors byActor's factor tags.
+                // Pre-fix, byActor evidence read "witnessed: flog against X
+                // [surprise ×1.5, somatic ×1.2]" but byTarget evidence read
+                // just "witnessed as target of flog by Y" — same five factors
+                // applied, but the audit trail dropped them on the floor.
+                const tags = [];
+                if (surprise > 1.05) tags.push(`surprise ×${surprise.toFixed(2)}`);
+                if (ingroup !== 1.0)  tags.push(`ingroup ×${ingroup.toFixed(2)}`);
+                if (Math.abs(habit - 1.0) > 0.05) tags.push(`habit ×${habit.toFixed(2)}`);
+                if (somatic > 1.05) tags.push(`somatic ×${somatic.toFixed(2)}`);
+                if (optimism !== 1.0) tags.push(`optimism ×${optimism.toFixed(2)}`);
+                const baseWhy = `witnessed as target of ${event.type}${actor ? ' by ' + actor : ''}`;
+                const why = tags.length ? `${baseWhy} [${tags.join(', ')}]` : baseWhy;
+                beliefs.update(target, scaledDelta, why);
                 beliefUpdates++;
             } catch { /* nonfatal */ }
         }
