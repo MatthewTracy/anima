@@ -191,17 +191,57 @@ function _beliefLine(ally, enemy) {
 
 function _replayLine(top) {
     if (top.length === 0) return '';
-    const m = top[0];
-    const who = m.actor ? `${m.actor}` : 'someone';
-    const verbed = _eventVerbal(m.type);
-    const sign = m.valence < 0 ? 'still cuts' : 'still warms';
     if (top.length === 1) {
-        return `One thing keeps coming back: ${who} ${verbed}, and the memory ${sign}.`;
+        return `One thing keeps coming back: ${_phraseOne(top[0])}.`;
     }
-    const second = top[1];
-    const who2 = second.actor ? `${second.actor}` : 'someone';
-    const verbed2 = _eventVerbal(second.type);
-    return `One thing keeps coming back: ${who} ${verbed}, and the memory ${sign}. Underneath that, the smaller note of ${who2} ${verbed2}.`;
+    return `One thing keeps coming back: ${_phraseOne(top[0])}. Underneath that, the smaller note of ${_phraseTwo(top[1])}.`;
+}
+
+/**
+ * v0.54: phrase a moment in a way that respects whether the agent was
+ * the target/actor of the event, a witness, or felt it vicariously
+ * through someone they cared about. Empathy reads differently from
+ * direct experience and we want the inner monologue to say so.
+ */
+function _phraseOne(m) {
+    const who    = m.actor ? `${m.actor}` : 'someone';
+    const target = m.target;
+    const verbed = _eventVerbal(m.type);
+    const cuts   = m.valence < 0 ? 'still cuts' : 'still warms';
+
+    if (m.role === 'vicarious' && target) {
+        // I felt it through them. Sign of vicarious valence drives wording —
+        // remember: trust < 0 flips a target-side harm into Schadenfreude
+        // (positive vicarious valence), and we should NOT call that "what
+        // they had to live through."
+        if (m.valence < 0) {
+            return `what ${target} had to live through when ${who} ${verbed}, and the ache that left in me ${cuts}`;
+        }
+        return `the strange small relief I felt when ${who} ${verbed} against ${target}, and that ${cuts}`;
+    }
+    if (m.role === 'target') {
+        return `${who} ${verbed}, and the memory ${cuts}`;
+    }
+    if (m.role === 'actor') {
+        return `what I myself did — ${verbed} — and how that ${cuts}`;
+    }
+    // witness
+    return `${who} ${verbed}, and the memory ${cuts}`;
+}
+
+function _phraseTwo(m) {
+    const who    = m.actor ? `${m.actor}` : 'someone';
+    const target = m.target;
+    const verbed = _eventVerbal(m.type);
+    if (m.role === 'vicarious' && target) {
+        return m.valence < 0
+            ? `what was done to ${target}`
+            : `the quieter justice when ${who} ${verbed} against ${target}`;
+    }
+    if (m.role === 'actor') {
+        return `my own hand in ${verbed}`;
+    }
+    return `${who} ${verbed}`;
 }
 
 function _closingLine(mood) {

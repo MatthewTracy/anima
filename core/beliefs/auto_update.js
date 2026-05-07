@@ -151,6 +151,21 @@ export function applyEventToBeliefs(event, witnesses, overrides = {}) {
         } catch { /* nonfatal */ }
     }
 
+    // v0.54: pre-compute which witnesses will receive a VICARIOUS affect
+    // entry. Neuroscientifically, an empathic registration REPLACES the
+    // bystander registration — you don't separately register "I observed it"
+    // AND "I felt for them"; the empathy IS the registration. So the
+    // witness-side affect record is suppressed for those witnesses below.
+    const willGetVicarious = new Set();
+    for (const w of witnesses) {
+        if (!w || w === actor || w === target) continue;
+        const tt = priorTrustToTarget.get(w) ?? 0;
+        const ta = priorTrustToActor.get(w) ?? 0;
+        if ((target && Math.abs(tt) > 0.4) || (!target && actor && Math.abs(ta) > 0.4)) {
+            willGetVicarious.add(w);
+        }
+    }
+
     // 1) Update witnesses' BeliefTable about the actor (if delta.byActor)
     //
     // v0.47: predictive coding (Friston). Each witness has a prior trust in
@@ -181,11 +196,15 @@ export function applyEventToBeliefs(event, witnesses, overrides = {}) {
                     : `witnessed: ${event.type}${target ? ' against ' + target : ''}`;
                 beliefs.update(actor, scaledDelta, why);
                 beliefUpdates++;
-                // Also record in the witness's affect log
-                try {
-                    const role = (witnessName === target) ? 'target' : 'witness';
-                    new AffectLog(witnessName).record(event, role);
-                } catch { /* nonfatal */ }
+                // Also record in the witness's affect log — UNLESS this
+                // witness is going to receive a vicarious entry (in which
+                // case the empathic registration replaces the bystander one).
+                if (!willGetVicarious.has(witnessName)) {
+                    try {
+                        const role = (witnessName === target) ? 'target' : 'witness';
+                        new AffectLog(witnessName).record(event, role);
+                    } catch { /* nonfatal */ }
+                }
             } catch { /* nonfatal */ }
         }
     }
