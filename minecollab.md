@@ -1,5 +1,7 @@
 # MineCollab & Running tasks
 
+> **Note:** This document is **upstream / Forum-only**. It describes the Mindcraft MineCollab task system inherited from the parent project, used only by the Forum (Minecraft governance) scenario. If you're new to Anima, start with [`README.md`](README.md) and [`FAQ.md`](FAQ.md) — most of what makes Anima distinctive (souls, the cognitive substrate, the four text scenarios) does not require any of the Minecraft setup below.
+
 ## Getting started with basic tasks
 
 To run a task you will first need to follow the setup instructions on the main README. Then you will need to do the following: 
