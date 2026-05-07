@@ -105,6 +105,39 @@ test('explainExposure classifies the curve mode', () => {
     assert.equal(r2.mode, 'sensitizing');
 });
 
+test('dishabituation: novel event resets habituation for other types', () => {
+    // Habituate witness to "lectio" (low arousal)
+    for (let i = 0; i < 5; i++) recordExposure('_TestHabA', 'lectio', 0.2);
+    const habituated = exposureFactor('_TestHabA', 'lectio', 0.2);
+    assert.ok(habituated < 0.6, `expected habituation, got ${habituated}`);
+
+    // Now a novel event-type fires (kill_player) — this should
+    // dishabituate other types per Kandel 1968 / Groves & Thompson.
+    recordExposure('_TestHabA', 'kill_player', 1.0);
+
+    // The next lectio should read near-first-exposure (factor close to 1.0
+    // because effective count is now ~1, not ~5).
+    const recovered = exposureFactor('_TestHabA', 'lectio', 0.2);
+    assert.ok(recovered > habituated + 0.2,
+        `expected dishabituation recovery: was ${habituated}, now ${recovered}`);
+});
+
+test('dishabituation: a familiar but already-known event does NOT reset others', () => {
+    recordExposure('_TestHabA', 'lectio', 0.2);
+    recordExposure('_TestHabA', 'lectio', 0.2);
+    recordExposure('_TestHabA', 'lectio', 0.2);
+    recordExposure('_TestHabA', 'flog', 0.2);  // first flog: novel → resets lectios
+    recordExposure('_TestHabA', 'lectio', 0.2);  // re-fires lectio
+    const lectioBefore = exposureFactor('_TestHabA', 'lectio', 0.2);
+
+    // Now another flog — flog is NOT novel anymore. Should NOT reset lectios.
+    recordExposure('_TestHabA', 'flog', 0.2);
+    const lectioAfter = exposureFactor('_TestHabA', 'lectio', 0.2);
+    // Re-firing a known type should not boost lectio's recovery further.
+    assert.ok(Math.abs(lectioAfter - lectioBefore) < 0.05,
+        `expected no extra recovery from familiar type: was ${lectioBefore}, now ${lectioAfter}`);
+});
+
 test('different event types keep separate exposure histories', () => {
     recordExposure('_TestHabA', 'flog', 0.2);
     recordExposure('_TestHabA', 'flog', 0.2);

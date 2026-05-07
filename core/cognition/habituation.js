@@ -73,10 +73,28 @@ export function recordExposure(witness, eventType, arousal) {
     const data = _load(witness);
     const now = Date.now();
     const key = String(eventType);
+    const isNovel = !(key in data.byEvent) || data.byEvent[key].length === 0;
     const list = data.byEvent[key] || [];
 
     const effectiveCount = _effectiveCount(list, now);
     const factor = _curve(effectiveCount, arousal);
+
+    // v0.71: DISHABITUATION (Kandel 1968 / Groves & Thompson 1970).
+    // When a novel event-type interrupts a habituated stream, the agent's
+    // response to OTHER habituated types spontaneously partially recovers.
+    // We model this by halving the effective count of every other tracked
+    // event-type — concretely, by truncating each other list to its most
+    // recent entry. The next time that other type fires, it reads near-
+    // first-exposure rather than fully-habituated.
+    if (isNovel) {
+        for (const otherKey of Object.keys(data.byEvent)) {
+            if (otherKey === key) continue;
+            const otherList = data.byEvent[otherKey];
+            if (otherList && otherList.length > 1) {
+                data.byEvent[otherKey] = [otherList[otherList.length - 1]];
+            }
+        }
+    }
 
     list.push({ at: now, arousal: typeof arousal === 'number' ? arousal : 0 });
     if (list.length > MAX_EXPOSURES_PER_KEY) {
