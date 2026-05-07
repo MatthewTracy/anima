@@ -79,6 +79,7 @@ If souls could evolve after death, death would have no stakes. The whole point o
 | **Temporal depth (v0.12)** | Soul evolutions archive prior versions; readers trace character arcs |
 | **The Pantheon (v0.13)** | Cross-scenario shared mythology — every locked soul appends an epitaph |
 | **Burden (v0.14)** | Hidden per-agent state — secrets only the carrier sees in their prompt |
+| **Feud tracker (v0.18)** | Cross-game antagonism graph — who has wronged whom, persisted forever |
 
 ### Visible vs hidden state
 

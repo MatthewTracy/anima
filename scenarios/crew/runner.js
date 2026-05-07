@@ -22,6 +22,7 @@ import { Soul, rosterAsLegends } from '../../core/souls/soul.js';
 import { evolveAllSouls } from '../../core/souls/evolution.js';
 import { asPromptText as lineageAsPromptText } from '../../core/souls/lineage.js';
 import { asPromptText as pantheonAsPromptText } from '../../core/souls/pantheon.js';
+import { FeudTracker } from '../../core/feuds/feud_tracker.js';
 import { BeliefTable } from '../../core/beliefs/belief_table.js';
 import { RecursiveBeliefTable } from '../../core/beliefs/recursive_belief.js';
 import { applyEventsToBeliefs } from '../../core/beliefs/auto_update.js';
@@ -70,6 +71,8 @@ function buildPrompt(ship, profile, askingName) {
     const reflections = new RecursiveBeliefTable(askingName);
 
     return `${lineageAsPromptText(askingName)}
+
+${new FeudTracker().asPromptText(askingName)}
 
 ${pantheonAsPromptText(3)}
 

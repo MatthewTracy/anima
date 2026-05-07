@@ -20,6 +20,7 @@
 
 import { BeliefTable } from './belief_table.js';
 import { RecursiveBeliefTable } from './recursive_belief.js';
+import { logEventAsFeud } from '../feuds/feud_tracker.js';
 
 /**
  * Default trust deltas for known event types.
@@ -138,6 +139,13 @@ export function applyEventToBeliefs(event, witnesses, overrides = {}) {
             recursiveUpdates++;
         } catch { /* nonfatal */ }
     }
+
+    // 4) v0.18: log to FeudTracker if the event is antagonistic.
+    //    Persists across scenarios + games. The kill graph remembers
+    //    grievances long after a single game ends.
+    try {
+        logEventAsFeud(event);
+    } catch { /* nonfatal */ }
 
     return { beliefUpdates, recursiveUpdates };
 }

@@ -256,6 +256,19 @@ KEY COMMANDS: !collectBlocks, !craftRecipe, !goToCoordinates, !attack, !goToPlay
             }
         }
 
+        // ANIMA: $FEUDS — cross-game cross-scenario antagonism graph.
+        // What was DONE TO this agent and what they have DONE to others,
+        // across all past games. Persists in logs/feuds.json.
+        if (prompt.includes('$FEUDS')) {
+            try {
+                const { FeudTracker } = await import('../../core/feuds/feud_tracker.js');
+                const tracker = new FeudTracker();
+                prompt = prompt.replaceAll('$FEUDS', tracker.asPromptText(this.agent.name));
+            } catch (e) {
+                prompt = prompt.replaceAll('$FEUDS', '');
+            }
+        }
+
         // V3: $GAME_DURATION placeholder — accurate per-run, not hardcoded text
         if (prompt.includes('$GAME_DURATION')) {
             try {

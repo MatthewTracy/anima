@@ -49,6 +49,7 @@
         "outpost": "node scenarios/outpost/runner.js",
         "crew": "node scenarios/crew/runner.js",
         "souls": "node scripts/soul_inspector.js",
+        "feuds": "node scripts/feud_inspector.js",
         "publish": "node scripts/publish_game.js",
         "test": "node --test tests/",
         "score": "node scripts/score_game.js",
