@@ -1,6 +1,9 @@
 {
-    "name": "mindcraft",
+    "name": "anima",
+    "version": "0.1.0",
+    "description": "Multi-agent LLM simulation framework with persistent souls. Forum + Cloister reference scenarios.",
     "type": "module",
+    "private": true,
     "dependencies": {
         "@anthropic-ai/sdk": "^0.17.1",
         "@cerebras/cerebras_cloud_sdk": "^1.46.0",
@@ -41,6 +44,9 @@
     "scripts": {
         "postinstall": "patch-package",
         "start": "node main.js",
+        "forum": "node scripts/run_scenario.js forum",
+        "cloister": "node scripts/run_scenario.js cloister",
+        "souls": "node scripts/soul_inspector.js",
         "test": "node --test tests/",
         "score": "node scripts/score_game.js",
         "analyze": "node scripts/analyze_runs.js",
