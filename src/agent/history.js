@@ -1,6 +1,7 @@
-import { writeFileSync, readFileSync, mkdirSync, existsSync } from 'fs';
+import { readFileSync, mkdirSync, existsSync } from 'fs';
 import { NPCData } from './npc/data.js';
 import settings from './settings.js';
+import { atomicWriteFileSync } from '../../core/runtime/atomic_io.js';
 
 
 export class History {
@@ -62,13 +63,16 @@ export class History {
         if (this.full_history_fp === undefined) {
             const string_timestamp = new Date().toLocaleString().replace(/[/:]/g, '-').replace(/ /g, '').replace(/,/g, '_');
             this.full_history_fp = `./bots/${this.name}/histories/${string_timestamp}.json`;
-            writeFileSync(this.full_history_fp, '[]', 'utf8');
+            // v1.1.40: atomic. Pre-fix, a crash mid-write of the per-turn
+            // history file corrupted the agent's full conversation log
+            // for that game. Same migration class as core/ state files.
+            atomicWriteFileSync(this.full_history_fp, '[]');
         }
         try {
             const data = readFileSync(this.full_history_fp, 'utf8');
             let full_history = JSON.parse(data);
             full_history.push(...to_store);
-            writeFileSync(this.full_history_fp, JSON.stringify(full_history, null, 4), 'utf8');
+            atomicWriteFileSync(this.full_history_fp, JSON.stringify(full_history, null, 4));
         } catch (err) {
             console.error(`Error reading ${this.name}'s full history file: ${err.message}`);
         }
@@ -105,7 +109,10 @@ export class History {
                 taskStart: this.agent.task.taskStartTime,
                 last_sender: this.agent.last_sender
             };
-            writeFileSync(this.memory_fp, JSON.stringify(data, null, 2));
+            // v1.1.40: atomic. Memory persists across agent restarts and is
+            // re-read on load() — corruption here means the agent comes back
+            // amnesiac. Same migration class as the v1.1.5 sweep.
+            atomicWriteFileSync(this.memory_fp, JSON.stringify(data, null, 2));
             console.log('Saved memory to:', this.memory_fp);
         } catch (error) {
             console.error('Failed to save history:', error);

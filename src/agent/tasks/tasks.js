@@ -1,8 +1,9 @@
-import { readFileSync , writeFileSync, existsSync} from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { executeCommand } from '../commands/index.js';
 import { getPosition } from '../library/world.js';
 import { ConstructionTaskValidator, Blueprint } from './construction_tasks.js';
 import { CookingTaskInitiator } from './cooking_tasks.js';
+import { atomicWriteFileSync } from '../../../core/runtime/atomic_io.js';
 
 const PROGRESS_FILE = './hells_kitchen_progress.json';
 
@@ -21,7 +22,10 @@ const hellsKitchenProgressManager = {
   
   writeProgress: function(progress) {
     try {
-      writeFileSync(PROGRESS_FILE, JSON.stringify(progress), 'utf8');
+      // v1.1.40: atomic. hells_kitchen_progress.json is shared across
+      // cooperating agents in the cooking task — a crash mid-write
+      // corrupts shared progress state.
+      atomicWriteFileSync(PROGRESS_FILE, JSON.stringify(progress));
     } catch (err) {
       console.error('Error writing progress file:', err);
     }
