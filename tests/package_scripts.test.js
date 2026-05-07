@@ -12,7 +12,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, readdirSync, statSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -37,6 +37,39 @@ test('every node-script referenced from package.json scripts exists', () => {
         }
     }
     assert.deepEqual(missing, [], `npm scripts reference missing files:\n  ${missing.join('\n  ')}`);
+});
+
+test('v1.1.23: every scenario.json roster has matching character profile files', () => {
+    // The audit found that scenarios/outpost/ had 5 missing character
+    // profiles after v0.5.0 — only hale.json remained, but the roster
+    // listed six names. Anyone running `npm run outpost` got an
+    // immediate ENOENT crash.
+    //
+    // Lock the regression: for every scenarios/<name>/scenario.json,
+    // verify scenarios/<name>/characters/<rostername-lowercase>.json
+    // exists. (Cell uses a different layout: characters/<rostername>.json
+    // mixed-case — handled below.)
+    const scenariosRoot = join(repoRoot, 'scenarios');
+    const failures = [];
+    for (const scenarioDir of readdirSync(scenariosRoot)) {
+        if (!statSync(join(scenariosRoot, scenarioDir)).isDirectory()) continue;
+        const manifestPath = join(scenariosRoot, scenarioDir, 'scenario.json');
+        if (!existsSync(manifestPath)) continue;     // forum/ is intentionally empty
+        const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+        if (!manifest.roster) continue;
+        const charsDir = join(scenariosRoot, scenarioDir, 'characters');
+        for (const name of manifest.roster) {
+            // Try both lowercase and mixed-case (different scenarios use
+            // different conventions; both are accepted by their runners).
+            const lower = join(charsDir, name.toLowerCase() + '.json');
+            const mixed = join(charsDir, name + '.json');
+            if (!existsSync(lower) && !existsSync(mixed)) {
+                failures.push(`${scenarioDir}: missing character profile for ${name} (looked for ${name.toLowerCase()}.json or ${name}.json)`);
+            }
+        }
+    }
+    assert.deepEqual(failures, [],
+        `scenarios with missing character profiles:\n  ${failures.join('\n  ')}`);
 });
 
 test('v1.1.11: replay.js and record.js import cleanly (no eager side effects)', async () => {
