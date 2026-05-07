@@ -238,6 +238,24 @@ KEY COMMANDS: !collectBlocks, !craftRecipe, !goToCoordinates, !attack, !goToPlay
             }
         }
 
+        // ANIMA: $BURDEN — hidden per-agent state. ONLY visible to the
+        // agent themselves. Substituted into THIS agent's prompt only,
+        // never shared. If no burden is set, $BURDEN expands to empty
+        // string (other agents who have no burden see nothing).
+        // SECURITY: this prompter instance is per-agent (this.agent.name),
+        // so reading bots/<this.agent.name>/burden.json is correct
+        // privacy by construction. Cross-agent prompts never substitute
+        // $BURDEN with another agent's burden.
+        if (prompt.includes('$BURDEN')) {
+            try {
+                const { Burden } = await import('../../core/burdens/burden.js');
+                const burden = new Burden(this.agent.name);
+                prompt = prompt.replaceAll('$BURDEN', burden.asPromptText());
+            } catch (e) {
+                prompt = prompt.replaceAll('$BURDEN', '');
+            }
+        }
+
         // V3: $GAME_DURATION placeholder — accurate per-run, not hardcoded text
         if (prompt.includes('$GAME_DURATION')) {
             try {

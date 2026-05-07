@@ -1,0 +1,13 @@
+{
+    "name": "crew",
+    "description": "Default burden bank for Crew (pirate ship scenario). Sins, secrets, and curses for a crew under pursuit.",
+    "burdens": [
+        { "kind": "sin",      "text": "I sold out the previous captain. The Royal Navy paid me in coin I have already spent." },
+        { "kind": "secret",   "text": "I was an officer of the Crown before I came aboard. I tell people I was a fisherman." },
+        { "kind": "debt",     "text": "I owe a man in Port Royal more coin than I will see in three voyages. He will collect when he finds me." },
+        { "kind": "curse",    "text": "Last battle, I robbed a corpse. A priest among them. I have not slept full nights since." },
+        { "kind": "secret",   "text": "I cannot read the charts I am paid to read. I have hidden it for two years." },
+        { "kind": "prophecy", "text": "An old sailor I sailed with said I would drown in calm waters. The seas have been calm for three days now." },
+        { "kind": "sin",      "text": "I have been skimming from the plunder pile when no one was watching. Two coins here, three there. It adds up." }
+    ]
+}

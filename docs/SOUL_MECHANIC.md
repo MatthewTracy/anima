@@ -78,6 +78,13 @@ If souls could evolve after death, death would have no stakes. The whole point o
 | **Auto-update (v0.11)** | Events automatically update witnesses' BeliefTable + RecursiveBeliefTable |
 | **Temporal depth (v0.12)** | Soul evolutions archive prior versions; readers trace character arcs |
 | **The Pantheon (v0.13)** | Cross-scenario shared mythology — every locked soul appends an epitaph |
+| **Burden (v0.14)** | Hidden per-agent state — secrets only the carrier sees in their prompt |
+
+### Visible vs hidden state
+
+After 13 visible-state primitives (souls, beliefs, commitments, reflections, lineage, pantheon, …) Anima now also has hidden state. The Burden primitive gives each agent something true that the others must INFER — never directly read. This is the asymmetric-knowledge axis no prior multi-agent LLM framework has shipped as a first-class concept.
+
+A Burden is text that lives at `bots/<name>/burden.json` and is injected into the carrier's prompt via the `$BURDEN` placeholder — but the placeholder substitutes only when the prompt is built FOR that agent. Other agents see nothing about it. Reveal happens organically: in confessions, memoirs, soul evolution, or never. Default burden banks ship for all four reference scenarios (`core/burdens/banks/*.json`) — sins, secrets, prophecies, debts, illnesses, curses fitting each world.
 
 ### How auto-update closes the loop
 

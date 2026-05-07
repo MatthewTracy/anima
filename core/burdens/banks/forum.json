@@ -1,0 +1,13 @@
+{
+    "name": "forum",
+    "description": "Default burden bank for Forum (Minecraft governance scenario). Sins, secrets, and prophecies fitting a settler-vs-predator world.",
+    "burdens": [
+        { "kind": "sin",      "text": "I voted against my faction last game and have never confessed it. They lost partly because of me." },
+        { "kind": "secret",   "text": "I am hoarding three diamond from the treasury. I tell myself it is for an emergency." },
+        { "kind": "debt",     "text": "I owe Hamilton two iron from a trade he made with me last week. He has not asked. I have not paid." },
+        { "kind": "prophecy", "text": "I had a vivid dream the night before this game: I saw myself dying at the contested zone. I do not believe in dreams. I am uneasy." },
+        { "kind": "secret",   "text": "I was raised among the Anarchy. My faction does not know. I came over for reasons I no longer fully remember." },
+        { "kind": "curse",    "text": "Last game an enemy I killed cursed me with their final breath. My hands have ached since." },
+        { "kind": "sin",      "text": "I leaked our defense plans to Fox. He paid me in iron. I told myself it was reconnaissance." }
+    ]
+}

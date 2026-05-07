@@ -1,0 +1,13 @@
+{
+    "name": "cloister",
+    "description": "Default burden bank for Cloister (monastic scenario). Sins, doubts, and visions appropriate to a religious order.",
+    "burdens": [
+        { "kind": "sin",      "text": "Before I took vows, I caused a death. The family does not know it was me." },
+        { "kind": "secret",   "text": "I no longer believe what I preach. I continue because the structure feeds me." },
+        { "kind": "vision",   "text": "I saw the Abbot in my last vision, kneeling at the altar weeping. I do not know what it means." },
+        { "kind": "secret",   "text": "I have read the heretical texts the Abbot ordered burned. I kept one. I read it on the nights I cannot sleep." },
+        { "kind": "sin",      "text": "I broke my fast last week. Three days early. I lied to Brother Lucian when he asked." },
+        { "kind": "prophecy", "text": "An old monk who taught me prophesied I would die unredeemed. I have spent thirty years trying to disprove him." },
+        { "kind": "debt",     "text": "I am writing letters to my mother in secret, in violation of the Rule. She does not know I am here." }
+    ]
+}

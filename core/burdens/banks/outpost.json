@@ -1,0 +1,13 @@
+{
+    "name": "outpost",
+    "description": "Default burden bank for Outpost (sci-fi station scenario). Secrets, debts, and prophecies for crew under closed-system pressure.",
+    "burdens": [
+        { "kind": "secret",   "text": "I have been editing my official biometric reports. The medic does not know my real heart rate." },
+        { "kind": "sin",      "text": "On my last station rotation, a crewmate died. The official record blames a system failure. It was my mistake." },
+        { "kind": "secret",   "text": "I have a corporate handler. They expect a private report at the end of this rotation. I have not yet decided what to send." },
+        { "kind": "illness",  "text": "I am dying. The Surgeon will diagnose it within four turns if she examines me. I have not told anyone." },
+        { "kind": "debt",     "text": "I am here as restitution for a crime nobody on this crew knows about. My contract ends only when the company says so." },
+        { "kind": "prophecy", "text": "Before I deployed, an oracle told me I would never see Earth again. I do not believe in oracles. The thought has not left me." },
+        { "kind": "secret",   "text": "I am in love with a member of this crew. They do not know. I do not intend to tell them." }
+    ]
+}
