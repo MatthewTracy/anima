@@ -186,17 +186,20 @@ export class Soul {
             console.log(`[SOUL] ${this.name} locked. Cause: ${cause}.`);
 
             // v0.13: append epitaph to the cross-scenario Pantheon.
-            // Best-effort, never throws — pantheon failure must not block lock.
-            try {
-                const soulContent = this.read() || '';
-                // Dynamic import keeps this module decoupled — Soul doesn't
-                // hard-depend on pantheon, but locks contribute to it when present.
-                import('./pantheon.js').then(({ appendEpitaph }) => {
-                    appendEpitaph(this.name, soulContent, { cause, at, by }, scenario);
-                }).catch(e => {
-                    console.warn(`[PANTHEON] dynamic import failed: ${e.message}`);
-                });
-            } catch { /* nonfatal */ }
+            // v0.42: ANIMA_NO_PANTHEON=1 suppresses this — used by tests to
+            // avoid polluting pantheon.md. Default behavior unchanged.
+            if (process.env.ANIMA_NO_PANTHEON !== '1') {
+                try {
+                    const soulContent = this.read() || '';
+                    // Dynamic import keeps this module decoupled — Soul doesn't
+                    // hard-depend on pantheon, but locks contribute to it when present.
+                    import('./pantheon.js').then(({ appendEpitaph }) => {
+                        appendEpitaph(this.name, soulContent, { cause, at, by }, scenario);
+                    }).catch(e => {
+                        console.warn(`[PANTHEON] dynamic import failed: ${e.message}`);
+                    });
+                } catch { /* nonfatal */ }
+            }
         } catch (e) {
             console.warn(`[SOUL] Failed to lock ${this.name}: ${e.message}`);
         }
