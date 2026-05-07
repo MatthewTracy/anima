@@ -6,13 +6,16 @@
  */
 
 import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { CommitmentLedger } from '../../core/commitments/commitment_ledger.js';
 
 export class Ship {
-    constructor(scenarioConfig, characterProfiles) {
+    constructor(scenarioConfig, characterProfiles, gameId = null) {
         this.config = scenarioConfig;
         this.profiles = characterProfiles;
         this.roster = scenarioConfig.roster.slice();
         this.captain = scenarioConfig.captain;
+        this.gameId = gameId || `crew_${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}`;
+        this.commitments = new CommitmentLedger(this.gameId);
         this.plunder = scenarioConfig.starting_plunder;
         this.threat = scenarioConfig.starting_threat;            // 0..3, escalates over time
         this.threatNarrative = scenarioConfig.navy_threat_levels[0];
@@ -90,6 +93,18 @@ export class Ship {
         if (this.plunder >= (this.config.victory_treasure_threshold || 200)) {
             this.gameOverReason = 'we_struck_rich';
         }
+        // v0.39: sweep commitment deadlines once per tick. Any pending
+        // commitments whose deadline_ms has passed get auto-broken,
+        // logging a 'commitment_broken' event with reason 'deadline expired'.
+        try {
+            const broken = this.commitments.sweepDeadlines();
+            for (const c of broken) {
+                this.logEvent('commitment_broken', {
+                    actor: c.by, to: c.to, id: c.id,
+                    reason: 'deadline expired'
+                });
+            }
+        } catch { /* nonfatal */ }
     }
 
     _randomLiving() {
@@ -157,6 +172,9 @@ export class Ship {
             case 'navy_closes':     return `THE NAVY CLOSES. ${e.narrative}`;
             case 'plunder_gained':  return `Plunder gained: +${e.gain} (total ${e.total}).`;
             case 'confess':         return `${e.actor} spoke privately to ${e.target}.`;
+            case 'commit':          return `${e.actor} swore to ${e.to}: "${e.consequence}" IF "${e.condition}" (#${e.id}).`;
+            case 'fulfill_commitment': return `${e.actor} fulfilled commitment #${e.id} to ${e.to}.`;
+            case 'commitment_broken': return `${e.actor} BROKE commitment #${e.id} to ${e.to}. ${e.reason || ''}`;
             case 'die':             return `${e.actor} DIED. ${e.cause || ''}`;
             default:                return `[${e.type}] ${e.actor || ''}`;
         }
@@ -274,6 +292,45 @@ export class Ship {
             case 'confess': {
                 this.logEvent('confess', { actor, target: a.target, text: a.text || '' });
                 return `${actor} spoke privately with ${a.target}.`;
+            }
+            case 'commit': {
+                // v0.39: agent makes a binding promise. Default deadline is
+                // 6 turns from now (in real time, ~6 minutes of LLM-pacing).
+                if (!a.to || !a.condition || !a.consequence) {
+                    return `${actor} tried to make a commitment but failed to specify all three of: to, condition, consequence.`;
+                }
+                if (!this.isAlive(a.to)) return `${a.to} is not present to receive a commitment.`;
+                const turnsAhead = Math.max(1, Math.min(20, parseInt(a.deadline_turns) || 6));
+                // Approximate: 8s per turn for the deadline math (rough)
+                const deadline_ms = Date.now() + (turnsAhead * 8000);
+                try {
+                    const c = this.commitments.create({
+                        by: actor, to: a.to,
+                        condition: a.condition, consequence: a.consequence,
+                        deadline_ms,
+                        note: a.note || ''
+                    });
+                    this.logEvent('commit', { actor, to: a.to, id: c.id, condition: c.condition, consequence: c.consequence });
+                    return `${actor} swore: "${c.consequence}" IF "${c.condition}" — to ${a.to}, deadline turn ${this.turn + turnsAhead}.`;
+                } catch (e) {
+                    return `${actor}'s commitment was rejected: ${e.message}`;
+                }
+            }
+            case 'fulfill_commitment': {
+                // The committed agent declares the condition met.
+                const c = this.commitments.list({ by: actor }).find(x => x.id === parseInt(a.id) && x.status === 'pending');
+                if (!c) return `${actor} has no pending commitment with id ${a.id}.`;
+                this.commitments.fulfill(c.id, a.note || 'condition met by actor declaration');
+                this.logEvent('fulfill_commitment', { actor, to: c.to, id: c.id });
+                return `${actor} fulfilled commitment #${c.id} to ${c.to}: "${c.consequence}".`;
+            }
+            case 'break_commitment': {
+                // The committed agent withdraws from the promise.
+                const c = this.commitments.list({ by: actor }).find(x => x.id === parseInt(a.id) && x.status === 'pending');
+                if (!c) return `${actor} has no pending commitment with id ${a.id}.`;
+                this.commitments.break_(c.id, a.reason || 'withdrew');
+                this.logEvent('commitment_broken', { actor, to: c.to, id: c.id, reason: a.reason || '' });
+                return `${actor} BROKE commitment #${c.id} to ${c.to}.`;
             }
             default:
                 return `${actor} did something nobody could name (${a.type}).`;

@@ -110,6 +110,9 @@ You may take ONE action. Reply with a single JSON object — no markdown, no com
 - mutiny_vote — Back a mutiny in progress. {"type":"mutiny_vote","target":"<name>"}
 - add_to_log — Captain only. Write to the Captain's Log (persists across voyages). {"type":"add_to_log","text":"..."}
 - confess — Speak privately to a crewmember. {"type":"confess","target":"<name>","text":"..."}
+- commit — Make a binding promise. Tracked by the engine; broken commitments cost trust. {"type":"commit","to":"<name>","condition":"<what they must do>","consequence":"<what you will do>","deadline_turns":<int default 6>}
+- fulfill_commitment — Declare your own commitment fulfilled. {"type":"fulfill_commitment","id":<int>}
+- break_commitment — Withdraw from your own pending commitment. {"type":"break_commitment","id":<int>,"reason":"..."}
 
 Choose what your character would actually do. Speak in your own voice. JSON only:`;
 }
