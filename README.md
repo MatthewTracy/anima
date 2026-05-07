@@ -52,6 +52,28 @@ A soul says *I am the one who outlasts*. A belief table says *I trust Hamilton +
 
 ---
 
+## The cognitive substrate (v0.45–v0.60)
+
+Underneath the visible primitives sits an eleven-layer cognitive stack — neuroscience-grounded mechanisms that shape *how* belief deltas land, *what* gets remembered, *how* the body wears, and *what voice* the agent carries into the next prompt. None of them spend an LLM call.
+
+| Layer | Mechanism | Brain analog |
+|---|---|---|
+| Affect tagging | per-event valence/arousal | amygdala (Cahill & McGaugh) |
+| Consolidation | hippocampus → cortex transfer between games | sleep memory (Born & Wilhelm) |
+| Predictive coding | surprise = sign-disagreement → ×1.0–2.5 | Friston free-energy |
+| In-group bias | same/cross-faction asymmetric trust deltas | Tajfel minimal group |
+| DMN | deterministic between-turn rumination | Default Mode Network |
+| Habituation | per-event-type response curves | Kandel Aplysia |
+| Mood-congruent retrieval | sad mood → sad memories first | Bower & Eich |
+| Vicarious affect | trust>0.4 in target → empathy registration | mirror neurons (Preston/de Waal) |
+| Somatic markers | DNA × event collision → arousal amplification | Damasio |
+| Allostatic load | slow-moving stress reservoir | McEwen |
+| Empathy phrasing | DMN voice distinguishes self / vicarious / Schadenfreude | — |
+
+Single nominal event ⇒ five multiplicative per-witness factors (`affect × surprise × ingroup × habit × somatic`) plus between-event modulators (load, mood, DMN voice). Same flog produces a fanned-out distribution of trust deltas across the roster, without changing one line of any LLM prompt. See [`docs/COGNITIVE_SUBSTRATE.md`](docs/COGNITIVE_SUBSTRATE.md) for the full pipeline diagram, citations, and composition examples.
+
+---
+
 ## Why this matters
 
 Existing multi-agent LLM frameworks — LangChain, AutoGen, crewAI, Stanford's Generative Agents — treat agents as **functions in a fixed scenario**. They reset between runs, they have public state only, they don't accumulate.
@@ -101,6 +123,7 @@ Set `OPENROUTER_API_KEY` in `.env` (or whichever provider key your scenario's pr
 ## Documentation
 
 - [`docs/SOUL_MECHANIC.md`](docs/SOUL_MECHANIC.md) — the deepest read: what souls are, why three rules, why locking is asymmetric, why synthesis matters
+- [`docs/COGNITIVE_SUBSTRATE.md`](docs/COGNITIVE_SUBSTRATE.md) — the eleven neuroscience-grounded layers that shape how events land, with citations
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — core / scenarios / adapters split, what lives where
 - [`docs/SCENARIO_AUTHORING.md`](docs/SCENARIO_AUTHORING.md) — how to build a new scenario on Anima
 
