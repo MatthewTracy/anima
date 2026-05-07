@@ -1,0 +1,13 @@
+{
+    "name": "cell",
+    "description": "Burdens fitting a wartime resistance cell. Includes the special INFORMANT burden — at most one cell member carries it per rotation.",
+    "burdens": [
+        { "kind": "informant", "text": "I am an informant. The authorities have a member of my family. I report to them weekly via dead-drop. I have not yet given them anything that got someone killed, but the time is coming when I will have to choose. They know my real name. The cell does not." },
+        { "kind": "sin",       "text": "I gave up a name under interrogation six months ago. I was let go. The cell believes I held. I have been waiting for the consequences ever since." },
+        { "kind": "secret",    "text": "I keep a journal in my flat. Names, dates, addresses. If they raid me, the cell ends. I tell myself the journal is for after, when this is over. I have not yet been able to burn it." },
+        { "kind": "debt",      "text": "Owl's brother died saving me on the Bridge job. Owl does not know the version of the story I have told them is the version that does not put me at fault." },
+        { "kind": "prophecy",  "text": "I had a dream the night before this rotation. I saw Hawk standing alone on a roof at dawn, weeping. I do not believe in dreams. I have not stopped seeing it." },
+        { "kind": "secret",    "text": "I love Wren. They do not know. I have not let them know because love is what they will use against us. The cell would forgive me but I would not forgive me if I lost them through my own want." },
+        { "kind": "curse",     "text": "I survived a raid in which the rest of my old cell did not. They tell me I should be grateful. I am not. Grateful is a person who has not seen the others' faces every time I close my eyes." }
+    ]
+}

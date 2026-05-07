@@ -48,6 +48,7 @@
         "cloister": "node scenarios/cloister/runner.js",
         "outpost": "node scenarios/outpost/runner.js",
         "crew": "node scenarios/crew/runner.js",
+        "cell": "node scenarios/cell/runner.js",
         "souls": "node scripts/soul_inspector.js",
         "feuds": "node scripts/feud_inspector.js",
         "library": "node scripts/library_search.js",

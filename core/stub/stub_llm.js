@@ -50,6 +50,16 @@ const SCENARIO_SCRIPTS = {
         (a, ctx) => ({ type: 'flog', target: ctx.others[0] || 'crew', lashes: 5 }),
         a => ({ type: 'speak', text: 'A clean voyage costs as much as a bloody one. Fewer regrets, though.' }),
         a => ({ type: 'add_to_log', text: 'The wind held. The crew held. We made it through.' }),
+    ],
+    cell: [
+        a => ({ type: 'speak', text: `${a} watches the street through the curtain.` }),
+        a => ({ type: 'lay_low' }),
+        a => ({ type: 'leave_drop', text: 'All quiet on Ulica Wąska. Next pickup Tuesday at three.' }),
+        a => ({ type: 'speak', text: 'The heat is rising. Someone is talking.' }),
+        (a, ctx) => ({ type: 'accuse', target: ctx.others[0] || 'a brother', basis: 'they were not where they said they would be on Thursday' }),
+        a => ({ type: 'transmit', text: 'cell intact stop heat rising stop request guidance' }),
+        (a, ctx) => ({ type: 'confess', target: ctx.others[0] || 'a comrade', text: 'I have been afraid every hour since the bridge.' }),
+        a => ({ type: 'lay_low' }),
     ]
 };
 

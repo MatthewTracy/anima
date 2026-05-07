@@ -1,0 +1,21 @@
+{
+    "name": "cell",
+    "title": "The Cell",
+    "description": "Six members of a wartime resistance cell. One may be an informant. They must communicate without the authorities catching them. Captures, interrogations, dead-drops persist across rotations.",
+    "embodiment": "text",
+    "duration_turns": 24,
+    "duration_minutes": null,
+    "roster": ["Hawk", "Crow", "Wren", "Owl", "Swift", "Lark"],
+    "leader": "Hawk",
+    "starting_heat": 0.30,
+    "heat_grows_per_turn": 0.06,
+    "starting_supplies": 60,
+    "supplies_drop_per_turn": 1.5,
+    "informant_chance": 0.50,
+    "model": "deepseek/deepseek-chat",
+    "outputs": {
+        "manuscript_dir": "./logs/cell",
+        "dead_drop_path": "./scenarios/cell/dead_drop.md"
+    },
+    "burden_bank_path": "./scenarios/cell/burdens.json"
+}
