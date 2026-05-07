@@ -10,6 +10,13 @@ A dense run of neuroscience-grounded primitives that turn a uniform belief table
 
 | Version | What shipped | Brain analog |
 |---|---|---|
+| **v0.94** | Sync COGNITIVE_SUBSTRATE.md + CHANGELOG for v0.87–v0.93 | — (docs) |
+| **v0.93** | Optimism / pessimism bias on belief deltas — 6th per-event factor | Sharot 2011 |
+| **v0.92** | docs/SCRIPTS.md adds substrate-stats | — (docs) |
+| **v0.91** | `npm run substrate-stats` — cohort aggregate analytics | — (debug tool) |
+| **v0.90** | `docs/SCRIPTS.md` catalogues all 27 npm scripts | — (docs) |
+| **v0.89** | `npm run timescales` — print substrate tuning constants | — (debug tool) |
+| **v0.88** | Full multiplicative pipeline composition test | — (test) |
 | **v0.87** | Sync CHANGELOG + README to v0.86 | — (docs) |
 | **v0.86** | `core/cognition/timescales.js` — central re-export index of every substrate constant + `asReport()` | — (refactor) |
 | **v0.85** | `npm run substrate-all` — cohort-wide inspector across every agent in `bots/` | — (debug tool) |

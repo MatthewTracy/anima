@@ -15,6 +15,7 @@ nominal delta (DEFAULT_DELTAS)
   × ingroup         (v0.48 — Tajfel coalition bias)
   × habit           (v0.50 — Kandel habituation/sensitization)
   × somatic         (v0.55 — Damasio value-aligned amplification)
+  × optimism        (v0.93 — Sharot asymmetric updating)
 = belief update applied to witness's BeliefTable
 ```
 
@@ -83,6 +84,20 @@ Each witness keeps a per-event-type exposure log at `bots/<name>/habituation.jso
 - **Mid-arousal** (0.4 ≤ a < 0.7): factor = 1.0.
 
 **v0.71 — Dishabituation (Kandel 1968 / Groves & Thompson 1970).** When a NOVEL event-type interrupts a habituated stream, the agent's response to OTHER habituated types spontaneously partially recovers. Implemented in `recordExposure`: if the firing type is novel for the witness, every other type's exposure list is truncated to its most recent entry. The next time those types fire, they read near-first-exposure rather than fully-habituated. Aplysia gill-withdrawal is the canonical demonstration.
+
+### v0.93 — Optimism / pessimism bias
+**Module:** [`core/cognition/optimism.js`](../core/cognition/optimism.js)
+**Brain analog:** Tali Sharot's work on asymmetric belief updating (Sharot 2011 "The optimism bias"; Sharot, Korn & Dolan 2011).
+
+Distinct from somatic markers and Friston surprise — optimism is **direction-specific**. Reads soul DNA's trust axis:
+
+|                          | positive delta | negative delta |
+|--------------------------|----------------|----------------|
+| **Optimist** (trust ≥ +0.4) | × 1.15 (boost) | × 0.90 (cushion good news's opposite) |
+| **Pessimist** (trust ≤ -0.4) | × 0.90 (discount) | × 1.15 (suspicion confirmed) |
+| **Balanced**             | × 1.00 | × 1.00 |
+
+Two agents with the same DNA *magnitude* but opposite trust polarity now update beliefs in mirrored fashion to the same event — one of the cleanest behavioural splits in clinical/personality psych modelled in one DNA axis read.
 
 ### v0.55 — Somatic markers
 **Module:** [`core/affect/somatic.js`](../core/affect/somatic.js)
@@ -213,3 +228,6 @@ The point isn't the exact numbers — it's that the same nominal event produces 
 - Kahneman (1973) *Attention and Effort*
 - Festinger (1957) *A Theory of Cognitive Dissonance*
 - Groves & Thompson (1970) "Habituation: a dual-process theory" (re: dishabituation)
+- Brown & Kulik (1977) "Flashbulb memories"
+- Sharot (2011) "The optimism bias"; Sharot, Korn & Dolan (2011) on asymmetric updating
+- Goffman (1959) *The Presentation of Self in Everyday Life* (re: persona-mask collapse under load)
