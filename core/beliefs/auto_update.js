@@ -94,6 +94,33 @@ export const DEFAULT_DELTAS = {
 };
 
 /**
+ * Compute per-witness scaling factors for one belief delta.
+ *
+ * Five neuroscience-grounded multipliers (see docs/COGNITIVE_SUBSTRATE.md):
+ *   surprise — Friston prediction error (v0.47)
+ *   ingroup  — Tajfel coalition bias  (v0.48)
+ *   habit    — Kandel habituation/sensitization (v0.50)
+ *   somatic  — Damasio value-aligned amplification (v0.55)
+ *
+ * @param {string} witnessName
+ * @param {string} subjectName    actor (byActor path) or target (byTarget path)
+ * @param {number} baseDelta      affect-scaled nominal delta (signed)
+ * @param {number} eventValence   for surprise sign-comparison
+ * @param {number} priorTrust     witness's prior trust in subjectName
+ * @param {number} habit          v0.50 factor
+ * @param {number} somatic        v0.55 factor
+ * @returns {{ scaledDelta, surprise, ingroup, habit, somatic }}
+ */
+function _scaleByWitness(witnessName, subjectName, baseDelta, eventValence, priorTrust, habit, somatic) {
+    const surprise = surpriseScale(priorTrust, eventValence);
+    const ingroup  = ingroupBias(witnessName, subjectName, baseDelta);
+    return {
+        scaledDelta: baseDelta * surprise * ingroup * habit * somatic,
+        surprise, ingroup, habit, somatic
+    };
+}
+
+/**
  * Apply one event's belief updates.
  *
  * @param {object} event — the event object as logged by a scenario state
@@ -213,17 +240,12 @@ export function applyEventToBeliefs(event, witnesses, overrides = {}) {
             if (!witnessName || witnessName === actor) continue;
             try {
                 const beliefs = new BeliefTable(witnessName);
-                const priorTrust = beliefs.get(actor)?.trust ?? 0;
-                const surprise = surpriseScale(priorTrust, affect.valence);
-                // v0.48: in-group bias modulates the surprise-scaled delta.
-                // Same-faction allies get the benefit of doubt; out-group
-                // actors are read with extra suspicion.
-                const ingroup = ingroupBias(witnessName, actor, baseDelta);
-                // v0.50: habituation/sensitization (per-witness, per-event-type).
-                const habit = habitByWitness.get(witnessName) ?? 1.0;
-                // v0.55: somatic markers — value-aligned amplification.
-                const somatic = somaticByWitness.get(witnessName) ?? 1.0;
-                const scaledDelta = baseDelta * surprise * ingroup * habit * somatic;
+                const { scaledDelta, surprise, ingroup, habit, somatic } = _scaleByWitness(
+                    witnessName, actor, baseDelta, affect.valence,
+                    beliefs.get(actor)?.trust ?? 0,
+                    habitByWitness.get(witnessName) ?? 1.0,
+                    somaticByWitness.get(witnessName) ?? 1.0
+                );
                 const tags = [];
                 if (surprise > 1.05) tags.push(`surprise ×${surprise.toFixed(2)}`);
                 if (ingroup !== 1.0)  tags.push(`ingroup ×${ingroup.toFixed(2)}`);
@@ -254,17 +276,15 @@ export function applyEventToBeliefs(event, witnesses, overrides = {}) {
             if (!witnessName || witnessName === target) continue;
             try {
                 const beliefs = new BeliefTable(witnessName);
-                const priorTrust = beliefs.get(target)?.trust ?? 0;
-                // For target deltas, surprise is computed against the witness's
-                // prior view of the *target*: e.g. if you trusted the target and
-                // they were just publicly humiliated, the lowering hits harder.
-                const surprise = surpriseScale(priorTrust, affect.valence);
-                // In-group bias toward the target: did one of our own get
-                // hurt? Did a rival just get justly punished?
-                const ingroup = ingroupBias(witnessName, target, baseDelta);
-                const habit = habitByWitness.get(witnessName) ?? 1.0;
-                const somatic = somaticByWitness.get(witnessName) ?? 1.0;
-                const scaledDelta = baseDelta * surprise * ingroup * habit * somatic;
+                // Surprise is computed against the witness's prior view of
+                // the *target*. In-group bias toward the target — did one
+                // of our own get hurt? Did a rival just get justly punished?
+                const { scaledDelta } = _scaleByWitness(
+                    witnessName, target, baseDelta, affect.valence,
+                    beliefs.get(target)?.trust ?? 0,
+                    habitByWitness.get(witnessName) ?? 1.0,
+                    somaticByWitness.get(witnessName) ?? 1.0
+                );
                 beliefs.update(target, scaledDelta, `witnessed as target of ${event.type}${actor ? ' by ' + actor : ''}`);
                 beliefUpdates++;
             } catch { /* nonfatal */ }
