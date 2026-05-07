@@ -31,6 +31,7 @@
  */
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync } from 'fs';
+import { atomicWriteFileSync } from '../runtime/atomic_io.js';
 import { join } from 'path';
 import { AffectLog } from '../affect/affect.js';
 import { BeliefTable } from '../beliefs/belief_table.js';
@@ -177,7 +178,7 @@ export function asPromptText(agentName) {
 export function _clearMusings(agentName) {
     const path = join(BOTS_DIR, agentName, MUSINGS_FILE);
     if (existsSync(path)) {
-        try { writeFileSync(path, ''); } catch { /* nonfatal */ }
+        try { atomicWriteFileSync(path, ''); } catch { /* nonfatal */ }
     }
 }
 
@@ -384,12 +385,14 @@ function _truncateMusings(path) {
         if (Buffer.byteLength(text, 'utf8') <= MAX_MUSINGS_BYTES) return;
         // Keep last MAX_MUSINGS_BYTES bytes, but cut at a header boundary
         // so we don't slice mid-monologue.
+        // v1.1.9: atomic write (was raw writeFileSync). musings.md is
+        // markdown read directly into prompts as $MUSINGS — corruption
+        // here puts garbage into the next LLM prompt, worse than the JSON
+        // state files (which silently reset to empty on parse failure).
         const tail = text.slice(-MAX_MUSINGS_BYTES);
         const cutAt = tail.indexOf('\n## ');
-        if (cutAt >= 0) {
-            writeFileSync(path, tail.slice(cutAt));
-        } else {
-            writeFileSync(path, tail);
-        }
-    } catch { /* nonfatal */ }
+        atomicWriteFileSync(path, cutAt >= 0 ? tail.slice(cutAt) : tail);
+    } catch (e) {
+        console.warn(`[DMN] Failed to truncate ${path}: ${e.message}`);
+    }
 }

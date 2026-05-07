@@ -99,12 +99,19 @@ export class Persona {
             const history = this._readHistory();
             history.push({ ...active, droppedAt: new Date().toISOString(), exposed: false });
             this._saveHistory(history);
-            unlinkSync(this.path);
-            return { ...active, dropped: true };
         } catch (e) {
             console.warn(`[PERSONA] Failed to drop for ${this.name}: ${e.message}`);
             return null;
         }
+        // v1.1.9: separate the unlink from the history-save catch so that a
+        // benign ENOENT (file already gone — race or double-drop) doesn't
+        // mislead by logging "failed to drop" when the drop did succeed.
+        try { unlinkSync(this.path); } catch (e) {
+            if (e && e.code !== 'ENOENT') {
+                console.warn(`[PERSONA] Drop succeeded but unlink failed for ${this.name}: ${e.message}`);
+            }
+        }
+        return { ...active, dropped: true };
     }
 
     /**
@@ -128,12 +135,18 @@ export class Persona {
                 context: context.slice(0, 300)
             });
             this._saveHistory(history);
-            unlinkSync(this.path);
-            return { ...active, exposed: true, exposedBy: byWhom };
         } catch (e) {
             console.warn(`[PERSONA] Failed to expose for ${this.name}: ${e.message}`);
             return null;
         }
+        // v1.1.9: same separation as drop() — benign ENOENT during unlink
+        // shouldn't masquerade as expose failure.
+        try { unlinkSync(this.path); } catch (e) {
+            if (e && e.code !== 'ENOENT') {
+                console.warn(`[PERSONA] Expose succeeded but unlink failed for ${this.name}: ${e.message}`);
+            }
+        }
+        return { ...active, exposed: true, exposedBy: byWhom };
     }
 
     /**
