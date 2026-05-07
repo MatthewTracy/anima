@@ -801,6 +801,17 @@ class GovernanceManager {
             return { success: false, message: `${payerName} is not a Constitutional faction member.` };
         }
 
+        // v1.1.57: defense in depth — validate amount > 0. The command
+        // parser already enforces domain [1, MAX_SAFE_INTEGER] at parse time,
+        // but the GovernanceManager is also called via the mindserver
+        // bridge, where a malformed payload could bypass parser validation
+        // and bring through a negative or zero amount. Negative would
+        // steal from the treasury (balance += -N) and inflate the
+        // owed-amount ledger (owed - (-N) = owed + N).
+        if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) {
+            return { success: false, message: `Tax amount must be a positive number (got ${amount}).` };
+        }
+
         if (!this.treasury.balance[itemName]) {
             this.treasury.balance[itemName] = 0;
         }
@@ -845,6 +856,14 @@ class GovernanceManager {
 
         if (!this.isConstitutionalMember(recipientName)) {
             return { success: false, message: `${recipientName} is not a Constitutional faction member.` };
+        }
+
+        // v1.1.57: defense in depth (see recordTaxPayment). Pre-fix a
+        // negative \`amount\` would pass \`available < amount\` (e.g.
+        // 10 < -5 is false) and then \`balance -= amount\` would credit
+        // the treasury — letting the president mint items from nothing.
+        if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) {
+            return { success: false, message: `Distribution amount must be a positive number (got ${amount}).` };
         }
 
         const available = this.treasury.balance[itemName] || 0;
