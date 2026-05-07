@@ -116,6 +116,7 @@ You may take ONE action. Reply with a single JSON object — no markdown, no com
 - vision — Bede only. Share a mystical experience. {"type":"vision","text":"..."}
 - lectio — sit in silent reading. {"type":"lectio"}
 - excommunicate — Abbot Gregory only. Expel a brother. {"type":"excommunicate","target":"<name>","reason":"..."}
+- confess_burden — If you carry a private burden (sin/secret/vision shown above as YOUR PRIVATE BURDEN), publicly reveal it before the chapter house. The burden becomes part of the chronicle. Stress drops sharply. {"type":"confess_burden","context":"<why now>"}
 
 Choose what your character would actually do — not what is safe, not what pleases the others. Speak in your own voice. JSON only:`;
 }

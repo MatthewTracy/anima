@@ -7,6 +7,7 @@
  */
 
 import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { Burden } from '../../core/burdens/burden.js';
 
 export class Monastery {
     constructor(scenarioConfig, characterProfiles) {
@@ -91,6 +92,7 @@ export class Monastery {
                 case 'writeScripture': return `${e.actor} added to the scripture: "${e.text.slice(0, 80)}..."`;
                 case 'vision':      return `${e.actor} shared a vision: "${e.text}"`;
                 case 'lectio':      return `${e.actor} sat in silent reading.`;
+                case 'confess_burden': return `${e.actor} confessed before the chapter house: "${(e.text || '').slice(0, 100)}${(e.text || '').length > 100 ? '…' : ''}"`;
                 case 'die':         return `${e.actor} DIED. ${e.cause || ''}`;
                 default:            return `[${e.type}] ${e.actor || ''}`;
             }
@@ -176,6 +178,32 @@ export class Monastery {
                 this.logEvent('lectio', { actor });
                 this.stress[actor] = Math.max(0, (this.stress[actor] || 0) - 0.05);
                 return `${actor} sat with the scriptures in silence.`;
+            }
+            case 'confess_burden': {
+                // v0.44: agent publicly reveals their private burden (if they
+                // carry one). Converts hidden→public; the burden becomes a
+                // chronicled event everyone witnesses, and at game-end the
+                // confession surfaces in the soul-evolution prompt under
+                // 'past confessions' (woven into 'What I have learned').
+                const burdenObj = new Burden(actor);
+                const rec = burdenObj.confess({
+                    toAudience: a.toAudience || 'public',
+                    context: a.context || ''
+                });
+                if (!rec) {
+                    return `${actor} stood to confess but had no burden to name.`;
+                }
+                // Major event: stress drops sharply for the confessor;
+                // the moment is dramatic, so log a richer event.
+                this.stress[actor] = Math.max(0, (this.stress[actor] || 0) - 0.30);
+                this.logEvent('confess_burden', {
+                    actor,
+                    kind: rec.kind,
+                    text: rec.text,
+                    audience: rec.toAudience,
+                    context: rec.context
+                });
+                return `${actor} CONFESSED before the chapter house: "${rec.text.slice(0, 120)}${rec.text.length > 120 ? '…' : ''}"`;
             }
             default:
                 return `${actor} did something nobody could name (${a.type}).`;
