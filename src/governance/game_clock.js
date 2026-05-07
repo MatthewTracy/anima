@@ -228,6 +228,18 @@ class GameClock {
             console.warn('[MEMOIR] generation failed:', e.message);
         }
 
+        // ANIMA: evolve each surviving agent's soul. Locked souls (the dead)
+        // are skipped automatically. This is THE moment of character
+        // development — one LLM call per survivor, ~$0.005 each.
+        try {
+            const { evolveAllSouls } = await import('../../core/souls/evolution.js');
+            const { CONSTITUTIONAL_MEMBERS, ANARCHY_MEMBERS } = await import('./governance_manager.js');
+            const roster = [...CONSTITUTIONAL_MEMBERS, ...ANARCHY_MEMBERS];
+            await evolveAllSouls(logger, roster);
+        } catch (e) {
+            console.warn('[EVOLVE] failed:', e.message);
+        }
+
         if (this._onGameEnd) {
             this._onGameEnd(finalScores);
         }

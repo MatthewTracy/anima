@@ -157,6 +157,31 @@ KEY COMMANDS: !collectBlocks, !craftRecipe, !goToCoordinates, !attack, !goToPlay
             prompt = prompt.replaceAll('$MINECRAFT_BASICS', basics);
         }
 
+        // ANIMA: $SOUL — the agent's persistent identity. Read at every prompt
+        // cycle. Locked souls are still readable (the dead remember who they
+        // were) but bear a [FROZEN] marker so the agent knows.
+        if (prompt.includes('$SOUL')) {
+            try {
+                const { Soul } = await import('../../core/souls/soul.js');
+                const soul = new Soul(this.agent.name);
+                prompt = prompt.replaceAll('$SOUL', soul.asPromptText());
+            } catch (e) {
+                prompt = prompt.replaceAll('$SOUL', '');
+            }
+        }
+
+        // ANIMA: $LEGENDS — one-line summaries of every other agent's soul,
+        // alive or locked. This is the cross-game mythology that lets new
+        // characters reference the dead and the living alike.
+        if (prompt.includes('$LEGENDS')) {
+            try {
+                const { rosterAsLegends } = await import('../../core/souls/soul.js');
+                prompt = prompt.replaceAll('$LEGENDS', rosterAsLegends(this.agent.name));
+            } catch (e) {
+                prompt = prompt.replaceAll('$LEGENDS', '');
+            }
+        }
+
         // V3: $GAME_DURATION placeholder — accurate per-run, not hardcoded text
         if (prompt.includes('$GAME_DURATION')) {
             try {

@@ -151,6 +151,41 @@ export class Agent {
                     installWitnessHandlers(this);
                 } catch (e) { console.warn('witness install error:', e.message); }
 
+                // ANIMA: seed the soul if this is the agent's first life.
+                // The personality_seed comes from the profile's system_prompt_prefix.
+                // The starting_motto is the first sentence of that prefix as a
+                // pithy default — agents will refine it across games.
+                try {
+                    const { Soul } = await import('../../core/souls/soul.js');
+                    const soul = new Soul(this.name);
+                    if (!soul.exists() && !soul.isLocked()) {
+                        const profile = this.prompter?.profile || {};
+                        const seed = profile.system_prompt_prefix || '';
+                        const firstSentence = seed.split(/[.!?](\s|$)/)[0]?.trim() || '';
+                        // Try to detect faction from profile path or name
+                        let faction = 'unknown';
+                        try {
+                            const settings = (await import('../../settings.js')).default;
+                            const constMembers = settings.governance?.constitutional_members || [];
+                            const anarchyMembers = settings.governance?.anarchy_members || [];
+                            if (constMembers.includes(this.name)) faction = 'settler';
+                            else if (anarchyMembers.includes(this.name)) faction = 'predator';
+                        } catch { /* default unknown */ }
+                        soul.seed({
+                            personality_seed: seed,
+                            starting_motto: firstSentence || `I am ${this.name}, newly born.`,
+                            faction
+                        });
+                        console.log(`${this.name} soul seeded.`);
+                    } else if (soul.isLocked()) {
+                        // This agent died in a prior game — they shouldn't be
+                        // playing again, but if they are (config error), warn.
+                        console.warn(`[ANIMA WARN] ${this.name} has a locked soul — they were supposed to be dead. Consider rotating to a new name.`);
+                    } else {
+                        console.log(`${this.name} soul loaded (continuing from prior life).`);
+                    }
+                } catch (e) { console.warn('soul seed/load error:', e.message); }
+
                 this._setupEventHandlers(save_data, init_message);
                 this.startEvents();
               
@@ -559,8 +594,8 @@ export class Agent {
             // deaths aren't falsely attributed to this agent.
             _recentAttackTargets = [];
             // G1 + v9: log death via mindserver, with the most recent damage source as cause
+            let cause = 'unknown';
             try {
-                let cause = 'unknown';
                 // Use the last attack target as a hint (could be mob the bot was fighting)
                 if (_recentAttackTargets && _recentAttackTargets.length > 0) {
                     const last = _recentAttackTargets[_recentAttackTargets.length - 1];
@@ -568,6 +603,20 @@ export class Agent {
                 }
                 logEventToMindserver('logCombatDeath', { args: [this.name, cause] });
             } catch (e) { /* optional */ }
+
+            // ANIMA: lock the soul forever. The dead never evolve again —
+            // their last words become canonical history. Future agents will
+            // read their frozen soul as legend.
+            try {
+                import('../../core/souls/soul.js').then(({ Soul }) => {
+                    new Soul(this.name).lock({
+                        cause,
+                        at: this.bot?.entity?.position
+                            ? { x: Math.round(this.bot.entity.position.x), y: Math.round(this.bot.entity.position.y), z: Math.round(this.bot.entity.position.z) }
+                            : null
+                    });
+                }).catch(() => { /* nonfatal */ });
+            } catch { /* nonfatal */ }
         });
 
         // #2 + B4: Detect when this agent kills another entity.
