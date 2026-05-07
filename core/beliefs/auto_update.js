@@ -23,6 +23,7 @@ import { RecursiveBeliefTable } from './recursive_belief.js';
 import { logEventAsFeud } from '../feuds/feud_tracker.js';
 import { tagEvent, AffectLog } from '../affect/affect.js';
 import { surpriseScale } from '../affect/predictive.js';
+import { ingroupBias } from '../identity/faction.js';
 
 /**
  * Default trust deltas for known event types.
@@ -137,9 +138,16 @@ export function applyEventToBeliefs(event, witnesses, overrides = {}) {
                 const beliefs = new BeliefTable(witnessName);
                 const priorTrust = beliefs.get(actor)?.trust ?? 0;
                 const surprise = surpriseScale(priorTrust, affect.valence);
-                const scaledDelta = baseDelta * surprise;
-                const why = surprise > 1.05
-                    ? `witnessed: ${event.type}${target ? ' against ' + target : ''} [surprise ×${surprise.toFixed(2)}]`
+                // v0.48: in-group bias modulates the surprise-scaled delta.
+                // Same-faction allies get the benefit of doubt; out-group
+                // actors are read with extra suspicion.
+                const ingroup = ingroupBias(witnessName, actor, baseDelta);
+                const scaledDelta = baseDelta * surprise * ingroup;
+                const tags = [];
+                if (surprise > 1.05) tags.push(`surprise ×${surprise.toFixed(2)}`);
+                if (ingroup !== 1.0)  tags.push(`ingroup ×${ingroup.toFixed(2)}`);
+                const why = tags.length
+                    ? `witnessed: ${event.type}${target ? ' against ' + target : ''} [${tags.join(', ')}]`
                     : `witnessed: ${event.type}${target ? ' against ' + target : ''}`;
                 beliefs.update(actor, scaledDelta, why);
                 beliefUpdates++;
@@ -164,7 +172,10 @@ export function applyEventToBeliefs(event, witnesses, overrides = {}) {
                 // prior view of the *target*: e.g. if you trusted the target and
                 // they were just publicly humiliated, the lowering hits harder.
                 const surprise = surpriseScale(priorTrust, affect.valence);
-                const scaledDelta = baseDelta * surprise;
+                // In-group bias toward the target: did one of our own get
+                // hurt? Did a rival just get justly punished?
+                const ingroup = ingroupBias(witnessName, target, baseDelta);
+                const scaledDelta = baseDelta * surprise * ingroup;
                 beliefs.update(target, scaledDelta, `witnessed as target of ${event.type}${actor ? ' by ' + actor : ''}`);
                 beliefUpdates++;
             } catch { /* nonfatal */ }

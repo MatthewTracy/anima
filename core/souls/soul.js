@@ -81,6 +81,14 @@ export class Soul {
                 .replaceAll('{{faction}}', faction)
                 .replaceAll('{{date}}', new Date().toISOString().slice(0, 10));
             writeFileSync(this.soulPath, filled);
+            // v0.48: also write a fast-readable faction.txt so the in-group
+            // bias layer can read it without re-parsing soul markdown each
+            // time. Best-effort — soul is the source of truth.
+            try {
+                if (faction && faction !== 'unknown') {
+                    writeFileSync(join(this.dir, 'faction.txt'), String(faction).trim().toLowerCase());
+                }
+            } catch { /* nonfatal */ }
             return filled;
         } catch (e) {
             console.warn(`[SOUL] Failed to seed ${this.name}: ${e.message}`);
