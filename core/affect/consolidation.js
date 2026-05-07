@@ -80,7 +80,7 @@ export function consolidate(agentName, { scenario = null, clearAffectLog = true 
         .filter(([_, n]) => n >= THEME_THRESHOLD)
         .map(([k, n]) => ({ agent: k, count: n }));
 
-    const narrative = _composeNarrative(top, mood, themes, recurring_others);
+    const narrative = _composeNarrative(top, mood, themes, recurring_others, agentName);
 
     const entry = {
         date: new Date().toISOString().slice(0, 10),
@@ -124,7 +124,7 @@ export function asPromptText(agentName, opts = {}) {
 
 // ── internals ────────────────────────────────────────────────────────
 
-function _composeNarrative(topMoments, mood, themes, recurringOthers) {
+function _composeNarrative(topMoments, mood, themes, recurringOthers, agentName = null) {
     if (topMoments.length === 0) {
         return 'Nothing of note. The day passed without weight.';
     }
@@ -132,13 +132,38 @@ function _composeNarrative(topMoments, mood, themes, recurringOthers) {
     // Final-mood framing
     parts.push(`Ended ${mood.label} (valence ${mood.valence > 0 ? '+' : ''}${mood.valence.toFixed(2)}, arousal ${mood.arousal.toFixed(2)}).`);
 
-    // Top moment, narrated
+    // Top moment, narrated.
+    //
+    // v1.1.37: render the agent's own perspective in first person. Pre-fix,
+    // the actor field always rendered as a name even when role='actor' meant
+    // the agent themselves did it — so an agent reading their own consolidated
+    // memory saw "Madison attack_player to Hamilton" instead of "I
+    // attack_player on Hamilton". The role tag is the reliable signal: it
+    // distinguishes "I did this" from "someone did this to me" from "I
+    // witnessed this". Use it.
     const t = topMoments[0];
     if (t) {
         const sign = t.valence > 0 ? 'positive' : 'negative';
-        const who = t.actor && t.actor !== '_self' ? `${t.actor}` : 'I';
-        const target = t.target ? ` to ${t.target}` : '';
-        parts.push(`Single most-charged moment: ${who} ${t.type}${target} (${sign}, |${Math.abs(t.valence).toFixed(2)}| × ${t.arousal.toFixed(2)} = ${t.magnitude.toFixed(2)}).`);
+        let who, prep, whom;
+        if (t.role === 'actor') {
+            who = 'I';
+            prep = 'on';
+            whom = t.target && t.target !== agentName ? t.target : null;
+        } else if (t.role === 'target') {
+            who = t.actor && t.actor !== agentName ? t.actor : 'someone';
+            prep = 'to';
+            whom = 'me';
+        } else if (t.role === 'vicarious') {
+            who = t.actor || 'someone';
+            prep = 'to';
+            whom = t.target && t.target !== agentName ? t.target : 'me';
+        } else {
+            who = t.actor || 'someone';
+            prep = t.target ? 'to' : '';
+            whom = t.target || null;
+        }
+        const tail = whom ? ` ${prep} ${whom}` : '';
+        parts.push(`Single most-charged moment: ${who} ${t.type}${tail} (${sign}, |${Math.abs(t.valence).toFixed(2)}| × ${t.arousal.toFixed(2)} = ${t.magnitude.toFixed(2)}).`);
     }
 
     // Themes

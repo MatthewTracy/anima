@@ -2,7 +2,12 @@
  * Tests for core/souls/ — Soul class lifecycle.
  *
  * Run: node --test tests/core_souls.test.js
+ *
+ * v1.1.37: pin ANIMA_NO_PANTHEON BEFORE importing Soul so direct
+ * test invocations don't leak _TestSoul epitaphs into pantheon.md.
  */
+
+process.env.ANIMA_NO_PANTHEON = '1';
 
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

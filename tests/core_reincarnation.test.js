@@ -1,6 +1,13 @@
 /**
  * Tests for core/reincarnation/reincarnation.js
+ *
+ * v1.1.37: pin ANIMA_NO_PANTHEON BEFORE importing Soul so direct
+ * \`node --test tests/core_reincarnation.test.js\` invocations don't
+ * leak _TestReinA epitaphs into pantheon.md the way \`npm test\`
+ * (via scripts/run_tests.js) already prevents.
  */
+
+process.env.ANIMA_NO_PANTHEON = '1';
 
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

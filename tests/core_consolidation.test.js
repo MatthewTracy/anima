@@ -92,6 +92,33 @@ test('multiple consolidations append (cortical accumulation)', () => {
     assert.match(memory, /g2/);
 });
 
+test('v1.1.37: own-actor moment renders in first person, not third', () => {
+    // Pre-fix: when the agent's top moment was role='actor' (something
+    // they did), the narrative rendered their own name in third person —
+    // "_TestConsolidate flog to _TestConsX" — which read like the agent
+    // was watching themselves on a security camera in their own
+    // consolidated memory. The role tag is the reliable signal; use it.
+    const log = new AffectLog(NAME);
+    log.record({ type: 'kill_player', actor: NAME, target: '_TestConsX' }, 'actor');
+
+    const entry = consolidate(NAME, { scenario: 'voice-test', clearAffectLog: false });
+    // First person: the actor sentence must say "I", not the agent's name.
+    assert.match(entry.narrative, /Single most-charged moment: I /,
+        `actor entries should render as "I"; got: ${entry.narrative}`);
+    // And it should NOT mention the agent's own name as the actor.
+    assert.doesNotMatch(entry.narrative, new RegExp(`Single most-charged moment: ${NAME} `),
+        `actor entries should not name the agent in third person`);
+});
+
+test('v1.1.37: target moment renders other-actor → "to me"', () => {
+    const log = new AffectLog(NAME);
+    log.record({ type: 'kill_player', actor: '_TestConsX', target: NAME }, 'target');
+
+    const entry = consolidate(NAME, { scenario: 'voice-test', clearAffectLog: false });
+    assert.match(entry.narrative, /_TestConsX kill_player to me/,
+        `target entries should render the other agent as actor + "to me"; got: ${entry.narrative}`);
+});
+
 test('v1.1.4: header is written exactly once across many consolidations', () => {
     // The TOCTOU fix should mean the "Consolidated Memory" header
     // appears exactly once in the file, regardless of how many times
