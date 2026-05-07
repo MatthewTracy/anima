@@ -28,6 +28,7 @@ import { dnaOf } from '../core/dna/soul_dna.js';
 import { getStress, stressLevel } from '../core/cognition/allostatic_load.js';
 import { readLatestMusings } from '../core/cognition/dmn.js';
 import { exposureFactor, explainExposure } from '../core/cognition/habituation.js';
+import { OPTIMISM_THRESHOLD } from '../core/cognition/timescales.js';
 
 const args = process.argv.slice(2);
 const agent = args[0];
@@ -72,7 +73,13 @@ if (dna) {
         const sign = weight > 0 ? '+' : '';
         const bar = '|'.repeat(Math.round(Math.abs(weight) * 10));
         const dir = weight > 0.3 ? `→ ${axis}` : weight < -0.3 ? `→ opposite` : 'balanced';
-        console.log(`    ${axis.padEnd(10)} ${sign}${weight.toFixed(2)}  ${bar.padEnd(10)} ${dir}`);
+        // v0.97: surface the v0.93 optimism interpretation on the trust axis.
+        let extra = '';
+        if (axis === 'trust') {
+            if (weight >= OPTIMISM_THRESHOLD) extra = '   [OPTIMIST: positive deltas amplified, negative dampened]';
+            else if (weight <= -OPTIMISM_THRESHOLD) extra = '   [PESSIMIST: negative deltas amplified, positive dampened]';
+        }
+        console.log(`    ${axis.padEnd(10)} ${sign}${weight.toFixed(2)}  ${bar.padEnd(10)} ${dir}${extra}`);
     }
 } else {
     console.log(`  Soul DNA:          (no soul.md found)`);
