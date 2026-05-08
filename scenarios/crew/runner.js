@@ -18,6 +18,7 @@ import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { loadOpenAI } from '../../core/runtime/load_openai.js';
 import { Ship } from './ship.js';
+import { seedBurdensFromBank } from '../../core/burdens/burden.js';
 import { Soul, rosterAsLegends } from '../../core/souls/soul.js';
 import { evolveAllSouls } from '../../core/souls/evolution.js';
 import { asPromptText as lineageAsPromptText } from '../../core/souls/lineage.js';
@@ -66,6 +67,13 @@ function seedSoulsIfNeeded(scenario, profiles) {
             console.log(`[CREW] Loaded existing soul for ${name}.`);
         }
     }
+    // v1.1.58: seed burdens from core/burdens/banks/crew.json. The bank
+    // shipped with the framework (debts, pact-secrets, betrayals from
+    // prior voyages) but no runner had been wired to load it.
+    const result = seedBurdensFromBank('crew', scenario.roster, {
+        bankPath: scenario.burden_bank_path
+    });
+    console.log(`[CREW] Burdens seeded: ${result.assigned} new / ${result.skipped} kept / ${result.total} total.`);
 }
 
 function buildPrompt(ship, profile, askingName) {

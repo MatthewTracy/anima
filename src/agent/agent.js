@@ -177,6 +177,14 @@ export class Agent {
                             faction
                         });
                         console.log(`${this.name} soul seeded.`);
+                        // v1.1.58: also seed a burden from core/burdens/banks/forum.json
+                        // for this newly-spawned agent. Each Forum agent runs in its own
+                        // process, so we seed per-agent (single-element roster) rather
+                        // than once for the whole roster like Cell/Cloister/Crew/Outpost.
+                        try {
+                            const { seedBurdensFromBank } = await import('../../core/burdens/burden.js');
+                            seedBurdensFromBank('forum', [this.name], { source: 'forum-spawn' });
+                        } catch (e) { console.warn('burden seed error:', e.message); }
                     } else if (soul.isLocked()) {
                         // This agent died in a prior game — they shouldn't be
                         // playing again, but if they are (config error), warn.

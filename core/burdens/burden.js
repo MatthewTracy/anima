@@ -208,3 +208,48 @@ export function clearBurdens(roster) {
         new Burden(name).clear();
     }
 }
+
+/**
+ * v1.1.58: Seed burdens for a roster from the canonical bank for a
+ * scenario. Each agent without an existing burden gets a random burden
+ * with probability \`rate\` (default 0.5). Already-burdened agents are
+ * skipped (idempotent across re-seeds).
+ *
+ * Pre-fix: data files for cloister/crew/outpost/forum shipped at
+ * \`core/burdens/banks/<name>.json\` but no runner loaded them. Only Cell
+ * had burden assignment wired up. The four bank files were dead data.
+ *
+ * @param {string} scenarioName     — used to locate the default bank path
+ * @param {string[]} roster
+ * @param {object} [opts]
+ * @param {string} [opts.bankPath]  — override default ./core/burdens/banks/<name>.json
+ * @param {number} [opts.rate=0.5]  — per-agent assignment probability
+ * @param {string} [opts.source]    — defaults to "<scenarioName>-seed"
+ * @returns {{ assigned: number, skipped: number, total: number }}
+ */
+export function seedBurdensFromBank(scenarioName, roster, opts = {}) {
+    const { rate = 0.5, source = `${scenarioName}-seed`, bankPath } = opts;
+    const path = bankPath || `./core/burdens/banks/${scenarioName}.json`;
+    let bank;
+    try {
+        const raw = JSON.parse(readFileSync(path, 'utf8'));
+        bank = raw.burdens;
+    } catch (e) {
+        console.warn(`[BURDEN] Failed to load bank ${path}: ${e.message}`);
+        return { assigned: 0, skipped: 0, total: 0 };
+    }
+    if (!Array.isArray(bank) || bank.length === 0) {
+        console.warn(`[BURDEN] Bank ${path} has no burdens.`);
+        return { assigned: 0, skipped: 0, total: 0 };
+    }
+    let assigned = 0, skipped = 0;
+    for (const name of roster || []) {
+        const b = new Burden(name);
+        if (b.exists()) { skipped++; continue; }
+        if (Math.random() < rate) {
+            assignRandomFromBank(name, bank, { source });
+            assigned++;
+        }
+    }
+    return { assigned, skipped, total: (roster || []).length };
+}

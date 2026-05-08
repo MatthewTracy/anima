@@ -23,7 +23,7 @@ import { asPromptText as lineageAsPromptText } from '../../core/souls/lineage.js
 import { asPromptText as pantheonAsPromptText } from '../../core/souls/pantheon.js';
 import { BeliefTable } from '../../core/beliefs/belief_table.js';
 import { RecursiveBeliefTable } from '../../core/beliefs/recursive_belief.js';
-import { Burden } from '../../core/burdens/burden.js';
+import { Burden, seedBurdensFromBank } from '../../core/burdens/burden.js';
 import { FeudTracker } from '../../core/feuds/feud_tracker.js';
 import { AffectLog } from '../../core/affect/affect.js';
 import { ruminate, asPromptText as musingsAsPromptText } from '../../core/cognition/dmn.js';
@@ -66,6 +66,13 @@ function seedSoulsIfNeeded(scenario, profiles) {
             console.log(`[OUTPOST] Loaded existing soul for ${name}.`);
         }
     }
+    // v1.1.58: seed burdens from core/burdens/banks/outpost.json. The bank
+    // shipped with the framework (deep-space classified files, prior-mission
+    // guilt, things crew know that Earth doesn't) but no runner loaded it.
+    const result = seedBurdensFromBank('outpost', scenario.roster, {
+        bankPath: scenario.burden_bank_path
+    });
+    console.log(`[OUTPOST] Burdens seeded: ${result.assigned} new / ${result.skipped} kept / ${result.total} total.`);
 }
 
 function buildPrompt(station, profile, askingCrewName) {

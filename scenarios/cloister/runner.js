@@ -24,7 +24,7 @@ import { asPromptText as lineageAsPromptText } from '../../core/souls/lineage.js
 import { asPromptText as pantheonAsPromptText } from '../../core/souls/pantheon.js';
 import { BeliefTable } from '../../core/beliefs/belief_table.js';
 import { RecursiveBeliefTable } from '../../core/beliefs/recursive_belief.js';
-import { Burden } from '../../core/burdens/burden.js';
+import { Burden, seedBurdensFromBank } from '../../core/burdens/burden.js';
 import { FeudTracker } from '../../core/feuds/feud_tracker.js';
 import { AffectLog } from '../../core/affect/affect.js';
 import { ruminate, asPromptText as musingsAsPromptText } from '../../core/cognition/dmn.js';
@@ -67,6 +67,15 @@ function seedSoulsIfNeeded(scenario, profiles) {
             console.log(`[CLOISTER] Loaded existing soul for ${name}.`);
         }
     }
+    // v1.1.58: seed burdens from the canonical bank. The data has shipped
+    // in core/burdens/banks/cloister.json since v0.x but no runner loaded
+    // it. Each monk without an existing burden gets a random sin / secret /
+    // vision / prophecy / debt with 50% probability — making confess_burden
+    // and the dissonance/pride detector meaningful in this scenario.
+    const result = seedBurdensFromBank('cloister', scenario.roster, {
+        bankPath: scenario.burden_bank_path
+    });
+    console.log(`[CLOISTER] Burdens seeded: ${result.assigned} new / ${result.skipped} kept / ${result.total} total.`);
 }
 
 function buildPrompt(monastery, profile, askingMonkName) {
