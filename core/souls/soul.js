@@ -256,6 +256,45 @@ export class Soul {
  */
 
 /**
+ * v1.1.60: Derive a starting motto from a profile's system_prompt_prefix.
+ *
+ * Pre-fix every scenario runner + agent.js used:
+ *
+ *     prefix.split(/[.!?](\s|$)/)[0]
+ *
+ * which always returned the literal first sentence — and the first
+ * sentence in every shipped profile is "You are <Name>[, <role>]." —
+ * a generic identification, not a motto. The pantheon then extracted
+ * "You are <Name>" as the motto for every locked soul, breaking the
+ * cross-game legacy mechanic (motto is the soul's distillation, not
+ * its self-introduction).
+ *
+ * Fix: skip the leading "You are ..." sentence if present and take
+ * the next non-empty sentence as the motto instead. The second
+ * sentence is conventionally the agent's character philosophy
+ * ("By temperament you're an institutionalist...", "You hold the
+ * orthodox line...", "You took command three years ago...").
+ *
+ * @param {string} prefix — the profile's system_prompt_prefix
+ * @param {string} name   — the agent name, used for fallback only
+ * @returns {string} a motto line
+ */
+export function deriveStartingMotto(prefix, name) {
+    if (!prefix || typeof prefix !== 'string') return `I am ${name}, newly born.`;
+    const sentences = prefix
+        .split(/[.!?]+\s+/)
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+    if (sentences.length === 0) return `I am ${name}, newly born.`;
+    // Skip a generic "You are X[, role]." opener and take the next
+    // sentence. The check is permissive — every shipped profile starts
+    // with "You are ..." so this rule is almost universal.
+    const isIntroOpener = /^You\s+are\b/i.test(sentences[0]);
+    const candidate = (isIntroOpener && sentences.length > 1) ? sentences[1] : sentences[0];
+    return candidate.trim() || `I am ${name}, newly born.`;
+}
+
+/**
  * List all agents who have ever had a soul (alive or locked) by scanning
  * the bots/ directory for soul.md files.
  */

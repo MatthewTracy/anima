@@ -11,7 +11,7 @@
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { Cell } from './cell.js';
-import { Soul, rosterAsLegends } from '../../core/souls/soul.js';
+import { Soul, rosterAsLegends, deriveStartingMotto } from '../../core/souls/soul.js';
 // evolveAllSouls is imported LAZILY inside main() — it pulls in openai
 // transitively, which we want to avoid in stub mode.
 import { asPromptText as lineageAsPromptText } from '../../core/souls/lineage.js';
@@ -51,7 +51,7 @@ function seedSoulsAndBurdens(scenario, profiles) {
         const soul = new Soul(name);
         if (!soul.exists() && !soul.isLocked()) {
             const p = profiles[name];
-            const motto = (p.system_prompt_prefix.split(/[.!?](\s|$)/)[0] || `I am ${name}.`).trim();
+            const motto = deriveStartingMotto(p.system_prompt_prefix, name);
             soul.seed({
                 personality_seed: p.system_prompt_prefix,
                 starting_motto: motto,

@@ -19,7 +19,7 @@ import { join } from 'path';
 import { loadOpenAI } from '../../core/runtime/load_openai.js';
 import { Ship } from './ship.js';
 import { seedBurdensFromBank } from '../../core/burdens/burden.js';
-import { Soul, rosterAsLegends } from '../../core/souls/soul.js';
+import { Soul, rosterAsLegends, deriveStartingMotto } from '../../core/souls/soul.js';
 import { evolveAllSouls } from '../../core/souls/evolution.js';
 import { asPromptText as lineageAsPromptText } from '../../core/souls/lineage.js';
 import { asPromptText as pantheonAsPromptText } from '../../core/souls/pantheon.js';
@@ -54,7 +54,7 @@ function seedSoulsIfNeeded(scenario, profiles) {
         const soul = new Soul(name);
         if (!soul.exists() && !soul.isLocked()) {
             const p = profiles[name];
-            const motto = (p.system_prompt_prefix.split(/[.!?](\s|$)/)[0] || `I am ${name}.`).trim();
+            const motto = deriveStartingMotto(p.system_prompt_prefix, name);
             soul.seed({
                 personality_seed: p.system_prompt_prefix,
                 starting_motto: motto,

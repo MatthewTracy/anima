@@ -156,12 +156,18 @@ export class Agent {
                 // The starting_motto is the first sentence of that prefix as a
                 // pithy default — agents will refine it across games.
                 try {
-                    const { Soul } = await import('../../core/souls/soul.js');
+                    const { Soul, deriveStartingMotto } = await import('../../core/souls/soul.js');
                     const soul = new Soul(this.name);
                     if (!soul.exists() && !soul.isLocked()) {
                         const profile = this.prompter?.profile || {};
                         const seed = profile.system_prompt_prefix || '';
-                        const firstSentence = seed.split(/[.!?](\s|$)/)[0]?.trim() || '';
+                        // v1.1.60: was \`seed.split(/[.!?](\\s|$)/)[0]\` which
+                        // always grabbed "You are <Name>" as the motto, so
+                        // every Forum-locked soul's pantheon entry read
+                        // \"Their motto: 'You are Madison'\" instead of the
+                        // agent's actual character philosophy. The shared
+                        // helper skips the leading \"You are X\" opener.
+                        const motto = deriveStartingMotto(seed, this.name);
                         // Try to detect faction from profile path or name
                         let faction = 'unknown';
                         try {
@@ -173,7 +179,7 @@ export class Agent {
                         } catch { /* default unknown */ }
                         soul.seed({
                             personality_seed: seed,
-                            starting_motto: firstSentence || `I am ${this.name}, newly born.`,
+                            starting_motto: motto,
                             faction
                         });
                         console.log(`${this.name} soul seeded.`);
@@ -594,17 +600,21 @@ export class Agent {
         // F5: declared BEFORE the death handler so we can clear it on respawn,
         // preventing stale targets from causing false kill attributions after death.
         let _recentAttackTargets = []; // [{ entity, time }]
+        // v1.1.59: pending death state, set in 'death' and updated in
+        // 'messagestr' before the actual soul-lock fires after a brief delay.
+        // This lets us capture Minecraft's death message ("X was slain by Y")
+        // which arrives moments AFTER the death event — pre-fix every passive
+        // death (where the dying agent wasn't already attacking) had its soul
+        // locked with cause='unknown' because _recentAttackTargets was empty.
+        let _pendingDeath = null;
 
         this.bot.on('death', () => {
             this.actions.cancelResume();
             this.actions.stop();
             // v1.1.49: read the last attack target BEFORE clearing.
-            // Pre-fix, _recentAttackTargets was cleared on line 595 and
-            // then read on line 600 for cause attribution — but the read
-            // saw the empty array and `cause` stayed 'unknown' for every
-            // death log. Both purposes of the clear (post-respawn safety)
-            // and the read (death-cause inference) are valid; they just
-            // need to run in the right order.
+            // _recentAttackTargets only captures retaliation cases (where
+            // this agent was already swinging). v1.1.59 adds the messagestr
+            // path for passive deaths.
             let cause = 'unknown';
             try {
                 if (_recentAttackTargets.length > 0) {
@@ -615,24 +625,36 @@ export class Agent {
             // F5: clear stale combat targets on death so post-respawn
             // entity deaths aren't falsely attributed to this agent.
             _recentAttackTargets = [];
-            // G1 + v9: log death via mindserver
-            try {
-                logEventToMindserver('logCombatDeath', { args: [this.name, cause] });
-            } catch (e) { /* optional */ }
 
-            // ANIMA: lock the soul forever. The dead never evolve again —
-            // their last words become canonical history. Future agents will
-            // read their frozen soul as legend.
-            try {
-                import('../../core/souls/soul.js').then(({ Soul }) => {
-                    new Soul(this.name).lock({
-                        cause,
-                        at: this.bot?.entity?.position
-                            ? { x: Math.round(this.bot.entity.position.x), y: Math.round(this.bot.entity.position.y), z: Math.round(this.bot.entity.position.z) }
-                            : null
-                    });
-                }).catch(() => { /* nonfatal */ });
-            } catch { /* nonfatal */ }
+            const at = this.bot?.entity?.position
+                ? { x: Math.round(this.bot.entity.position.x), y: Math.round(this.bot.entity.position.y), z: Math.round(this.bot.entity.position.z) }
+                : null;
+
+            // v1.1.59: defer the soul-lock + combat-death log by ~600ms so
+            // the messagestr handler can upgrade _pendingDeath.cause with
+            // the actual killer-attribution from Minecraft's death message
+            // ("Madison was slain by Chaos"), which arrives on a slightly
+            // later tick. After the delay, fire whichever cause we have.
+            _pendingDeath = { cause, at };
+            setTimeout(() => {
+                const final = _pendingDeath;
+                _pendingDeath = null;
+                if (!final) return;
+
+                // G1 + v9: log death via mindserver
+                try {
+                    logEventToMindserver('logCombatDeath', { args: [this.name, final.cause] });
+                } catch (e) { /* optional */ }
+
+                // ANIMA: lock the soul forever. The dead never evolve again —
+                // their last words become canonical history. Future agents will
+                // read their frozen soul as legend.
+                try {
+                    import('../../core/souls/soul.js').then(({ Soul }) => {
+                        new Soul(this.name).lock({ cause: final.cause, at: final.at });
+                    }).catch(() => { /* nonfatal */ });
+                } catch { /* nonfatal */ }
+            }, 600);
         });
 
         // #2 + B4: Detect when this agent kills another entity.
@@ -680,6 +702,17 @@ export class Agent {
         this.bot.on('messagestr', async (message, _, jsonMsg) => {
             if (jsonMsg.translate && jsonMsg.translate.startsWith('death') && message.startsWith(this.name)) {
                 console.log('Agent died: ', message);
+                // v1.1.59: upgrade the pending death lock with Minecraft's
+                // killer-attribution. Forms we see in practice:
+                //   "Madison was slain by Chaos"        → "slain by Chaos"
+                //   "Fox was shot by Skeleton"           → "shot by Skeleton"
+                //   "Paine fell from a high place"       → "fell from a high place"
+                //   "Reyes drowned"                      → "drowned"
+                if (_pendingDeath) {
+                    const after = message.slice(this.name.length).trim();
+                    const cleaned = after.replace(/^was\s+/i, '').replace(/[.!?]+$/, '').trim();
+                    if (cleaned) _pendingDeath.cause = cleaned;
+                }
                 let death_pos = this.bot.entity.position;
                 this.memory_bank.rememberPlace('last_death_position', death_pos.x, death_pos.y, death_pos.z);
                 let death_pos_text = null;
