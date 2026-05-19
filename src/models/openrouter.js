@@ -52,6 +52,9 @@ export class OpenRouter {
                 console.log('Received.');
                 res = completion.choices[0].message.content;
 
+                // Budget is recorded BEFORE the empty-content check below:
+                // OpenRouter still bills for the prompt tokens even when the
+                // model returns empty/null content, so the spend must count.
                 if (completion.usage) {
                     // G3: record against mindserver's canonical budget so the
                     // session cap is shared across all child processes.
@@ -66,6 +69,27 @@ export class OpenRouter {
                         console.error(`[BUDGET GUARD] ${check.message}`);
                         process.exit(1);
                     }
+                }
+
+                // v1.1.60: handle null/empty content. OpenRouter (esp. via
+                // DeepSeek) intermittently returns choices[0] present but
+                // message.content === null — the model emitted only
+                // reasoning tokens, hit a soft content filter, or a
+                // transient upstream hiccup. Pre-fix this returned null,
+                // which prompter.js then threw on ("Generated response is
+                // not a string null"), burning the agent's whole turn. It
+                // fired repeatedly in the live Forum playthrough. Treat
+                // empty content as retryable, like a transient error.
+                if (res === null || res === undefined || (typeof res === 'string' && res.trim() === '')) {
+                    const finish = completion.choices[0].finish_reason;
+                    console.warn(`[OpenRouter] empty/null content (finish_reason=${finish}) attempt ${attempt}/${MAX_ATTEMPTS}`);
+                    if (attempt < MAX_ATTEMPTS) {
+                        const backoff = 1000 * Math.pow(2, attempt - 1);
+                        await new Promise(r => setTimeout(r, backoff));
+                        continue;
+                    }
+                    res = 'My mind went blank, try again.';
+                    break;
                 }
                 break; // success
             } catch (err) {

@@ -35,7 +35,20 @@ function restore() {
     savedPantheon = null;
 }
 
-beforeEach(backup);
+// v1.1.60: clear pantheon.md to a known-empty state for each test AFTER
+// backing up the user's real content. pantheon.md is gitignored and
+// accumulates real epitaphs from every locked soul across all games
+// (a live Forum run leaves Madison/Paine/Chaos/Fox in it). The
+// "asPromptText returns 3 random epitaphs" test appended TestA/TestB
+// then sampled 2 at random — with N pre-existing real entries the
+// sample missed both test entries P=(N/(N+2))·((N-1)/(N+1)) of the
+// time (40% with N=4). Starting every test from empty makes the
+// suite deterministic; restore() afterEach puts the real data back.
+function backupAndClear() {
+    backup();
+    if (existsSync(PANTHEON_PATH)) unlinkSync(PANTHEON_PATH);
+}
+beforeEach(backupAndClear);
 afterEach(restore);
 
 const SAMPLE_SOUL = `# TestPersona

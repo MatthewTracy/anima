@@ -37,6 +37,16 @@ export class DeepSeek {
                 throw new Error('Context length exceeded'); 
             console.log('Received.')
             res = completion.choices[0].message.content;
+            // v1.1.60: guard null/empty content (same bug fixed in
+            // openrouter.js — DeepSeek intermittently returns choices[0]
+            // with message.content === null). Pre-fix this passed null
+            // straight through and prompter.js threw on it, burning the
+            // agent's turn. Return the soft-fail string so the caller's
+            // retry loop can try again with a fresh prompt.
+            if (res === null || res === undefined || (typeof res === 'string' && res.trim() === '')) {
+                console.warn(`[DeepSeek] empty/null content (finish_reason=${completion.choices?.[0]?.finish_reason})`);
+                res = 'My mind went blank, try again.';
+            }
         }
         catch (err) {
             if ((err.message == 'Context length exceeded' || err.code == 'context_length_exceeded') && turns.length > 1) {

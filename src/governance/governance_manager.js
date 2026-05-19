@@ -131,6 +131,17 @@ class GovernanceManager {
     startTick() {
         if (this._tickInterval) return;
         this._tickInterval = setInterval(() => this.tick(), GOV_PARAMS.tick_interval_ms);
+        // v1.1.60: unref the tick so it alone never keeps the Node event
+        // loop alive. In production main.js holds the loop open via the
+        // game clock + sockets, so the tick still fires normally. But any
+        // consumer that only touches the governance singleton (tests,
+        // inspectors, one-off scripts) was previously unable to exit —
+        // node --test hung for the full timeout because this interval
+        // never let the process drain. `.unref()` is the standard fix
+        // for "background timer shouldn't block shutdown".
+        if (typeof this._tickInterval?.unref === 'function') {
+            this._tickInterval.unref();
+        }
         console.log(`[GOV] Governance tick started (every ${GOV_PARAMS.tick_interval_ms / 1000}s)`);
     }
 
