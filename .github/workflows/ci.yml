@@ -10,6 +10,9 @@ jobs:
   syntax-check:
     name: Syntax check core + scenarios + scripts
     runs-on: ubuntu-latest
+    # v1.1.61: hard cap. Syntax-check runs in ~10s; 5 min is generous.
+    # Without an explicit cap a hung step runs to GitHub's 6h ceiling.
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -48,6 +51,13 @@ jobs:
   test:
     name: Unit tests for core/ (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    # v1.1.61: hard cap. The full suite runs in ~3s (Linux) / under a
+    # minute (Windows). 10 min absorbs npm-install variance while making
+    # a hung test fail in minutes instead of burning GitHub's 6h ceiling
+    # — which is what v1.1.56–v1.1.59 did (the un-unref'd governance tick
+    # interval; fixed in v1.1.60) at ~48 runner-hours total. That spend
+    # is the likely trigger for the Actions billing block.
+    timeout-minutes: 10
     strategy:
       # Both OSes to catch Windows-specific regressions (e.g. v1.1.22's
       # atomicWriteFileSync rename retry on EPERM/EACCES, which only
