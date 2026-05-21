@@ -4,6 +4,85 @@
 
 ---
 
+## v1.1.4 – v1.1.66 — Audit hardening, live-game validation, public launch
+
+A sustained audit pass over the whole framework: completing the atomic-write
+migration so a crash can't corrupt shared state, closing TOCTOU races, fixing
+latent crashes and silent-no-op bugs, and tightening contracts between what code
+claims and what it does. Midway through, a live 10-minute Minecraft Forum game
+was played end-to-end — it surfaced real bugs (death-cause attribution, motto
+seeding, null LLM responses, a CI-hanging test) that pure code review had
+missed. The run closes with the public OSS launch (MIT) and the repo-hygiene
+that goes with it.
+
+| Version | What shipped |
+|---|---|
+| v1.1.66 | Purge stale closed-source text from README License section, .gitignore, docker-compose comment |
+| v1.1.65 | CI: bump actions v4→v5, Node 20→22 |
+| v1.1.64 | analyze_runs.js behavioral metrics read event faction fields — roster-agnostic |
+| v1.1.63 | Null-content guard across the 9 remaining model wrappers (shared `normalizeContent` helper) |
+| v1.1.62 | Public-repo accuracy: README status line + package.json license/repository/author |
+| v1.1.61 | Cap CI job runtime (`timeout-minutes`) so a hung test can't burn 6h of Actions minutes |
+| v1.1.60 | Live-run fixes: null-content guard (openrouter/deepseek), `.unref()` governance tick, deterministic pantheon test |
+| v1.1.59 | Live Forum playthrough fixes: passive-death cause attribution + first-meaningful-sentence motto seeding |
+| v1.1.58 | Wire up the four unused burden banks (cloister / crew / outpost / forum) |
+| v1.1.57 | Depth-of-defense: validate `amount > 0` in tax payment + treasury distribution |
+| v1.1.56 | Enforce Anarchy-only on `!claimBounty` (the description claimed it; no check existed) |
+| v1.1.55 | Align `!searchForBlock` range domain with its description + companion command |
+| v1.1.54 | Fix two bugs in skill_library's no-embedding fallback (vector passed as string; empty iteration) |
+| v1.1.53 | Fix `\-` typo in `!stats` output that collapsed two lines into one |
+| v1.1.52 | Fix `blacklistCommands` no-op — `delete` on a `find()` result does nothing |
+| v1.1.51 | Fix tax-rate parser boundary (`1%` parsed as 100%) + a scenarios/forum link |
+| v1.1.50 | Attach `behavioralMetrics` in `calculateScores` so sweep CSVs aren't empty |
+| v1.1.49 | Fix order-of-ops: death cause read after the clear, so it was always 'unknown' |
+| v1.1.48 | Fix `territory_hold` win condition when the leading faction changes directly |
+| v1.1.47 | Gate scenario runners on `isMainModule` so importing them has no side effects |
+| v1.1.46 | Defer the remaining six eager `openai` imports behind a shared lazy loader |
+| v1.1.45 | Defer `openai` import in autobiographies.js (mirror of v1.1.35) |
+| v1.1.44 | Guard `endConversation` against a null `activeConversation` |
+| v1.1.43 | Fix two latent bugs in action_manager (undefined `assert` ref; stack-read after toString) |
+| v1.1.42 | Apply self-prompter cooldown to the failure path, not just the success path |
+| v1.1.41 | Fix `writeFileSync` misuse in prompter.js (sync API given an async callback) |
+| v1.1.40 | Atomic writes for agent history + cooperative-task progress files |
+| v1.1.39 | Atomic writes for the four cross-game scenario canon files |
+| v1.1.38 | Atomic writes for shared governance state (mirror of the v1.1.5–v1.1.13 sweep) |
+| v1.1.37 | First-person consolidation narrative + pantheon test-leak hardening |
+| v1.1.36 | Make `pastLives()` cycle-safe — a cyclic reincarnation chain looped forever |
+| v1.1.35 | Drop dead fs/path imports + defer the `openai` import in director.js |
+| v1.1.34 | Backfill the central timescales index with pride / somatic / surprise constants |
+| v1.1.33 | Fix library_search CLI silently dropping single-word queries |
+| v1.1.32 | Surface Festinger dissonance + symmetric pride in the substrate inspector |
+| v1.1.31 | Sweep remaining `X`/`Y`/`Z` test fixtures to `_Test*`-prefixed names |
+| v1.1.30 | Rename test-fixture `X` / `irrelevant` bot dirs to underscore-prefixed names |
+| v1.1.29 | CI: include the Cell scenario in syntax check + add a Windows test matrix |
+| v1.1.28 | Fix a `.gitignore` inconsistency for PRIVATE_NOTES.md |
+| v1.1.27 | Untrack pantheon.md (gitignored but still committed) |
+| v1.1.26 | Extend the run_tests sweep to logs/ and pantheon.md |
+| v1.1.25 | substrate-stats: faction distribution block |
+| v1.1.24 | README for the (then-unused) core/burdens/banks/ directory |
+| v1.1.23 | Restore 5 missing Outpost character profiles + a roster/profile regression test |
+| v1.1.22 | atomicWriteFileSync: unique tmp names + Windows-transient rename retry |
+| v1.1.21 | Surface spawn-level subprocess failures in the substrate inspector tools |
+| v1.1.20 | Use `process.execPath` instead of bare `'node'` for `spawnSync` (nvm-safe) |
+| v1.1.19 | Pantheon test cleanup: `restore()` deletes test-created files |
+| v1.1.18 | Pantheon header-write TOCTOU fix (mirror of the v1.1.4 consolidation fix) |
+| v1.1.17 | README placeholders for the empty core/witness/ and core/memoirs/ dirs |
+| v1.1.16 | byTarget belief evidence emits factor tags symmetric to byActor |
+| v1.1.15 | minecollab.md: banner flagging it as upstream Forum-only material |
+| v1.1.14 | Rewrite FAQ.md to be Anima-first rather than inherited Mindcraft FAQ |
+| v1.1.13 | Atomic writes for soul files (lineage / reincarnation / soul.js / faction) |
+| v1.1.12 | README.md for the empty scenarios/forum/ directory |
+| v1.1.11 | Gate top-level execution in replay.js + record.js on `isMainModule` |
+| v1.1.10 | Fix the dead `npm run forum` script + add an npm-script hygiene test |
+| v1.1.9 | DMN truncation made atomic + Persona drop/expose error-mode disambiguation |
+| v1.1.8 | Fix `kept_rate` false-zero in the commitment ledger + drop unused imports |
+| v1.1.7 | Sweep `atomicWriteFileSync` across the remaining per-agent state files |
+| v1.1.6 | Extract the `atomicWriteFileSync` helper; apply it to BeliefTable |
+| v1.1.5 | Atomic write for AffectLog — fixes corruption on a crash mid-write |
+| v1.1.4 | Fix a TOCTOU race in consolidation's append-to-cortex header write |
+
+---
+
 ## v0.45 – v1.0 — The cognitive substrate (thirteen layers + tooling)
 
 A dense run of neuroscience-grounded primitives that turn a uniform belief table into a textured set of minds, plus the inspector / demo / diff tooling that makes the substrate legible. Every layer is documented with citations in [`docs/COGNITIVE_SUBSTRATE.md`](docs/COGNITIVE_SUBSTRATE.md).
