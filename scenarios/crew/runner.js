@@ -32,6 +32,7 @@ import { RecursiveBeliefTable } from '../../core/beliefs/recursive_belief.js';
 import { applyEventsToBeliefs } from '../../core/beliefs/auto_update.js';
 import { getKey, hasKey } from '../../src/utils/keys.js';
 import { getBudgetGuard } from '../../src/governance/budget_guard.js';
+import { StubLLM } from '../../core/stub/stub_llm.js';
 
 const SCENARIO_PATH = './scenarios/crew/scenario.json';
 const CHARACTERS_DIR = './scenarios/crew/characters';
@@ -272,8 +273,9 @@ function asGameLoggerShim(ship) {
 }
 
 async function main() {
-    if (!hasKey('OPENROUTER_API_KEY')) {
-        console.error('[CREW] OPENROUTER_API_KEY not set. Cannot run.');
+    const useStub = process.env.ANIMA_STUB === '1';
+    if (!useStub && !hasKey('OPENROUTER_API_KEY')) {
+        console.error('[CREW] OPENROUTER_API_KEY not set and ANIMA_STUB not enabled. Cannot run.');
         process.exit(1);
     }
     const scenario = loadScenario();
@@ -281,31 +283,38 @@ async function main() {
     seedSoulsIfNeeded(scenario, profiles);
     const ship = new Ship(scenario, profiles);
 
-    const OpenAIApi = await loadOpenAI();
-    if (!OpenAIApi) {
-        console.error('[CREW] openai package not installed. Run `npm install` first.');
-        process.exit(1);
+    let openai;
+    if (useStub) {
+        openai = new StubLLM('crew', scenario.roster);
+    } else {
+        const OpenAIApi = await loadOpenAI();
+        if (!OpenAIApi) {
+            console.error('[CREW] openai package not installed. Run `npm install` first.');
+            process.exit(1);
+        }
+        openai = new OpenAIApi({
+            baseURL: 'https://openrouter.ai/api/v1',
+            apiKey: getKey('OPENROUTER_API_KEY')
+        });
     }
-    const openai = new OpenAIApi({
-        baseURL: 'https://openrouter.ai/api/v1',
-        apiKey: getKey('OPENROUTER_API_KEY')
-    });
 
-    console.log(`\n[CREW] The voyage begins. ${scenario.roster.length} pirates, ${scenario.duration_turns} turns.\n`);
+    console.log(`\n[CREW] The voyage begins. ${scenario.roster.length} pirates, ${scenario.duration_turns} turns. ${useStub ? '(STUB MODE — no LLM cost)' : ''}\n`);
 
     let endReason = 'unknown';
     while (true) {
         const end = ship.checkEndConditions();
         if (end.ended) { endReason = end.reason; break; }
 
-        try {
-            const status = getBudgetGuard().getStatus();
-            if (parseFloat(status.percentUsed) > 95) {
-                console.log('[CREW] Budget exhausted — ending early.');
-                endReason = 'budget';
-                break;
-            }
-        } catch { /* proceed */ }
+        if (!useStub) {
+            try {
+                const status = getBudgetGuard().getStatus();
+                if (parseFloat(status.percentUsed) > 95) {
+                    console.log('[CREW] Budget exhausted — ending early.');
+                    endReason = 'budget';
+                    break;
+                }
+            } catch { /* proceed */ }
+        }
 
         ship.tickWorld();
         await runOneTurn(openai, ship, profiles, scenario.model);
@@ -331,8 +340,10 @@ async function main() {
     const summary = `Captain at end: ${ship.captain}. Final plunder: ${ship.plunder}. Living: ${ship.livingRoster().join(', ') || '(none)'}. Lost: ${[...ship.dead].join(', ') || '(none)'}.`;
     ship.finalizeCaptainsLog(endReason, summary);
     writeManuscript(ship, scenario, endReason);
-    await generateMemoirs(ship, scenario);
-    await evolveAllSouls(asGameLoggerShim(ship), scenario.roster);
+    if (!useStub) {
+        await generateMemoirs(ship, scenario);
+        await evolveAllSouls(asGameLoggerShim(ship), scenario.roster);
+    }
 
     console.log('\n[CREW] Voyage complete. Inspect with: npm run souls\n');
 }

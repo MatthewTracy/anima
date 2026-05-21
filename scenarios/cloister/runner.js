@@ -32,6 +32,7 @@ import { tickRecovery, asPromptText as stressAsPromptText } from '../../core/cog
 import { applyEventsToBeliefs } from '../../core/beliefs/auto_update.js';
 import { getKey, hasKey } from '../../src/utils/keys.js';
 import { getBudgetGuard } from '../../src/governance/budget_guard.js';
+import { StubLLM } from '../../core/stub/stub_llm.js';
 
 const SCENARIO_PATH = './scenarios/cloister/scenario.json';
 const CHARACTERS_DIR = './scenarios/cloister/characters';
@@ -307,8 +308,9 @@ function asGameLoggerShim(monastery) {
 }
 
 async function main() {
-    if (!hasKey('OPENROUTER_API_KEY')) {
-        console.error('[CLOISTER] OPENROUTER_API_KEY not set. Cannot run.');
+    const useStub = process.env.ANIMA_STUB === '1';
+    if (!useStub && !hasKey('OPENROUTER_API_KEY')) {
+        console.error('[CLOISTER] OPENROUTER_API_KEY not set and ANIMA_STUB not enabled. Cannot run.');
         process.exit(1);
     }
     const scenario = loadScenario();
@@ -316,17 +318,22 @@ async function main() {
     seedSoulsIfNeeded(scenario, profiles);
     const monastery = new Monastery(scenario, profiles);
 
-    const OpenAIApi = await loadOpenAI();
-    if (!OpenAIApi) {
-        console.error('[CLOISTER] openai package not installed. Run `npm install` first.');
-        process.exit(1);
+    let openai;
+    if (useStub) {
+        openai = new StubLLM('cloister', scenario.roster);
+    } else {
+        const OpenAIApi = await loadOpenAI();
+        if (!OpenAIApi) {
+            console.error('[CLOISTER] openai package not installed. Run `npm install` first.');
+            process.exit(1);
+        }
+        openai = new OpenAIApi({
+            baseURL: 'https://openrouter.ai/api/v1',
+            apiKey: getKey('OPENROUTER_API_KEY')
+        });
     }
-    const openai = new OpenAIApi({
-        baseURL: 'https://openrouter.ai/api/v1',
-        apiKey: getKey('OPENROUTER_API_KEY')
-    });
 
-    console.log(`\n[CLOISTER] Beginning. ${scenario.roster.length} brothers, ${scenario.duration_turns} turns.\n`);
+    console.log(`\n[CLOISTER] Beginning. ${scenario.roster.length} brothers, ${scenario.duration_turns} turns. ${useStub ? '(STUB MODE — no LLM cost)' : ''}\n`);
 
     // v0.40: opt-in Director. Set scenario.director: { enabled: true, every_n_turns: 6 }
     // in scenario.json to enable. Defaults off — adoption is per-scenario.
@@ -346,14 +353,16 @@ async function main() {
         if (end.ended) { endReason = end.reason; break; }
 
         // Budget check
-        try {
-            const status = getBudgetGuard().getStatus();
-            if (parseFloat(status.percentUsed) > 95) {
-                console.log('[CLOISTER] Budget exhausted — ending early.');
-                endReason = 'budget';
-                break;
-            }
-        } catch { /* proceed */ }
+        if (!useStub) {
+            try {
+                const status = getBudgetGuard().getStatus();
+                if (parseFloat(status.percentUsed) > 95) {
+                    console.log('[CLOISTER] Budget exhausted — ending early.');
+                    endReason = 'budget';
+                    break;
+                }
+            } catch { /* proceed */ }
+        }
 
         // v0.40: consult Director periodically
         if (consultDirector && monastery.turn > 0 && monastery.turn % (directorCfg.every_n_turns || 6) === 0) {
@@ -389,10 +398,11 @@ async function main() {
 
     // Write outputs
     writeManuscript(monastery, scenario, endReason);
-    await generateMemoirs(monastery, scenario);
-
-    // Evolve souls (skips locked ones automatically)
-    await evolveAllSouls(asGameLoggerShim(monastery), scenario.roster);
+    if (!useStub) {
+        await generateMemoirs(monastery, scenario);
+        // Evolve souls (skips locked ones automatically)
+        await evolveAllSouls(asGameLoggerShim(monastery), scenario.roster);
+    }
 
     console.log('\n[CLOISTER] Run complete. Inspect with: npm run souls\n');
 }

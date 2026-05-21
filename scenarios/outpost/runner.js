@@ -31,6 +31,7 @@ import { tickRecovery, asPromptText as stressAsPromptText } from '../../core/cog
 import { applyEventsToBeliefs } from '../../core/beliefs/auto_update.js';
 import { getKey, hasKey } from '../../src/utils/keys.js';
 import { getBudgetGuard } from '../../src/governance/budget_guard.js';
+import { StubLLM } from '../../core/stub/stub_llm.js';
 
 const SCENARIO_PATH = './scenarios/outpost/scenario.json';
 const CHARACTERS_DIR = './scenarios/outpost/characters';
@@ -278,8 +279,9 @@ function asGameLoggerShim(station) {
 }
 
 async function main() {
-    if (!hasKey('OPENROUTER_API_KEY')) {
-        console.error('[OUTPOST] OPENROUTER_API_KEY not set. Cannot run.');
+    const useStub = process.env.ANIMA_STUB === '1';
+    if (!useStub && !hasKey('OPENROUTER_API_KEY')) {
+        console.error('[OUTPOST] OPENROUTER_API_KEY not set and ANIMA_STUB not enabled. Cannot run.');
         process.exit(1);
     }
     const scenario = loadScenario();
@@ -287,17 +289,22 @@ async function main() {
     seedSoulsIfNeeded(scenario, profiles);
     const station = new Station(scenario, profiles);
 
-    const OpenAIApi = await loadOpenAI();
-    if (!OpenAIApi) {
-        console.error('[OUTPOST] openai package not installed. Run `npm install` first.');
-        process.exit(1);
+    let openai;
+    if (useStub) {
+        openai = new StubLLM('outpost', scenario.roster);
+    } else {
+        const OpenAIApi = await loadOpenAI();
+        if (!OpenAIApi) {
+            console.error('[OUTPOST] openai package not installed. Run `npm install` first.');
+            process.exit(1);
+        }
+        openai = new OpenAIApi({
+            baseURL: 'https://openrouter.ai/api/v1',
+            apiKey: getKey('OPENROUTER_API_KEY')
+        });
     }
-    const openai = new OpenAIApi({
-        baseURL: 'https://openrouter.ai/api/v1',
-        apiKey: getKey('OPENROUTER_API_KEY')
-    });
 
-    console.log(`\n[OUTPOST] Rotation begins. ${scenario.roster.length} crew, ${scenario.duration_turns} turns.`);
+    console.log(`\n[OUTPOST] Rotation begins. ${scenario.roster.length} crew, ${scenario.duration_turns} turns. ${useStub ? '(STUB MODE — no LLM cost)' : ''}`);
     console.log(`[OUTPOST] The anomaly: "${station.anomaly}"\n`);
 
     // v0.40: opt-in Director (set scenario.director.enabled in scenario.json)
@@ -316,14 +323,16 @@ async function main() {
         const end = station.checkEndConditions();
         if (end.ended) { endReason = end.reason; break; }
 
-        try {
-            const status = getBudgetGuard().getStatus();
-            if (parseFloat(status.percentUsed) > 95) {
-                console.log('[OUTPOST] Budget exhausted — ending early.');
-                endReason = 'budget';
-                break;
-            }
-        } catch { /* proceed */ }
+        if (!useStub) {
+            try {
+                const status = getBudgetGuard().getStatus();
+                if (parseFloat(status.percentUsed) > 95) {
+                    console.log('[OUTPOST] Budget exhausted — ending early.');
+                    endReason = 'budget';
+                    break;
+                }
+            } catch { /* proceed */ }
+        }
 
         // v0.40: Director consultation
         if (consultDirector && station.turn > 0 && station.turn % (directorCfg.every_n_turns || 7) === 0) {
@@ -382,8 +391,10 @@ async function main() {
 
     // Manuscript + memoirs + soul evolution
     writeManuscript(station, scenario, endReason);
-    await generateMemoirs(station, scenario);
-    await evolveAllSouls(asGameLoggerShim(station), scenario.roster);
+    if (!useStub) {
+        await generateMemoirs(station, scenario);
+        await evolveAllSouls(asGameLoggerShim(station), scenario.roster);
+    }
 
     console.log('\n[OUTPOST] Run complete. Inspect with: npm run souls\n');
 }

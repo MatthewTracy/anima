@@ -4,7 +4,7 @@
 
 ---
 
-## v1.1.4 – v1.1.66 — Audit hardening, live-game validation, public launch
+## v1.1.4 – v1.1.70 — Audit hardening, live-game validation, public launch
 
 A sustained audit pass over the whole framework: completing the atomic-write
 migration so a crash can't corrupt shared state, closing TOCTOU races, fixing
@@ -17,6 +17,10 @@ that goes with it.
 
 | Version | What shipped |
 |---|---|
+| v1.1.70 | Wire `ANIMA_STUB` through the cloister / crew / outpost runners so all four text scenarios verify end-to-end at zero LLM cost |
+| v1.1.69 | Agent-layer unit tests — close the `src/agent/` coverage gap (mock-agent harness, +41 tests) |
+| v1.1.68 | Add GitHub issue + PR templates |
+| v1.1.67 | Backfill CHANGELOG: v1.1.4 through v1.1.66 (63 versions) |
 | v1.1.66 | Purge stale closed-source text from README License section, .gitignore, docker-compose comment |
 | v1.1.65 | CI: bump actions v4→v5, Node 20→22 |
 | v1.1.64 | analyze_runs.js behavioral metrics read event faction fields — roster-agnostic |
