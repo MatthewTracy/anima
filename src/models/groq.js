@@ -1,5 +1,6 @@
 import Groq from 'groq-sdk'
 import { getKey } from '../utils/keys.js';
+import { normalizeContent } from '../utils/text.js';
 
 // THIS API IS NOT TO BE CONFUSED WITH GROK!
 // Go to grok.js for that. :)
@@ -56,7 +57,7 @@ export class GroqCloudAPI {
                 ...(this.params || {})
             });
 
-            res = completion.choices[0].message.content;
+            res = normalizeContent(completion.choices[0]?.message?.content, 'Groq');
 
             res = res.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
         }

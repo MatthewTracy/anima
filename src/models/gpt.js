@@ -1,6 +1,6 @@
 import OpenAIApi from 'openai';
 import { getKey, hasKey } from '../utils/keys.js';
-import { strictFormat } from '../utils/text.js';
+import { strictFormat, normalizeContent } from '../utils/text.js';
 
 export class GPT {
     static prefix = 'openai';
@@ -51,8 +51,8 @@ export class GPT {
                 if (completion.choices[0].finish_reason == 'length')
                     throw new Error('Context length exceeded'); 
                 console.log('Received.');
-                res = completion.choices[0].message.content;
-            } 
+                res = normalizeContent(completion.choices[0]?.message?.content, 'GPT');
+            }
             // otherwise, use responses
             else {
                 let messages = strictFormat(turns);

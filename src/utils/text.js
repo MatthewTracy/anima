@@ -37,6 +37,30 @@ export function wordOverlapScore(text1, text2) {
     return intersection.length / (words1.length + words2.length - intersection.length);
 }
 
+/**
+ * v1.1.63: Normalize an LLM completion's content. Providers intermittently
+ * return null/empty content (model emitted only reasoning tokens, hit a soft
+ * content filter, or a transient upstream hiccup). Returning that raw null
+ * downstream makes prompter.js throw "Generated response is not a string",
+ * burning the agent's whole turn — observed repeatedly in a live Forum run.
+ *
+ * v1.1.60 inline-guarded openrouter.js + deepseek.js; v1.1.63 routes the
+ * other nine wrappers through this shared helper. Returns a soft-fail string
+ * the caller's retry loop can recover from instead of crashing on null.
+ *
+ * @param {*} content - completion.choices[0].message.content (may be null)
+ * @param {string} [modelLabel] - provider label for the warning log
+ * @returns {string} the content, or a soft-fail string if it was empty/null
+ */
+export function normalizeContent(content, modelLabel = 'model') {
+    if (content === null || content === undefined ||
+        (typeof content === 'string' && content.trim() === '')) {
+        console.warn(`[${modelLabel}] empty/null content — returning soft-fail`);
+        return 'My mind went blank, try again.';
+    }
+    return content;
+}
+
 // ensures stricter turn order and roles:
 // - system messages are treated as user messages and prefixed with SYSTEM:
 // - combines repeated messages from users

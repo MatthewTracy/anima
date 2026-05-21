@@ -1,6 +1,6 @@
 import OpenAIApi from 'openai';
 import { getKey, hasKey } from '../utils/keys.js';
-import { strictFormat } from '../utils/text.js';
+import { strictFormat, normalizeContent } from '../utils/text.js';
 
 export class Mercury {
     static prefix = 'mercury';
@@ -43,7 +43,7 @@ export class Mercury {
             if (completion.choices[0].finish_reason == 'length')
                 throw new Error('Context length exceeded'); 
             console.log('Received.')
-            res = completion.choices[0].message.content;
+            res = normalizeContent(completion.choices[0]?.message?.content, 'Mercury');
         }
         catch (err) {
             if ((err.message == 'Context length exceeded' || err.code == 'context_length_exceeded') && turns.length > 1) {

@@ -1,5 +1,6 @@
 import OpenAIApi from 'openai';
 import { getKey } from '../utils/keys.js';
+import { normalizeContent } from '../utils/text.js';
 
 export class GLHF {
     static prefix = 'glhf';
@@ -36,7 +37,7 @@ export class GLHF {
                 if (completion.choices[0].finish_reason === 'length') {
                     throw new Error('Context length exceeded');
                 }
-                let res = completion.choices[0].message.content;
+                let res = normalizeContent(completion.choices[0]?.message?.content, 'GLHF');
                 // If there's an open <think> tag without a corresponding </think>, retry.
                 if (res.includes("<think>") && !res.includes("</think>")) {
                     console.warn("Partial <think> block detected. Re-generating...");

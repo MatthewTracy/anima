@@ -1,6 +1,6 @@
 import { Mistral as MistralClient } from '@mistralai/mistralai';
 import { getKey } from '../utils/keys.js';
-import { strictFormat } from '../utils/text.js';
+import { strictFormat, normalizeContent } from '../utils/text.js';
 
 export class Mistral {
     static prefix = 'mistral';
@@ -55,7 +55,7 @@ export class Mistral {
                 ...(this.params || {})
             });
 
-            result = response.choices[0].message.content;
+            result = normalizeContent(response.choices[0]?.message?.content, 'Mistral');
         } catch (err) {
             if (err.message.includes("A request containing images has been given to a model which does not have the 'vision' capability.")) {
                 result = "Vision is only supported by certain models.";
