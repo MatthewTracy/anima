@@ -14,10 +14,10 @@ jobs:
     # Without an explicit cap a hung step runs to GitHub's 6h ceiling.
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '22'
       # No npm install — syntax-check doesn't need dependencies. The
       # full Forum scenario depends on mineflayer + canvas, which require
       # native build tools. Core / Cloister / Outpost / Crew are
@@ -66,9 +66,9 @@ jobs:
         os: [ubuntu-latest, windows-latest]
       fail-fast: false
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '22'
       - name: Run core tests
         run: npm test
