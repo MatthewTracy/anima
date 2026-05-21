@@ -46,12 +46,28 @@ function computeBehavioralMetrics(log) {
     const minutes = Math.max(0.1, parseFloat(log.elapsedMinutes || 1));
     const result = { constitutional: {}, anarchy: {} };
 
+    // v1.1.64: prefer the faction fields game_logger.js already writes onto
+    // events (faction / killer_faction / victim_faction). Pre-fix this
+    // re-inferred faction by matching participant names against a HARDCODED
+    // roster ['Madison','Hamilton',...] — so any game played with a custom
+    // roster in settings.js silently miscounted every behavioral metric.
+    // The hardcoded-name path is kept ONLY as a fallback for legacy game
+    // logs written before the faction fields existed (an event carrying no
+    // faction field of any kind).
+    const _LEGACY_CONST = ['Madison', 'Hamilton', 'Paine', 'Marshall', 'Franklin'];
+    const _LEGACY_ANARCHY = ['Chaos', 'Wolf', 'Fox', 'Bear', 'Raven'];
     const involves = (e, faction) => {
+        // Primary: the event's own faction tags (current logs).
+        if (e.faction !== undefined || e.killer_faction !== undefined || e.victim_faction !== undefined) {
+            return e.faction === faction
+                || e.killer_faction === faction
+                || e.victim_faction === faction;
+        }
+        // Fallback: legacy logs with no faction field — infer from names.
         const fname = (n) => {
-            // Reasonable inference from event field names — matches game_logger
             if (!n) return null;
-            if (['Madison','Hamilton','Paine','Marshall','Franklin'].includes(n)) return 'constitutional';
-            if (['Chaos','Wolf','Fox','Bear','Raven'].includes(n)) return 'anarchy';
+            if (_LEGACY_CONST.includes(n)) return 'constitutional';
+            if (_LEGACY_ANARCHY.includes(n)) return 'anarchy';
             return null;
         };
         return [e.agent, e.payer, e.proposedBy, e.offerer, e.target, e.killer, e.victim, e.declarer, e.accepter, e.proposer]
