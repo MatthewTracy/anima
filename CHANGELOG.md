@@ -17,6 +17,7 @@ that goes with it.
 
 | Version | What shipped |
 |---|---|
+| v1.1.71 | Scoring fixes from a live Forum game: count `deaths` from `combat_death` (not `combat_kill.victim_faction`, which missed all environmental deaths); attribute election events via `calledBy` / `candidate` so `governanceDensity` isn't always 0 |
 | v1.1.70 | Wire `ANIMA_STUB` through the cloister / crew / outpost runners so all four text scenarios verify end-to-end at zero LLM cost |
 | v1.1.69 | Agent-layer unit tests — close the `src/agent/` coverage gap (mock-agent harness, +41 tests) |
 | v1.1.68 | Add GitHub issue + PR templates |

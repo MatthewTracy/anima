@@ -31,7 +31,7 @@ const SCORING_WEIGHTS = { ...DEFAULT_SCORING_WEIGHTS, ...(settings.scoring?.weig
 
 const spawnConfig = settings.spawn || {};
 
-class GameLogger {
+export class GameLogger {
     constructor() {
         this.sessionId = new Date().toISOString().replace(/[:.]/g, '-');
         this.logDir = './logs/games';
@@ -205,11 +205,19 @@ class GameLogger {
             scores[faction].totalResources += agentTotal;
         }
 
-        // Count combat events
+        // Count combat events. v1.1.71: kills come from combat_kill (a
+        // killer was attributed); deaths come from combat_death, which
+        // fires on EVERY death — drowning, mobs, fall, PvP. Pre-fix,
+        // deaths were read off combat_kill.victim_faction, so any death
+        // without an attributed killer (the common case — environmental
+        // and mob deaths) was never counted. A live Forum game logged
+        // 10 combat_death events and scored deaths: 0.
         for (const event of this.events) {
             if (event.type === 'combat_kill') {
                 if (scores[event.killer_faction]) scores[event.killer_faction].kills++;
-                if (scores[event.victim_faction]) scores[event.victim_faction].deaths++;
+            }
+            if (event.type === 'combat_death') {
+                if (scores[event.faction]) scores[event.faction].deaths++;
             }
             if (event.type === 'block_placed') {
                 if (scores[event.faction]) scores[event.faction].blocksPlaced++;
@@ -246,11 +254,17 @@ class GameLogger {
 
         for (const faction of ['constitutional', 'anarchy']) {
             const factionEvents = this.events.filter(e => e.faction === faction);
+            // v1.1.71: include calledBy / candidate. Election events name
+            // their actor in `calledBy` (election_called) and `candidate`
+            // (nomination) — without these the attribution check missed
+            // every election, so governanceDensity read 0.00 even when a
+            // live game had called one.
             const involvingFactionMembers = (e) => {
                 const fname = (n) => this._getFaction(n);
                 return fname(e.agent) === faction || fname(e.payer) === faction ||
                        fname(e.proposedBy) === faction || fname(e.offerer) === faction ||
-                       fname(e.target) === faction;
+                       fname(e.target) === faction || fname(e.calledBy) === faction ||
+                       fname(e.candidate) === faction;
             };
             const m = result[faction];
 
@@ -288,9 +302,9 @@ class GameLogger {
 
             // Governance density: governance events per minute
             const govEvents = this.events.filter(e =>
-                ['election_called', 'election_result', 'law_proposed', 'law_enacted',
-                 'lawsuit_filed', 'verdict_rendered', 'amendment_ratified', 'tax_paid',
-                 'impeachment_initiated', 'treaty_proposed', 'treaty_accepted'].includes(e.type) &&
+                ['election_called', 'nomination', 'election_result', 'law_proposed',
+                 'law_enacted', 'lawsuit_filed', 'verdict_rendered', 'amendment_ratified',
+                 'tax_paid', 'impeachment_initiated', 'treaty_proposed', 'treaty_accepted'].includes(e.type) &&
                 involvingFactionMembers(e)
             ).length;
             m.governanceDensity = (govEvents / minutes).toFixed(2);
