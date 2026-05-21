@@ -159,4 +159,4 @@ That's the artifact this framework exists to produce.
 
 ## License
 
-Private / All rights reserved during the closed-source phase. Will become MIT when we go public.
+MIT — see [LICENSE](LICENSE). Anima inherits code from [mindcraft](https://github.com/kolbytn/mindcraft) (Kolby Nottingham, also MIT); both copyright lines are recorded in the LICENSE file.

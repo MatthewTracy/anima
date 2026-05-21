@@ -24,9 +24,9 @@ services:
       SPAWN_PROTECTION: "0"
       # Note: Paper's "moved too quickly" anti-cheat must be loosened in
       # spigot.yml AFTER the world generates. Run this once per world:
-      #   docker exec governance-game-minecraft-1 sh -c \
+      #   docker exec anima-minecraft-1 sh -c \
       #     "sed -i 's/moved-too-quickly-multiplier:.*/moved-too-quickly-multiplier: 10000.0/' /data/spigot.yml"
-      #   docker restart governance-game-minecraft-1
+      #   docker restart anima-minecraft-1
       VIEW_DISTANCE: "10"    # bumped from 8 for better camera footage
       SIMULATION_DISTANCE: "8"
       SERVER_PORT: "25565"
