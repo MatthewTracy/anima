@@ -2,7 +2,7 @@
 
 > Multi-agent LLM simulation where agents have **souls that persist across runs and lock at death**.
 
-**Status: Closed source, active development.** Designed from day one for clean OSS launch under MIT when the substrate proves itself across enough live games. *v1.0 reached on 2026-05-07 — all between-turn cognition loops (DMN rumination, allostatic recovery, affect decay) now wired across the four text scenarios.*
+**Status: open source (MIT), active development.** *v1.0 reached on 2026-05-07 — all between-turn cognition loops (DMN rumination, allostatic recovery, affect decay) now wired across the four text scenarios.*
 
 ---
 

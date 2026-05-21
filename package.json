@@ -3,7 +3,12 @@
     "version": "0.1.0",
     "description": "Multi-agent LLM simulation framework with persistent souls. Forum + Cloister reference scenarios.",
     "type": "module",
-    "private": true,
+    "license": "MIT",
+    "author": "Matthew Tracy <MatthewTracy@users.noreply.github.com>",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/MatthewTracy/anima.git"
+    },
     "dependencies": {
         "@anthropic-ai/sdk": "^0.17.1",
         "@cerebras/cerebras_cloud_sdk": "^1.46.0",
