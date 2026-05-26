@@ -17,6 +17,7 @@ that goes with it.
 
 | Version | What shipped |
 |---|---|
+| v1.1.72 | Rename `LEVEL_SEED` → `SEED` in docker-compose: itzg/minecraft-server reads `SEED`. Pre-fix the env var was silently ignored, `server.properties` had `level-seed=` empty, and every regenerated world was random — the "fixed seed = same map every game" claim was a lie. Verified seed 12345 now produces a verifiably good world (solid land across x=-120…+120 at z=0, all three meeting grounds dry, no frozen-ocean drowning corridor) |
 | v1.1.71 | Scoring fixes from a live Forum game: count `deaths` from `combat_death` (not `combat_kill.victim_faction`, which missed all environmental deaths); attribute election events via `calledBy` / `candidate` so `governanceDensity` isn't always 0 |
 | v1.1.70 | Wire `ANIMA_STUB` through the cloister / crew / outpost runners so all four text scenarios verify end-to-end at zero LLM cost |
 | v1.1.69 | Agent-layer unit tests — close the `src/agent/` coverage gap (mock-agent harness, +41 tests) |

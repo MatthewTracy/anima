@@ -14,7 +14,11 @@ services:
       DIFFICULTY: "hard"     # #4: hard difficulty stress-tests combat fixes
       # N3: Fixed world seed for reproducibility. Same seed = same map every game.
       # Set to empty string for randomized worlds.
-      LEVEL_SEED: "12345"
+      # v1.1.72: was LEVEL_SEED — itzg/minecraft-server reads `SEED`, not
+      # `LEVEL_SEED`. Pre-fix, the env var was silently ignored: every
+      # regenerated world was random and the "fixed seed" claim was a lie.
+      # Verified by checking /data/server.properties — `level-seed=` was empty.
+      SEED: "12345"
       # B1 (CRITICAL): without op, /setblock /effect /say /tp all silently fail.
       # Territory markers, spawn protection, governance nudges, faction spawn TPs
       # all needed this. Op all faction members + observer + manual operator slot.
