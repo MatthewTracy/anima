@@ -16,7 +16,11 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { _formatWitnessMessage, ANNOUNCEMENT_TYPES } from '../src/agent/witness.js';
+// Import from witness_messages.js (the pure-logic split) so this test is
+// CI-safe — witness.js's mindserver_proxy → socket.io-client chain fails
+// to import without node_modules.
+import { formatWitnessMessage, ANNOUNCEMENT_TYPES } from '../src/agent/witness_messages.js';
+const _formatWitnessMessage = formatWitnessMessage;
 
 test('ANNOUNCEMENT_TYPES contains the three governance events', () => {
     assert.ok(ANNOUNCEMENT_TYPES.has('election_called'));
