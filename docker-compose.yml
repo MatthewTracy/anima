@@ -18,7 +18,10 @@ services:
       # `LEVEL_SEED`. Pre-fix, the env var was silently ignored: every
       # regenerated world was random and the "fixed seed" claim was a lie.
       # Verified by checking /data/server.properties — `level-seed=` was empty.
-      SEED: "12345"
+      # v1.1.73: was "12345", which puts origin in ocean (nearest plains 543
+      # blocks away) — agents spawned in water and drowned. Seed 0 puts origin
+      # in forest with solid land across the full faction corridor.
+      SEED: "0"
       # B1 (CRITICAL): without op, /setblock /effect /say /tp all silently fail.
       # Territory markers, spawn protection, governance nudges, faction spawn TPs
       # all needed this. Op all faction members + observer + manual operator slot.

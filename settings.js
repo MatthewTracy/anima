@@ -35,8 +35,13 @@ const settings = {
     "load_memory": false, // load memory from previous session (also loads governance state)
 
     // N3: world seed (for reproducibility). Captured in saved game logs.
-    // The Minecraft server uses LEVEL_SEED env var; this just records what was used.
-    "world_seed": "12345",
+    // v1.1.72: the Minecraft server reads `SEED` (was wrongly named LEVEL_SEED).
+    // v1.1.73: seed `0` verified to put origin in forest biome with solid land
+    // across the full Constitutional↔Anarchy corridor (probed via rcon: surface
+    // y=62-66 at -100,0 / 0,0 / +100,0, no water in the 240-block z=0 strip nor
+    // in the perpendicular ±40 around any meeting ground). Seed 12345 put
+    // origin in ocean (nearest plains was 543 blocks away) — agents drowned.
+    "world_seed": "0",
 
     // === EMERGENT MODE (v8.1 — now default) ===
     // The line: KNOWLEDGE is given (commands, faction structure, Minecraft basics,
