@@ -52,11 +52,18 @@ export function wordOverlapScore(text1, text2) {
  * @param {string} [modelLabel] - provider label for the warning log
  * @returns {string} the content, or a soft-fail string if it was empty/null
  */
+// v1.1.74: exported so callers (promptConvo, tests) can detect a soft-fail
+// without string-matching. Pre-fix, the prompter retry loop accepted the
+// soft-fail as a valid generation, so 3 consecutive null LLM responses
+// resulted in 3 valid-looking SOFT_FAIL replies and the agent went idle
+// for the rest of the game. promptConvo now `continue`s on this sentinel.
+export const SOFT_FAIL_RESPONSE = 'My mind went blank, try again.';
+
 export function normalizeContent(content, modelLabel = 'model') {
     if (content === null || content === undefined ||
         (typeof content === 'string' && content.trim() === '')) {
         console.warn(`[${modelLabel}] empty/null content — returning soft-fail`);
-        return 'My mind went blank, try again.';
+        return SOFT_FAIL_RESPONSE;
     }
     return content;
 }

@@ -26,13 +26,23 @@ const WITNESS_TYPES = new Set([
     'raid', 'sabotage'
 ]);
 
+// v1.1.74: governance events that should reach EVERY agent regardless of
+// physical distance. Pre-fix, !callElection only echoed to the caller's
+// own faction-chat — in a live game Madison called a presidential election,
+// no agent (including her own faction-mates) responded, and the election
+// timed out with "no votes cast". Treating these as global system messages
+// gives every agent the chance to participate.
+export const ANNOUNCEMENT_TYPES = new Set([
+    'election_called', 'nomination', 'law_proposed'
+]);
+
 /**
  * Emits an action from the actor agent's process to the mindserver. The
  * mindserver fans it out to other agents, who decide whether they witnessed
  * it. Drops silently if the type isn't whitelisted.
  */
 export function broadcastAction(agent, type, details = {}) {
-    if (!WITNESS_TYPES.has(type)) return;
+    if (!WITNESS_TYPES.has(type) && !ANNOUNCEMENT_TYPES.has(type)) return;
     try {
         const pos = agent?.bot?.entity?.position;
         const payload = {
@@ -47,9 +57,25 @@ export function broadcastAction(agent, type, details = {}) {
     } catch { /* nonfatal — witness pipeline never blocks gameplay */ }
 }
 
-function _formatWitnessMessage(payload, distance) {
+// v1.1.74: exported for testing. The announcement and witness branches are
+// the agent-facing surface of this module; rendering them right matters.
+export function _formatWitnessMessage(payload, distance) {
     const { actor, type, details, location } = payload;
     const loc = location ? ` at ${location.x},${location.y},${location.z}` : '';
+    // v1.1.74: governance announcements bypass distance and use a distinct
+    // marker so the LLM doesn't confuse them with physical sightings.
+    if (ANNOUNCEMENT_TYPES.has(type)) {
+        switch (type) {
+            case 'election_called':
+                return `[ELECTION] ${actor} called an election for ${details.office || 'an office'} (#${details.election_id ?? '?'}). You can !nominateSelf("${details.office || ''}") to run or, once candidates are nominated, !castVote(${details.election_id ?? '?'}, "<name>") to vote.`;
+            case 'nomination':
+                return `[ELECTION] ${actor} nominated themselves for ${details.office || 'an office'} (election #${details.election_id ?? '?'}). Cast your vote with !castVote(${details.election_id ?? '?'}, "${actor}") or !nominateSelf to run against them.`;
+            case 'law_proposed':
+                return `[LAW] ${actor} proposed: "${details.law_text || '(text missing)'}". Vote with !castLawVote(${details.law_id ?? '?'}, yes|no).`;
+            default:
+                return `[GOV] ${actor} did ${type}.`;
+        }
+    }
     const proximity = distance < NEAR_DISTANCE ? '[SAW UP CLOSE]' : '[SAW]';
     switch (type) {
         case 'place_block':
@@ -91,6 +117,15 @@ export function installWitnessHandlers(agent) {
         try {
             // Don't witness your own actions — you already know.
             if (!payload || payload.actor === agent.name) return;
+
+            // v1.1.74: governance announcements skip the distance gate —
+            // an election call needs to reach every agent regardless of
+            // where they happen to be standing.
+            if (ANNOUNCEMENT_TYPES.has(payload.type)) {
+                const msg = _formatWitnessMessage(payload, 0);
+                agent.history.add('system', msg).catch(() => {});
+                return;
+            }
 
             const myPos = agent?.bot?.entity?.position;
             if (!myPos || !payload.location) return;

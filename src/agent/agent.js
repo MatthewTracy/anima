@@ -447,8 +447,18 @@ export class Agent {
 
                 if (execute_res)
                     this.history.add('system', execute_res);
-                else
+                else {
+                    // v1.1.74: surface a falsy execute_res to the agent's next
+                    // prompt. Pre-fix, a null/empty result silently broke out
+                    // of the action loop and the agent's history never recorded
+                    // the failure — so in a live Forum game an agent retried
+                    // identical !goToCoordinates 16+ times across the run,
+                    // never learning the command was dead. A short system note
+                    // is enough for the LLM to break the loop on its own.
+                    this.history.add('system',
+                        `Command ${command_name} returned no result. Try a different approach — different coordinates, a different command, or wait and observe before acting.`);
                     break;
+                }
             }
             else { // conversation response
                 this.history.add(this.name, res);

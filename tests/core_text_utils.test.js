@@ -17,7 +17,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
     normalizeContent, strictFormat, wordOverlapScore,
-    toSinglePrompt, stringifyTurns,
+    toSinglePrompt, stringifyTurns, SOFT_FAIL_RESPONSE,
 } from '../src/utils/text.js';
 
 const SOFT_FAIL = 'My mind went blank, try again.';
@@ -58,6 +58,16 @@ test('normalizeContent: the soft-fail return is always a string', () => {
     for (const input of [null, undefined, '', '   ']) {
         assert.equal(typeof normalizeContent(input, 'X'), 'string');
     }
+});
+
+test('v1.1.74: SOFT_FAIL_RESPONSE is exported and equals what normalizeContent returns', () => {
+    // The prompter retry loop matches on this exact constant, so a future
+    // refactor that changes the soft-fail string MUST update both sites at
+    // once. This test wires them together.
+    assert.equal(typeof SOFT_FAIL_RESPONSE, 'string');
+    assert.equal(SOFT_FAIL_RESPONSE, SOFT_FAIL);
+    assert.equal(normalizeContent(null, 'X'), SOFT_FAIL_RESPONSE);
+    assert.equal(normalizeContent('', 'X'), SOFT_FAIL_RESPONSE);
 });
 
 // ── strictFormat (v1.1.69) ───────────────────────────────────────────

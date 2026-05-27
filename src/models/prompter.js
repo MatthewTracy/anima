@@ -2,7 +2,7 @@ import { readFileSync, mkdirSync } from 'fs';
 import { Examples } from '../utils/examples.js';
 import { getCommandDocs } from '../agent/commands/index.js';
 import { SkillLibrary } from "../agent/library/skill_library.js";
-import { stringifyTurns } from '../utils/text.js';
+import { stringifyTurns, SOFT_FAIL_RESPONSE } from '../utils/text.js';
 import { getCommand } from '../agent/commands/index.js';
 import settings from '../agent/settings.js';
 import { promises as fs } from 'fs';
@@ -506,6 +506,21 @@ KEY COMMANDS: !collectBlocks, !craftRecipe, !goToCoordinates, !attack, !goToPlay
 
             } catch (error) {
                 console.error('Error during message generation or file writing:', error);
+                continue;
+            }
+
+            // v1.1.74: treat the normalizeContent soft-fail sentinel as a
+            // retry signal, not a valid generation. Pre-fix, when the LLM
+            // returned null content (transient upstream hiccup, soft content
+            // filter), the model wrapper substituted SOFT_FAIL_RESPONSE as a
+            // valid string, this loop accepted it, and the agent's response
+            // became the literal "My mind went blank, try again." string —
+            // observed for three Anarchy agents simultaneously in a live
+            // game, all idle for the rest of the run. Now we retry; if all
+            // three attempts return the soft-fail, fall through to '' which
+            // the caller already handles as "no response this turn."
+            if (typeof generation === 'string' && generation.trim() === SOFT_FAIL_RESPONSE) {
+                console.warn(`${this.agent.name}: LLM returned soft-fail sentinel (attempt ${i + 1}/3), retrying.`);
                 continue;
             }
 

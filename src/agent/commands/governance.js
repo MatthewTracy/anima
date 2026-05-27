@@ -50,6 +50,15 @@ export const governanceActionsList = [
             if (result.success) {
                 agent.factionChat(`[GOV] ${result.message}`);
                 getNarrativeLogger().logElectionCalled(agent.name, office);
+                // v1.1.74: broadcast to ALL agents (not just the caller's
+                // faction chat). Pre-fix, only Constitutional faction-mates
+                // saw the call in their chat window, and even they often
+                // didn't recognise it as actionable. In a live game an
+                // election ran 78s and timed out with "no votes cast".
+                broadcastAction(agent, 'election_called', {
+                    office,
+                    election_id: result.election?.id
+                });
             }
             return result.message;
         }
@@ -65,6 +74,12 @@ export const governanceActionsList = [
             if (result.success) {
                 agent.factionChat(`[GOV] ${result.message}`);
                 getNarrativeLogger().logNomination(agent.name, office);
+                // v1.1.74: see callElection above. A nomination also needs
+                // to reach every voter so they can cast a vote.
+                broadcastAction(agent, 'nomination', {
+                    office,
+                    election_id: result.election?.id
+                });
             }
             return result.message;
         }
