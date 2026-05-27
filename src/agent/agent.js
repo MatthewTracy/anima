@@ -47,6 +47,11 @@ export class Agent {
         this.npc = new NPCContoller(this);
         this.memory_bank = new MemoryBank();
         this.self_prompter = new SelfPrompter(this);
+        // v1.1.75: rolling buffer of the last 5 command names this agent
+        // ran. Used by the talking-nudge: if too many of the recent
+        // actions were !factionChat, the agent's next prompt gets a
+        // system note pushing them toward a world-affecting command.
+        this.recent_command_names = [];
         convoManager.initAgent(this);
         await this.prompter.initExamples();
 
@@ -445,6 +450,21 @@ export class Agent {
                 console.log('Agent executed:', command_name, 'and got:', execute_res);
                 used_command = true;
 
+                // v1.1.75: track this command in the rolling buffer (last 5)
+                // and emit a "talking-nudge" if too many recent actions were
+                // !factionChat. In v1.1.74's Forum game ~30% of actions were
+                // factionChat — agents echoed identity instead of acting. A
+                // single system note redirects them to a world-affecting
+                // command without removing the option to chat.
+                this.recent_command_names.push(command_name);
+                if (this.recent_command_names.length > 5) this.recent_command_names.shift();
+                const chatCount = this.recent_command_names.filter(c => c === '!factionChat').length;
+                if (chatCount >= 3) {
+                    this.history.add('system',
+                        "You've been talking a lot. Take a world-affecting action this turn — !goToCoordinates, !craftRecipe, !attackPlayer, !claimBounty, !searchForBlock, !collectBlocks, or another concrete move. Save chat for coordination emergencies.");
+                    this.recent_command_names = [];   // reset so the nudge doesn't re-fire next turn
+                }
+
                 if (execute_res)
                     this.history.add('system', execute_res);
                 else {
@@ -710,6 +730,25 @@ export class Agent {
             }
         });
         this.bot.on('messagestr', async (message, _, jsonMsg) => {
+            // v1.1.75: credit a kill when THIS agent is named as the killer
+            // in a death message. The existing entitySwingArm + entityDead
+            // correlation does not reliably fire for player-vs-player kills
+            // — a live v1.1.74 game logged 86 damage_taken / 3 combat_death
+            // events and credited kills: 0 for both factions. Minecraft's
+            // canonical death chat ("Madison was slain by Chaos", "Madison
+            // was shot by Chaos with arrow", "Madison was blown up by Chaos")
+            // is reliable. The killer's process detects its own name in the
+            // "by <name>" phrase and credits the kill from here.
+            if (jsonMsg.translate && jsonMsg.translate.startsWith('death')
+                && !message.startsWith(this.name)) {
+                try {
+                    const { extractKillerFromDeathMessage } = await import('./death_message.js');
+                    const victim = extractKillerFromDeathMessage(message, this.name);
+                    if (victim) {
+                        logEventToMindserver('logCombatKill', { args: [this.name, victim] });
+                    }
+                } catch (e) { /* optional */ }
+            }
             if (jsonMsg.translate && jsonMsg.translate.startsWith('death') && message.startsWith(this.name)) {
                 console.log('Agent died: ', message);
                 // v1.1.59: upgrade the pending death lock with Minecraft's

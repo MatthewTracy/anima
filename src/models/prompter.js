@@ -501,26 +501,25 @@ KEY COMMANDS: !collectBlocks, !craftRecipe, !goToCoordinates, !attack, !goToPlay
                     console.error('Error: Generated response is not a string', generation);
                     throw new Error('Generated response is not a string');
                 }
+                // v1.1.74 / v1.1.75: treat the normalizeContent soft-fail
+                // sentinel as a retry signal, not a valid generation. v1.1.75
+                // moved this check above the "Generated response" log and the
+                // _saveLog call so the run log no longer prints the sentinel
+                // verbatim on retry (cosmetic only; chat was already clean).
+                // Pre-fix, three Anarchy agents simultaneously hit a transient
+                // OpenRouter null-content blip and the agent's literal response
+                // became "My mind went blank, try again." for the rest of the
+                // game. After 3 retries we fall through to '' which the caller
+                // already handles as "no response this turn."
+                if (generation.trim() === SOFT_FAIL_RESPONSE) {
+                    console.warn(`${this.agent.name}: LLM returned soft-fail sentinel (attempt ${i + 1}/3), retrying.`);
+                    continue;
+                }
                 console.log("Generated response:", generation);
                 await this._saveLog(prompt, messages, generation, 'conversation');
 
             } catch (error) {
                 console.error('Error during message generation or file writing:', error);
-                continue;
-            }
-
-            // v1.1.74: treat the normalizeContent soft-fail sentinel as a
-            // retry signal, not a valid generation. Pre-fix, when the LLM
-            // returned null content (transient upstream hiccup, soft content
-            // filter), the model wrapper substituted SOFT_FAIL_RESPONSE as a
-            // valid string, this loop accepted it, and the agent's response
-            // became the literal "My mind went blank, try again." string —
-            // observed for three Anarchy agents simultaneously in a live
-            // game, all idle for the rest of the run. Now we retry; if all
-            // three attempts return the soft-fail, fall through to '' which
-            // the caller already handles as "no response this turn."
-            if (typeof generation === 'string' && generation.trim() === SOFT_FAIL_RESPONSE) {
-                console.warn(`${this.agent.name}: LLM returned soft-fail sentinel (attempt ${i + 1}/3), retrying.`);
                 continue;
             }
 
